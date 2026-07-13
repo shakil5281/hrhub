@@ -1,0 +1,121 @@
+import type { LucideIcon } from "lucide-react"
+import {
+  Building2Icon,
+  CalendarClockIcon,
+  TimerIcon,
+  MapPinIcon,
+  UsersIcon,
+  LayersIcon,
+  BuildingIcon,
+  ClipboardCheckIcon,
+  FileTextIcon,
+  IdCardIcon,
+  ClockIcon,
+  ChartColumnIcon,
+  ClipboardListIcon,
+  UserXIcon,
+  CalendarDaysIcon,
+  TagIcon,
+  CalendarCheckIcon,
+  DollarSignIcon,
+  ArrowUpDownIcon,
+  FileSpreadsheetIcon,
+  FileBarChartIcon,
+  TrendingUpIcon,
+  ReceiptIcon,
+  CalendarRangeIcon,
+  DatabaseIcon,
+  RefreshCwIcon,
+} from "lucide-react"
+
+export const informationNav = [
+  { title: "Company", url: "/information/company", icon: Building2Icon },
+  { title: "Shift", url: "/information/shift", icon: CalendarClockIcon },
+  { title: "Temporary Shift", url: "/information/temporary-shift", icon: TimerIcon },
+  { title: "Address", url: "/information/address", icon: MapPinIcon },
+  { title: "Group", url: "/information/group", icon: UsersIcon },
+  { title: "Floor", url: "/information/floor", icon: LayersIcon },
+  { title: "Organization", url: "/information/organization", icon: BuildingIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const hrNav = [
+  { title: "Employees", url: "/hr/employees", icon: UsersIcon },
+  { title: "Requirements", url: "/hr/requirements", icon: ClipboardListIcon },
+  { title: "Seperation", url: "/hr/seperation", icon: UserXIcon },
+  { title: "Id Card", url: "/hr/id-card", icon: IdCardIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const attendanceNav = [
+  { title: "Daily Attendance", url: "/attendance/daily-attendance", icon: ClipboardCheckIcon },
+  { title: "Daily Summary", url: "/attendance/daily-summary", icon: FileTextIcon },
+  { title: "Job Card", url: "/attendance/job-card", icon: IdCardIcon },
+  { title: "Over Time Sheet", url: "/attendance/over-time-sheet", icon: ClockIcon },
+  { title: "Over Time Summary", url: "/attendance/over-time-summary", icon: ChartColumnIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+
+
+export const leaveNav = [
+  { title: "Leave Type", url: "/leave/leave-type", icon: TagIcon },
+  { title: "Leave", url: "/leave/leave", icon: CalendarCheckIcon },
+  { title: "Leave Details", url: "/leave/leave-details", icon: FileTextIcon },
+  { title: "Monthly Leave Report", url: "/leave/monthly-leave-report", icon: ChartColumnIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const payrollNav = [
+  { title: "Salary Process", url: "/payroll/salary-process", icon: ArrowUpDownIcon },
+  { title: "Salary Sheet", url: "/payroll/salary-sheet", icon: FileSpreadsheetIcon },
+  { title: "Salary Summary", url: "/payroll/salary-summary", icon: FileBarChartIcon },
+  { title: "Increment", url: "/payroll/increment", icon: TrendingUpIcon },
+  { title: "PaySlip", url: "/payroll/payslip", icon: ReceiptIcon },
+  { title: "Daily Salary Sheet", url: "/payroll/daily-salary-sheet", icon: CalendarRangeIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const collectDataNav = [
+  { title: "Log Collect", url: "/collect-data/log-collect", icon: DatabaseIcon },
+  { title: "Daily Process", url: "/collect-data/daily-process", icon: RefreshCwIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const navGroup = [
+  {
+    title: "Information",
+    icon: Building2Icon,
+    url: "#",
+    items: informationNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Human Resource",
+    icon: UsersIcon,
+    url: "#",
+    items: hrNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Attendance",
+    icon: ClipboardCheckIcon,
+    url: "#",
+    items: attendanceNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Leave",
+    icon: CalendarDaysIcon,
+    url: "#",
+    items: leaveNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Payroll",
+    icon: DollarSignIcon,
+    url: "#",
+    items: payrollNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Collect Data",
+    icon: DatabaseIcon,
+    url: "#",
+    items: collectDataNav.map(({ title, url }) => ({ title, url })),
+  },
+] as const satisfies {
+  title: string
+  url: string
+  icon: LucideIcon
+  items: { title: string; url: string }[]
+}[]
