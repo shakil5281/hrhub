@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { UserXIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import { Separation, getSeparations, deleteSeparation, departmentOptions, separationTypeOptions, separationStatusOptions } from "@/components/separation-data"
+import { Separation, getSeparations, deleteSeparation, departmentOptions, separationTypeOptions, separationStatusOptions } from "@/components/data/separation-data"
 
 const columns: ColumnDef<Separation>[] = [
   { accessorKey: "employee", header: "Employee" },

@@ -43,6 +43,8 @@ type ImportRequest struct {
 
 type ProcessRequest struct {
 	Date      string `json:"date"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
 	CompanyID string `json:"company_id"`
 }
 
@@ -79,15 +81,19 @@ func (h *DataLogHandler) Import(c *gin.Context) {
 
 	var logs []models.DataLog
 	for _, rec := range records {
+		punchTime := rec.PunchTimeParsed()
+		if h.dataLogRepo.ExistsByBadgeAndPunchTime(rec.BadgeNumber, punchTime) {
+			continue
+		}
 		log := models.DataLog{
 			UserID:       rec.UserID,
 			BadgeNumber:  rec.BadgeNumber,
 			EmployeeName: rec.Name,
-			PunchTime:    rec.PunchTimeParsed(),
+			PunchTime:    punchTime,
 			PunchType:    rec.PunchType,
 			DeviceID:     rec.DeviceID,
 			DeviceSN:     rec.DeviceSN,
-			Date:         rec.PunchTimeParsed().Format("2006-01-02"),
+			Date:         punchTime.Format("2006-01-02"),
 		}
 		logs = append(logs, log)
 	}
@@ -141,144 +147,211 @@ func (h *DataLogHandler) List(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /data-logs/process [post]
 func (h *DataLogHandler) Process(c *gin.Context) {
-	date := time.Now().Format("2006-01-02")
 	var req ProcessRequest
-	if err := c.ShouldBindJSON(&req); err == nil && req.Date != "" {
-		date = req.Date
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	logs, err := h.dataLogRepo.ListUnprocessedByDate(date)
+	startDate := req.StartDate
+	endDate := req.EndDate
+	if startDate == "" && endDate == "" {
+		if req.Date != "" {
+			startDate = req.Date
+			endDate = req.Date
+		} else {
+			startDate = time.Now().Format("2006-01-02")
+			endDate = startDate
+		}
+	} else if startDate == "" {
+		startDate = endDate
+	} else if endDate == "" {
+		endDate = startDate
+	}
+
+	dates, err := h.dataLogRepo.ListUnprocessedDatesInRange(startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if len(logs) == 0 {
-		c.JSON(http.StatusOK, gin.H{"message": "No unprocessed logs found for date", "date": date, "processed": 0})
+	if len(dates) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message":   "No unprocessed logs found for date range",
+			"start":     startDate,
+			"end":       endDate,
+			"processed": 0,
+		})
 		return
 	}
 
-	// Group logs by user
-	type employeeLogs struct {
-		EmployeeName string
-		BadgeNumber  string
-		Punches      []models.DataLog
-		LogIDs       []string
-	}
-	grouped := make(map[int]*employeeLogs)
+	totalProcessed := 0
+	totalLogs := 0
+	var results []map[string]interface{}
 
-	for _, log := range logs {
-		if grouped[log.UserID] == nil {
-			grouped[log.UserID] = &employeeLogs{
-				EmployeeName: log.EmployeeName,
-				BadgeNumber:  log.BadgeNumber,
-			}
-		}
-		grouped[log.UserID].Punches = append(grouped[log.UserID].Punches, log)
-		grouped[log.UserID].LogIDs = append(grouped[log.UserID].LogIDs, log.ID)
-	}
-
-	processed := 0
-	var processedIDs []string
-	for _, empLogs := range grouped {
-		punches := empLogs.Punches
-		if len(punches) == 0 || empLogs.BadgeNumber == "" {
+	for _, date := range dates {
+		logs, err := h.dataLogRepo.ListUnprocessedByDate(date)
+		if err != nil || len(logs) == 0 {
 			continue
 		}
+		totalLogs += len(logs)
 
-		// Look up employee by badge number -> employee_code, then try punch_number
-		employee, err := h.employeeRepo.FindByEmployeeCode(empLogs.BadgeNumber)
-		if err != nil {
-			employee, err = h.employeeRepo.FindByPunchNumber(empLogs.BadgeNumber)
-			if err != nil {
+		type employeeLogs struct {
+			EmployeeName string
+			BadgeNumber  string
+			Punches      []models.DataLog
+			LogIDs       []string
+		}
+		grouped := make(map[int]*employeeLogs)
+
+		for _, log := range logs {
+			if grouped[log.UserID] == nil {
+				grouped[log.UserID] = &employeeLogs{
+					EmployeeName: log.EmployeeName,
+					BadgeNumber:  log.BadgeNumber,
+				}
+			}
+			grouped[log.UserID].Punches = append(grouped[log.UserID].Punches, log)
+			grouped[log.UserID].LogIDs = append(grouped[log.UserID].LogIDs, log.ID)
+		}
+
+		dayProcessed := 0
+		var processedIDs []string
+		for _, empLogs := range grouped {
+			punches := empLogs.Punches
+			if len(punches) == 0 || empLogs.BadgeNumber == "" {
 				continue
 			}
-		}
-		if req.CompanyID != "" && employee.CompanyID != req.CompanyID {
-			continue
-		}
 
-		// Calculate attendance windows based on assigned shift
-		var checkIn *string
-		var checkOut *string
-		var status = "present"
-
-		// Process first 'I' punch as check-in (basic logic)
-		for _, p := range punches {
-			if p.PunchType == "I" || p.PunchType == "i" {
-				t := p.PunchTime.Format("15:04")
-				checkIn = &t
-				break
+			employee, err := h.employeeRepo.FindByEmployeeCode(empLogs.BadgeNumber)
+			if err != nil {
+				employee, err = h.employeeRepo.FindByPunchNumber(empLogs.BadgeNumber)
+				if err != nil {
+					continue
+				}
 			}
-		}
+			if req.CompanyID != "" && employee.CompanyID != req.CompanyID {
+				continue
+			}
 
-		// Process last 'O' punch as check-out (basic logic)
-		for i := len(punches) - 1; i >= 0; i-- {
-			if punches[i].PunchType == "O" || punches[i].PunchType == "o" {
-				t := punches[i].PunchTime.Format("15:04")
+			var checkIn *string
+			var checkOut *string
+			var status = "present"
+
+			// Look up shift for time-based check-in/out logic
+			var shiftID *string
+			var lateMinutes int
+			var shift *models.Shift
+			if employee.ShiftID != nil {
+				shift, _ = h.shiftRepo.FindByID(*employee.ShiftID)
+				if shift != nil {
+					shiftID = &shift.ID
+				}
+			}
+
+			// Determine shift out time for reference
+			var shiftOutTime time.Time
+			if shift != nil && shift.EndTime != "" {
+				shiftOutTime, _ = time.Parse("15:04", shift.EndTime)
+			}
+
+			// Find check-in: first 'I' punch that is BEFORE or near shift end time
+			// (if all punches are after shift end, no check-in)
+			for _, p := range punches {
+				if p.PunchType == "I" || p.PunchType == "i" {
+					punchT := p.PunchTime.Format("15:04")
+					punchTime, _ := time.Parse("15:04", punchT)
+					// If shift out is known and punch is after shift out, skip (this is outTime)
+					if !shiftOutTime.IsZero() && punchTime.After(shiftOutTime) {
+						continue
+					}
+					checkIn = &punchT
+					break
+				}
+			}
+
+			// Find check-out: last 'O' punch, or last 'I' punch after shift out time
+			// First try last 'O' punch
+			for i := len(punches) - 1; i >= 0; i-- {
+				if punches[i].PunchType == "O" || punches[i].PunchType == "o" {
+					t := punches[i].PunchTime.Format("15:04")
+					checkOut = &t
+					break
+				}
+			}
+			// If no 'O' punch, find last punch after shift out time (all 'I' config)
+			if checkOut == nil && !shiftOutTime.IsZero() {
+				for i := len(punches) - 1; i >= 0; i-- {
+					punchT := punches[i].PunchTime.Format("15:04")
+					punchTime, _ := time.Parse("15:04", punchT)
+					if punchTime.After(shiftOutTime) {
+						checkOut = &punchT
+						break
+					}
+				}
+			}
+			// Fallback: if still no check-out and multiple punches, last punch is out
+			if checkOut == nil && len(punches) > 1 {
+				lastPunch := punches[len(punches)-1]
+				t := lastPunch.PunchTime.Format("15:04")
 				checkOut = &t
-				break
 			}
-		}
 
-		// Determine status
-		if status == "present" {
 			if checkIn == nil && checkOut == nil {
 				status = "absent"
 			} else if checkIn == nil {
 				status = "late"
 			}
-		}
 
-		// Look up employee shift for late calculation and window
-		var shiftID *string
-		var lateMinutes int
-		if employee.ShiftID != nil {
-			shift, err := h.shiftRepo.FindByID(*employee.ShiftID)
-			if err == nil && shift != nil {
-				shiftID = &shift.ID
+			// Late calculation
+			if shift != nil && checkIn != nil {
 				shiftStart, _ := time.Parse("15:04", shift.StartTime)
 				grace := time.Duration(shift.LateGraceMinutes) * time.Minute
 				deadline := shiftStart.Add(grace)
-				if checkIn != nil {
-					actualIn, err := time.Parse("15:04", *checkIn)
-					if err == nil && actualIn.After(deadline) {
-						lateMinutes = int(actualIn.Sub(shiftStart).Minutes())
-					}
+				actualIn, err := time.Parse("15:04", *checkIn)
+				if err == nil && actualIn.After(deadline) {
+					lateMinutes = int(actualIn.Sub(shiftStart).Minutes())
 				}
 			}
+
+			attendance := &models.Attendance{
+				EmployeeID:  employee.ID,
+				CompanyID:   employee.CompanyID,
+				Date:        date,
+				CheckIn:     checkIn,
+				CheckOut:    checkOut,
+				Status:      status,
+				ShiftID:     shiftID,
+				LateMinutes: lateMinutes,
+				PunchNumber: &empLogs.BadgeNumber,
+			}
+
+			if err := h.attendanceRepo.Create(attendance); err != nil {
+				continue
+			}
+			processedIDs = append(processedIDs, empLogs.LogIDs...)
+			dayProcessed++
 		}
 
-		attendance := &models.Attendance{
-			EmployeeID:  employee.ID,
-			CompanyID:   employee.CompanyID,
-			Date:        date,
-			CheckIn:     checkIn,
-			CheckOut:    checkOut,
-			Status:      status,
-			ShiftID:     shiftID,
-			LateMinutes: lateMinutes,
-			PunchNumber: &empLogs.BadgeNumber,
+		if len(processedIDs) > 0 {
+			_ = h.dataLogRepo.MarkProcessed(processedIDs)
 		}
-
-		if err := h.attendanceRepo.Create(attendance); err != nil {
-			continue
-		}
-		processedIDs = append(processedIDs, empLogs.LogIDs...)
-		processed++
-	}
-
-	// Mark successful logs as processed
-	if len(processedIDs) > 0 {
-		_ = h.dataLogRepo.MarkProcessed(processedIDs)
+		totalProcessed += dayProcessed
+		results = append(results, map[string]interface{}{
+			"date":      date,
+			"processed": dayProcessed,
+			"logs":      len(logs),
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    fmt.Sprintf("Processed %d employee attendances from %d raw logs", processed, len(logs)),
-		"date":       date,
-		"total_logs": len(logs),
-		"processed":  processed,
-		"skipped":    len(logs) - len(processedIDs),
+		"message":    fmt.Sprintf("Processed %d employee attendances across %d days from %d raw logs", totalProcessed, len(dates), totalLogs),
+		"start":      startDate,
+		"end":        endDate,
+		"days":       len(dates),
+		"total_logs": totalLogs,
+		"processed":  totalProcessed,
+		"details":    results,
 	})
 }
 
@@ -305,4 +378,22 @@ func (h *DataLogHandler) Stats(c *gin.Context) {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+// DeleteAllDataLogs godoc
+//
+// @Summary      Delete all data logs
+// @Description  Permanently delete all raw punch data logs
+// @Tags         Data Logs
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /data-logs/delete-all [delete]
+func (h *DataLogHandler) DeleteAll(c *gin.Context) {
+	if err := h.dataLogRepo.DeleteAll(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "All data logs deleted permanently"})
 }

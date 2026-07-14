@@ -2,16 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { UsersIcon } from "lucide-react"
-import { EmployeeForm } from "@/components/employee-form"
-import { createEmployee, EmployeeFormData } from "@/components/employee-data"
+import { EmployeeForm } from "@/components/form/employee-form"
 
 export default function CreateEmployeePage() {
   const router = useRouter()
-
-  const handleSuccess = (data: EmployeeFormData) => {
-    createEmployee(data)
-    router.push("/hr/employees")
-  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -23,7 +17,7 @@ export default function CreateEmployeePage() {
         </div>
       </div>
       <div className="px-4 lg:px-6">
-        <EmployeeForm onSuccess={handleSuccess} onCancel={() => router.back()} />
+        <EmployeeForm onSuccess={() => router.push("/hr/employees")} onCancel={() => router.back()} />
       </div>
     </div>
   )

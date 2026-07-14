@@ -3,8 +3,8 @@
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
 import { UserXIcon } from "lucide-react"
-import { SeparationForm } from "@/components/separation-form"
-import { updateSeparation, getSeparation, SeparationFormData } from "@/components/separation-data"
+import { SeparationForm } from "@/components/form/separation-form"
+import { updateSeparation, getSeparation, SeparationFormData } from "@/components/data/separation-data"
 
 export default function EditSeparationPage() {
   const router = useRouter()

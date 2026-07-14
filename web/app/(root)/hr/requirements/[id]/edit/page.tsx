@@ -3,8 +3,8 @@
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ClipboardListIcon } from "lucide-react"
-import { RequirementForm } from "@/components/requirement-form"
-import { updateRequirement, getRequirement, RequirementFormData } from "@/components/requirement-data"
+import { RequirementForm } from "@/components/form/requirement-form"
+import { updateRequirement, getRequirement, RequirementFormData } from "@/components/data/requirement-data"
 
 export default function EditRequirementPage() {
   const router = useRouter()

@@ -2,14 +2,14 @@
 
 import * as React from "react"
 import { FileTextIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
   DailySummary, getDailySummaries,
   companyOptions, departmentOptions, lineOptions,
-} from "@/components/daily-summary-data"
+} from "@/components/data/daily-summary-data"
 
 const columns: ColumnDef<DailySummary>[] = [
   { accessorKey: "date", header: "Date" },

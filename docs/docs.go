@@ -133,6 +133,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/attendance/absent": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get employees marked as absent for a date range",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Absent attendance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by company",
+                        "name": "company_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/attendance/clock-in": {
             "post": {
                 "security": [
@@ -262,6 +317,192 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/attendance/delete-all": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently delete all attendance records",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Delete all attendances",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/attendance/job-card": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get attendance records for job card with advanced filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Job card data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by company",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by employee",
+                        "name": "employee_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by department",
+                        "name": "department_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (present|late|absent|half-day)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/attendance/missing": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Find employees with punch data logs but no attendance record",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Missing attendance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Date (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by company",
+                        "name": "company_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/attendance/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get count of attendance records",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Attendance statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1205,6 +1446,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/data-logs/delete-all": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently delete all raw punch data logs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Data Logs"
+                ],
+                "summary": "Delete all data logs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/data-logs/import": {
             "post": {
                 "security": [
@@ -1225,7 +1503,7 @@ const docTemplate = `{
                 "summary": "Import data logs from ZKTeco MDB",
                 "parameters": [
                     {
-                        "description": "MDB file path (defaults to C:\\\\Program Files (x86)\\\\ZKTeco\\\\att2000.mdb)",
+                        "description": "MDB file path (defaults to C:\\\\\\\\Program Files (x86)\\\\\\\\ZKTeco\\\\\\\\att2000.mdb)",
                         "name": "request",
                         "in": "body",
                         "schema": {
@@ -1364,6 +1642,231 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new employee record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Create employee",
+                "parameters": [
+                    {
+                        "description": "Employee details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateEmployeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/employees/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a single employee by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Get employee by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Employee ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing employee record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Update employee",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Employee ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Employee details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateEmployeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft delete an employee",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Employees"
+                ],
+                "summary": "Delete employee",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Employee ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1686,6 +2189,64 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload an image or signature file",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Upload"
+                ],
+                "summary": "Upload file",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1748,7 +2309,6 @@ const docTemplate = `{
         "handlers.CreateCompanyRequest": {
             "type": "object",
             "required": [
-                "company_name_bn",
                 "company_name_en"
             ],
             "properties": {
@@ -1763,6 +2323,163 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateEmployeeRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "employee_code",
+                "joining_date"
+            ],
+            "properties": {
+                "bank_account": {
+                    "type": "string"
+                },
+                "bank_branch": {
+                    "type": "string"
+                },
+                "bank_name": {
+                    "description": "Bank",
+                    "type": "string"
+                },
+                "basic_salary": {
+                    "description": "Salary",
+                    "type": "number"
+                },
+                "blood_group": {
+                    "type": "string"
+                },
+                "branch_id": {
+                    "type": "string"
+                },
+                "company_id": {
+                    "description": "Office",
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "department_id": {
+                    "type": "string"
+                },
+                "designation": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "emergency_contact": {
+                    "type": "string"
+                },
+                "emergency_phone": {
+                    "type": "string"
+                },
+                "employee_code": {
+                    "type": "string"
+                },
+                "father_name": {
+                    "type": "string"
+                },
+                "food_allowance": {
+                    "type": "number"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "grade": {
+                    "type": "string"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "house_rent": {
+                    "type": "number"
+                },
+                "joining_date": {
+                    "type": "string"
+                },
+                "line": {
+                    "type": "string"
+                },
+                "marital_status": {
+                    "type": "string"
+                },
+                "medical_allowance": {
+                    "type": "number"
+                },
+                "mother_name": {
+                    "type": "string"
+                },
+                "name_bn": {
+                    "type": "string"
+                },
+                "name_en": {
+                    "description": "Personal",
+                    "type": "string"
+                },
+                "nationality": {
+                    "type": "string"
+                },
+                "nid": {
+                    "type": "string"
+                },
+                "number_of_dependents": {
+                    "type": "integer"
+                },
+                "other_allowance": {
+                    "type": "number"
+                },
+                "permanent_address": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "present_address": {
+                    "type": "string"
+                },
+                "provident_fund": {
+                    "type": "number"
+                },
+                "punch_number": {
+                    "type": "string"
+                },
+                "reports_to": {
+                    "type": "string"
+                },
+                "routing_no": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "shift_id": {
+                    "type": "string"
+                },
+                "spouse_name": {
+                    "description": "Family",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status",
+                    "type": "string"
+                },
+                "swift_code": {
+                    "type": "string"
+                },
+                "tax": {
+                    "type": "number"
+                },
+                "total_salary": {
+                    "type": "number"
+                },
+                "transport_allowance": {
+                    "type": "number"
                 }
             }
         },
@@ -1787,7 +2504,13 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "shift_type": {
+                    "type": "string"
+                },
                 "start_time": {
+                    "type": "string"
+                },
+                "weekend_days": {
                     "type": "string"
                 }
             }
@@ -1795,7 +2518,15 @@ const docTemplate = `{
         "handlers.ImportRequest": {
             "type": "object",
             "properties": {
+                "end_date": {
+                    "description": "YYYY-MM-DD, optional",
+                    "type": "string"
+                },
                 "file_path": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "YYYY-MM-DD, optional",
                     "type": "string"
                 }
             }
@@ -1803,7 +2534,16 @@ const docTemplate = `{
         "handlers.ProcessRequest": {
             "type": "object",
             "properties": {
+                "company_id": {
+                    "type": "string"
+                },
                 "date": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "start_date": {
                     "type": "string"
                 }
             }
@@ -1831,7 +2571,6 @@ const docTemplate = `{
         "handlers.UpdateCompanyRequest": {
             "type": "object",
             "required": [
-                "company_name_bn",
                 "company_name_en"
             ],
             "properties": {
@@ -1845,6 +2584,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -1870,7 +2612,13 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "shift_type": {
+                    "type": "string"
+                },
                 "start_time": {
+                    "type": "string"
+                },
+                "weekend_days": {
                     "type": "string"
                 }
             }

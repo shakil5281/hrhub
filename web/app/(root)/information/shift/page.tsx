@@ -1,33 +1,40 @@
 "use client"
 
 import * as React from "react"
-import { CalendarClockIcon, PlusIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { CalendarClockIcon, PlusIcon, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Shift, getShifts, createShift, updateShift, deleteShift, ShiftFormData } from "@/components/shift-data"
-import { ShiftForm } from "@/components/shift-form"
+import { Shift, statusOptions } from "@/components/data/shift-data"
+import { ShiftForm } from "@/components/form/shift-form"
+import { shiftApi } from "@/lib/api"
 
 const columns: ColumnDef<Shift>[] = [
   { accessorKey: "name", header: "Shift Name" },
   {
-    accessorKey: "shiftType",
-    header: "Shift Type",
+    accessorKey: "shift_type",
+    header: "Type",
     cell: ({ row }) => (
-      <Badge variant="outline">{row.original.shiftType}</Badge>
+      <Badge variant="outline" className="capitalize">{row.original.shift_type || "day"}</Badge>
     ),
   },
-  { accessorKey: "inTime", header: "In Time" },
-  { accessorKey: "outTime", header: "Out Time" },
-  { accessorKey: "weekendDay", header: "Weekend Day" },
+  { accessorKey: "start_time", header: "Start Time" },
+  { accessorKey: "end_time", header: "End Time" },
+  { accessorKey: "late_grace_minutes", header: "Grace (min)" },
+  {
+    accessorKey: "weekend_days",
+    header: "Weekend Days",
+    cell: ({ row }) => row.original.weekend_days || "-",
+  },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
       <Badge variant={row.original.status === "active" ? "default" : "secondary"} className="capitalize">
-        {row.original.status}
+        {statusOptions.find((s) => s.value === row.original.status)?.label}
       </Badge>
     ),
   },
@@ -35,11 +42,26 @@ const columns: ColumnDef<Shift>[] = [
 
 export default function ShiftPage() {
   const [shifts, setShifts] = React.useState<Shift[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingShift, setEditingShift] = React.useState<Shift | null>(null)
 
+  const fetchShifts = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const { data } = await shiftApi.list()
+      setShifts(Array.isArray(data) ? data : [])
+    } catch {
+      setError("Failed to load shifts")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   React.useEffect(() => {
-    setShifts(getShifts())
+    fetchShifts()
   }, [])
 
   const handleAdd = () => {
@@ -52,20 +74,14 @@ export default function ShiftPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = (shift: Shift) => {
-    deleteShift(shift.id)
-    setShifts(getShifts())
-  }
-
-  const handleFormSuccess = (data: ShiftFormData) => {
-    if (editingShift) {
-      updateShift(editingShift.id, data)
-    } else {
-      createShift(data)
+  const handleDelete = async (shift: Shift) => {
+    try {
+      await shiftApi.delete(shift.id)
+      setShifts((prev) => prev.filter((s) => s.id !== shift.id))
+      toast.success("Shift deleted successfully")
+    } catch {
+      toast.error("Failed to delete shift")
     }
-    setShifts(getShifts())
-    setDialogOpen(false)
-    setEditingShift(null)
   }
 
   return (
@@ -83,13 +99,27 @@ export default function ShiftPage() {
           Add Shift
         </Button>
       </div>
-      <DataTable
-        key={shifts.length}
-        data={shifts}
-        columns={columns}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable
+          key={shifts.length}
+          data={shifts}
+          columns={columns}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -100,14 +130,20 @@ export default function ShiftPage() {
           </DialogHeader>
           <ShiftForm
             initialData={editingShift ? {
+              company_id: editingShift.company_id,
               name: editingShift.name,
-              shiftType: editingShift.shiftType,
-              inTime: editingShift.inTime,
-              outTime: editingShift.outTime,
-              weekendDay: editingShift.weekendDay,
+              shift_type: (editingShift.shift_type || "day") as "day" | "night" | "general",
+              start_time: editingShift.start_time,
+              end_time: editingShift.end_time,
+              late_grace_minutes: editingShift.late_grace_minutes,
+              weekend_days: editingShift.weekend_days || "",
               status: editingShift.status,
             } : undefined}
-            onSuccess={handleFormSuccess}
+            onSuccess={() => {
+              setDialogOpen(false)
+              setEditingShift(null)
+              fetchShifts()
+            }}
             onCancel={() => { setDialogOpen(false); setEditingShift(null) }}
             isEditing={!!editingShift}
             shiftId={editingShift?.id}

@@ -1,29 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { UsersIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { UsersIcon, PlusIcon, SearchIcon, Loader2 } from "lucide-react"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-
-import { DatePicker } from "@/components/ui/date-picker"
 import { useRouter } from "next/navigation"
-import { Employee, getEmployees, deleteEmployee, departmentOptions, statusOptionsEmployee } from "@/components/employee-data"
+import { Employee, statusOptionsEmployee } from "@/components/data/employee-data"
+import { employeeApi } from "@/lib/api"
 
 const columns: ColumnDef<Employee>[] = [
-  { accessorKey: "employeeCode", header: "Code" },
-  { accessorKey: "nameEn", header: "Name" },
+  { accessorKey: "employee_code", header: "Code" },
+  { accessorKey: "name_en", header: "Name" },
   { accessorKey: "designation", header: "Designation" },
-  { accessorKey: "department", header: "Department" },
+  { accessorKey: "punch_number", header: "Punch No" },
   { accessorKey: "phone", header: "Phone" },
+  { accessorKey: "joining_date", header: "Joining Date" },
+  {
+    accessorKey: "total_salary",
+    header: "Salary",
+    cell: ({ row }) => row.original.total_salary?.toLocaleString() || "-",
+  },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
-      <Badge variant={row.original.status === "Active" ? "default" : "secondary"} className="capitalize">
-        {row.original.status}
+      <Badge variant={row.original.status === "active" ? "default" : "secondary"} className="capitalize">
+        {statusOptionsEmployee.find((s) => s.value === row.original.status)?.label}
       </Badge>
     ),
   },
@@ -32,51 +37,47 @@ const columns: ColumnDef<Employee>[] = [
 export default function EmployeesPage() {
   const router = useRouter()
   const [data, setData] = React.useState<Employee[]>([])
-
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
   const [search, setSearch] = React.useState("")
-  const [deptFilter, setDeptFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-  const [dateFrom, setDateFrom] = React.useState<Date | undefined>()
-  const [dateTo, setDateTo] = React.useState<Date | undefined>()
 
-  const loadData = React.useCallback(() => setData(getEmployees()), [])
-
-  React.useEffect(loadData, [loadData])
-
-  const filtered = React.useMemo(() => {
-    let result = data
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(
-        (e) =>
-          e.nameEn.toLowerCase().includes(q) ||
-          e.nameBn.toLowerCase().includes(q) ||
-          e.employeeCode.toLowerCase().includes(q)
-      )
+  const fetchEmployees = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const { data: res } = await employeeApi.list()
+      setData(Array.isArray(res) ? res : [])
+    } catch {
+      setError("Failed to load employees")
+    } finally {
+      setLoading(false)
     }
-    if (deptFilter !== "all") result = result.filter((e) => e.department === deptFilter)
-    if (statusFilter !== "all") result = result.filter((e) => e.status === statusFilter)
-    if (dateFrom) result = result.filter((e) => new Date(e.joiningDate) >= dateFrom)
-    if (dateTo) {
-      const end = new Date(dateTo)
-      end.setHours(23, 59, 59, 999)
-      result = result.filter((e) => new Date(e.joiningDate) <= end)
-    }
-    return result
-  }, [data, search, deptFilter, statusFilter, dateFrom, dateTo])
-
-  const clearFilters = () => {
-    setSearch("")
-    setDeptFilter("all")
-    setStatusFilter("all")
-    setDateFrom(undefined)
-    setDateTo(undefined)
   }
 
-  const hasFilters = search || deptFilter !== "all" || statusFilter !== "all" || dateFrom || dateTo
+  React.useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const filtered = React.useMemo(() => {
+    if (!search.trim()) return data
+    const q = search.toLowerCase()
+    return data.filter(
+      (e) =>
+        e.employee_code.toLowerCase().includes(q) ||
+        e.name_en.toLowerCase().includes(q) ||
+        e.designation.toLowerCase().includes(q)
+    )
+  }, [data, search])
 
   const handleEdit = (emp: Employee) => router.push(`/hr/employees/${emp.id}/edit`)
-  const handleDelete = (emp: Employee) => { deleteEmployee(emp.id); loadData() }
+  const handleDelete = async (emp: Employee) => {
+    try {
+      await employeeApi.delete(emp.id)
+      setData((prev) => prev.filter((e) => e.id !== emp.id))
+    } catch {
+      setError("Failed to delete employee")
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -94,68 +95,35 @@ export default function EmployeesPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
+
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Search</label>
-              <div className="relative">
-                <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Name or code…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="all">All Departments</option>
-                {departmentOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="all">All Statuses</option>
-                {statusOptionsEmployee.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">From (Joining)</label>
-              <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="From date" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">To (Joining)</label>
-              <DatePicker value={dateTo} onChange={setDateTo} placeholder="To date" />
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by code, name or designation..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
+              />
             </div>
           </div>
-          {hasFilters && (
-            <div className="mt-3 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <RotateCcwIcon className="mr-1 size-3.5" />
-                Clear Filters
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
-      <DataTable key={filtered.length} data={filtered} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      {loading ? (
+        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable key={filtered.length} data={filtered} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      )}
     </div>
   )
 }

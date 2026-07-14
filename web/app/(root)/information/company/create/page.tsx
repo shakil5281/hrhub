@@ -1,6 +1,6 @@
 "use client"
 
-import { CompanyForm } from "@/components/company-form"
+import { CompanyForm } from "@/components/form/company-form"
 import { useRouter } from "next/navigation"
 
 export default function CreateCompanyPage() {

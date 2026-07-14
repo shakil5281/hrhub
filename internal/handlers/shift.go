@@ -19,17 +19,21 @@ func NewShiftHandler(shiftRepo *repository.ShiftRepository) *ShiftHandler {
 type CreateShiftRequest struct {
 	Name             string `json:"name" binding:"required"`
 	CompanyID        string `json:"company_id" binding:"required"`
+	ShiftType        string `json:"shift_type"`
 	StartTime        string `json:"start_time" binding:"required"`
 	EndTime          string `json:"end_time" binding:"required"`
 	LateGraceMinutes int    `json:"late_grace_minutes"`
+	WeekendDays      string `json:"weekend_days"`
 }
 
 type UpdateShiftRequest struct {
 	Name             string `json:"name" binding:"required"`
 	CompanyID        string `json:"company_id" binding:"required"`
+	ShiftType        string `json:"shift_type"`
 	StartTime        string `json:"start_time" binding:"required"`
 	EndTime          string `json:"end_time" binding:"required"`
 	LateGraceMinutes int    `json:"late_grace_minutes"`
+	WeekendDays      string `json:"weekend_days"`
 }
 
 // ListShifts godoc
@@ -99,9 +103,11 @@ func (h *ShiftHandler) Create(c *gin.Context) {
 	shift := &models.Shift{
 		CompanyID:        req.CompanyID,
 		Name:             req.Name,
+		ShiftType:        req.ShiftType,
 		StartTime:        req.StartTime,
 		EndTime:          req.EndTime,
 		LateGraceMinutes: req.LateGraceMinutes,
+		WeekendDays:      req.WeekendDays,
 		Status:           "active",
 		CreatedBy:        &userID,
 	}
@@ -146,9 +152,11 @@ func (h *ShiftHandler) Update(c *gin.Context) {
 	userID := c.GetString("user_id")
 	shift.Name = req.Name
 	shift.CompanyID = req.CompanyID
+	shift.ShiftType = req.ShiftType
 	shift.StartTime = req.StartTime
 	shift.EndTime = req.EndTime
 	shift.LateGraceMinutes = req.LateGraceMinutes
+	shift.WeekendDays = req.WeekendDays
 	shift.UpdatedBy = &userID
 
 	if err := h.shiftRepo.Update(shift); err != nil {

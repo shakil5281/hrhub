@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { ClipboardListIcon } from "lucide-react"
-import { RequirementForm } from "@/components/requirement-form"
-import { createRequirement, RequirementFormData } from "@/components/requirement-data"
+import { RequirementForm } from "@/components/form/requirement-form"
+import { createRequirement, RequirementFormData } from "@/components/data/requirement-data"
 
 export default function CreateRequirementPage() {
   const router = useRouter()

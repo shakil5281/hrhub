@@ -12,8 +12,18 @@ func Setup(
 	employeeHandler *handlers.EmployeeHandler,
 	companyHandler *handlers.CompanyHandler,
 	shiftHandler *handlers.ShiftHandler,
+	groupHandler *handlers.GroupHandler,
+	floorHandler *handlers.FloorHandler,
+	deptHandler *handlers.DepartmentHandler,
+	sectionHandler *handlers.SectionHandler,
+	desigHandler *handlers.DesignationHandler,
+	lineHandler *handlers.LineHandler,
 	attendanceHandler *handlers.AttendanceHandler,
 	dataLogHandler *handlers.DataLogHandler,
+	divisionHandler *handlers.DivisionHandler,
+	districtHandler *handlers.DistrictHandler,
+	upazilaHandler *handlers.UpazilaHandler,
+	unionHandler *handlers.UnionHandler,
 	jwtSecret string,
 ) {
 	r.GET("/health", handlers.HealthCheck)
@@ -61,6 +71,110 @@ func Setup(
 		employee.DELETE("/:id", employeeHandler.DeleteEmployee)
 	}
 
+	// Protected group routes
+	group := api.Group("/groups")
+	group.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		group.GET("", groupHandler.List)
+		group.GET("/:id", groupHandler.GetByID)
+		group.POST("", groupHandler.Create)
+		group.PUT("/:id", groupHandler.Update)
+		group.DELETE("/:id", groupHandler.Delete)
+	}
+
+	// Protected floor routes
+	floor := api.Group("/floors")
+	floor.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		floor.GET("", floorHandler.List)
+		floor.GET("/:id", floorHandler.GetByID)
+		floor.POST("", floorHandler.Create)
+		floor.PUT("/:id", floorHandler.Update)
+		floor.DELETE("/:id", floorHandler.Delete)
+	}
+
+	// Protected organization routes
+	dept := api.Group("/departments")
+	dept.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		dept.GET("", deptHandler.List)
+		dept.GET("/:id", deptHandler.GetByID)
+		dept.POST("", deptHandler.Create)
+		dept.PUT("/:id", deptHandler.Update)
+		dept.DELETE("/:id", deptHandler.Delete)
+	}
+
+	section := api.Group("/sections")
+	section.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		section.GET("", sectionHandler.List)
+		section.GET("/:id", sectionHandler.GetByID)
+		section.POST("", sectionHandler.Create)
+		section.PUT("/:id", sectionHandler.Update)
+		section.DELETE("/:id", sectionHandler.Delete)
+	}
+
+	desig := api.Group("/designations")
+	desig.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		desig.GET("", desigHandler.List)
+		desig.GET("/:id", desigHandler.GetByID)
+		desig.POST("", desigHandler.Create)
+		desig.PUT("/:id", desigHandler.Update)
+		desig.DELETE("/:id", desigHandler.Delete)
+	}
+
+	line := api.Group("/lines")
+	line.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		line.GET("", lineHandler.List)
+		line.GET("/:id", lineHandler.GetByID)
+		line.POST("", lineHandler.Create)
+		line.PUT("/:id", lineHandler.Update)
+		line.DELETE("/:id", lineHandler.Delete)
+	}
+
+	// Protected address routes
+	division := api.Group("/divisions")
+	division.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		division.GET("", divisionHandler.List)
+		division.GET("/:id", divisionHandler.GetByID)
+		division.POST("", divisionHandler.Create)
+		division.PUT("/:id", divisionHandler.Update)
+		division.DELETE("/:id", divisionHandler.Delete)
+	}
+
+	district := api.Group("/districts")
+	district.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		district.GET("", districtHandler.List)
+		district.GET("/:id", districtHandler.GetByID)
+		district.POST("", districtHandler.Create)
+		district.PUT("/:id", districtHandler.Update)
+		district.DELETE("/:id", districtHandler.Delete)
+	}
+
+	upazila := api.Group("/upazilas")
+	upazila.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		upazila.GET("", upazilaHandler.List)
+		upazila.GET("/:id", upazilaHandler.GetByID)
+		upazila.POST("", upazilaHandler.Create)
+		upazila.PUT("/:id", upazilaHandler.Update)
+		upazila.DELETE("/:id", upazilaHandler.Delete)
+	}
+
+	union := api.Group("/unions")
+	union.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		union.GET("", unionHandler.List)
+		union.GET("/:id", unionHandler.GetByID)
+		union.POST("", unionHandler.Create)
+		union.PUT("/:id", unionHandler.Update)
+		union.DELETE("/:id", unionHandler.Delete)
+	}
+
 	// Protected shift routes
 	shift := api.Group("/shifts")
 	shift.Use(middleware.AuthMiddleware(jwtSecret))
@@ -79,9 +193,13 @@ func Setup(
 		attendance.GET("", attendanceHandler.List)
 		attendance.GET("/:id", attendanceHandler.GetByID)
 		attendance.GET("/job-card", attendanceHandler.ListJobCard)
+		attendance.GET("/stats", attendanceHandler.Stats)
+		attendance.GET("/missing", attendanceHandler.MissingAttendance)
+		attendance.GET("/absent", attendanceHandler.AbsentAttendance)
 		attendance.POST("", attendanceHandler.Create)
 		attendance.PUT("/:id", attendanceHandler.Update)
 		attendance.DELETE("/:id", attendanceHandler.Delete)
+		attendance.DELETE("/delete-all", attendanceHandler.DeleteAll)
 		attendance.POST("/clock-in", attendanceHandler.ClockIn)
 		attendance.POST("/clock-out", attendanceHandler.ClockOut)
 	}
@@ -94,5 +212,13 @@ func Setup(
 		dataLog.GET("/stats", dataLogHandler.Stats)
 		dataLog.POST("/import", dataLogHandler.Import)
 		dataLog.POST("/process", dataLogHandler.Process)
+		dataLog.DELETE("/delete-all", dataLogHandler.DeleteAll)
+	}
+
+	// Protected upload routes
+	upload := api.Group("/upload")
+	upload.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		upload.POST("", handlers.UploadFile)
 	}
 }

@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { TimerIcon, PlusIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { TempShift, getTempShifts, createTempShift, updateTempShift, deleteTempShift, TempShiftFormData } from "@/components/temporary-shift-data"
-import { TempShiftForm } from "@/components/temporary-shift-form"
+import { TempShift, getTempShifts, createTempShift, updateTempShift, deleteTempShift, TempShiftFormData } from "@/components/data/temporary-shift-data"
+import { TempShiftForm } from "@/components/form/temporary-shift-form"
 
 const columns: ColumnDef<TempShift>[] = [
   { accessorKey: "employee", header: "Employee" },

@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { IdCardIcon } from "lucide-react"
-import { IdCardForm } from "@/components/id-card-form"
-import { createIdCard, IdCardFormData } from "@/components/id-card-data"
+import { IdCardForm } from "@/components/form/id-card-form"
+import { createIdCard, IdCardFormData } from "@/components/data/id-card-data"
 
 export default function CreateIdCardPage() {
   const router = useRouter()

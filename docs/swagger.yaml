@@ -47,9 +47,115 @@ definitions:
         type: string
       phone:
         type: string
+      status:
+        type: string
     required:
-    - company_name_bn
     - company_name_en
+    type: object
+  handlers.CreateEmployeeRequest:
+    properties:
+      bank_account:
+        type: string
+      bank_branch:
+        type: string
+      bank_name:
+        description: Bank
+        type: string
+      basic_salary:
+        description: Salary
+        type: number
+      blood_group:
+        type: string
+      branch_id:
+        type: string
+      company_id:
+        description: Office
+        type: string
+      date_of_birth:
+        type: string
+      department_id:
+        type: string
+      designation:
+        type: string
+      email:
+        type: string
+      emergency_contact:
+        type: string
+      emergency_phone:
+        type: string
+      employee_code:
+        type: string
+      father_name:
+        type: string
+      food_allowance:
+        type: number
+      gender:
+        type: string
+      grade:
+        type: string
+      group_name:
+        type: string
+      house_rent:
+        type: number
+      joining_date:
+        type: string
+      line:
+        type: string
+      marital_status:
+        type: string
+      medical_allowance:
+        type: number
+      mother_name:
+        type: string
+      name_bn:
+        type: string
+      name_en:
+        description: Personal
+        type: string
+      nationality:
+        type: string
+      nid:
+        type: string
+      number_of_dependents:
+        type: integer
+      other_allowance:
+        type: number
+      permanent_address:
+        type: string
+      phone:
+        type: string
+      present_address:
+        type: string
+      provident_fund:
+        type: number
+      punch_number:
+        type: string
+      reports_to:
+        type: string
+      routing_no:
+        type: string
+      section:
+        type: string
+      shift_id:
+        type: string
+      spouse_name:
+        description: Family
+        type: string
+      status:
+        description: Status
+        type: string
+      swift_code:
+        type: string
+      tax:
+        type: number
+      total_salary:
+        type: number
+      transport_allowance:
+        type: number
+    required:
+    - company_id
+    - employee_code
+    - joining_date
     type: object
   handlers.CreateShiftRequest:
     properties:
@@ -61,7 +167,11 @@ definitions:
         type: integer
       name:
         type: string
+      shift_type:
+        type: string
       start_time:
+        type: string
+      weekend_days:
         type: string
     required:
     - company_id
@@ -71,12 +181,24 @@ definitions:
     type: object
   handlers.ImportRequest:
     properties:
+      end_date:
+        description: YYYY-MM-DD, optional
+        type: string
       file_path:
+        type: string
+      start_date:
+        description: YYYY-MM-DD, optional
         type: string
     type: object
   handlers.ProcessRequest:
     properties:
+      company_id:
+        type: string
       date:
+        type: string
+      end_date:
+        type: string
+      start_date:
         type: string
     type: object
   handlers.RegisterRequest:
@@ -103,8 +225,9 @@ definitions:
         type: string
       phone:
         type: string
+      status:
+        type: string
     required:
-    - company_name_bn
     - company_name_en
     type: object
   handlers.UpdateShiftRequest:
@@ -117,7 +240,11 @@ definitions:
         type: integer
       name:
         type: string
+      shift_type:
+        type: string
       start_time:
+        type: string
+      weekend_days:
         type: string
     required:
     - company_id
@@ -159,7 +286,7 @@ definitions:
       status:
         type: string
     type: object
-host: localhost:3000
+host: localhost:5000
 info:
   contact:
     email: support@hrhub.com
@@ -357,6 +484,41 @@ paths:
       summary: Update attendance
       tags:
       - Attendance
+  /attendance/absent:
+    get:
+      description: Get employees marked as absent for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Absent attendance
+      tags:
+      - Attendance
   /attendance/clock-in:
     post:
       consumes:
@@ -441,6 +603,124 @@ paths:
       security:
       - BearerAuth: []
       summary: Clock out
+      tags:
+      - Attendance
+  /attendance/delete-all:
+    delete:
+      description: Permanently delete all attendance records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete all attendances
+      tags:
+      - Attendance
+  /attendance/job-card:
+    get:
+      description: Get attendance records for job card with advanced filters
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by employee
+        in: query
+        name: employee_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by status (present|late|absent|half-day)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Job card data
+      tags:
+      - Attendance
+  /attendance/missing:
+    get:
+      description: Find employees with punch data logs but no attendance record
+      parameters:
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Missing attendance
+      tags:
+      - Attendance
+  /attendance/stats:
+    get:
+      description: Get count of attendance records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Attendance statistics
       tags:
       - Attendance
   /auth/change-password:
@@ -933,13 +1213,36 @@ paths:
       summary: List data logs
       tags:
       - Data Logs
+  /data-logs/delete-all:
+    delete:
+      description: Permanently delete all raw punch data logs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete all data logs
+      tags:
+      - Data Logs
   /data-logs/import:
     post:
       consumes:
       - application/json
       description: Read and import raw punch data from ZKTeco Access MDB file
       parameters:
-      - description: MDB file path (defaults to C:\\Program Files (x86)\\ZKTeco\\att2000.mdb)
+      - description: MDB file path (defaults to C:\\\\Program Files (x86)\\\\ZKTeco\\\\att2000.mdb)
         in: body
         name: request
         schema:
@@ -1043,6 +1346,151 @@ paths:
       security:
       - BearerAuth: []
       summary: List employees
+      tags:
+      - Employees
+    post:
+      consumes:
+      - application/json
+      description: Create a new employee record
+      parameters:
+      - description: Employee details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateEmployeeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create employee
+      tags:
+      - Employees
+  /employees/{id}:
+    delete:
+      description: Soft delete an employee
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete employee
+      tags:
+      - Employees
+    get:
+      description: Get a single employee by ID
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get employee by ID
+      tags:
+      - Employees
+    put:
+      consumes:
+      - application/json
+      description: Update an existing employee record
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Employee details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateEmployeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update employee
       tags:
       - Employees
   /health:
@@ -1241,6 +1689,43 @@ paths:
       summary: Update shift
       tags:
       - Shifts
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an image or signature file
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload file
+      tags:
+      - Upload
 securityDefinitions:
   BearerAuth:
     in: header

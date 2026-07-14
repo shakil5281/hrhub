@@ -1,74 +1,70 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardCheckIcon, RotateCcwIcon, SearchIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { ClipboardCheckIcon, Loader2 } from "lucide-react"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import {
-  DailyAttendance, getDailyAttendance,
-  companyOptions, departmentOptions, designationOptions, lineOptions, groupOptions, attendanceStatusOptions,
-} from "@/components/daily-attendance-data"
+import { attendanceApi } from "@/lib/api"
 
-const columns: ColumnDef<DailyAttendance>[] = [
+interface AttendanceRecord {
+  id: string
+  employee_id: string
+  company_id: string
+  date: string
+  check_in: string | null
+  check_out: string | null
+  total_hours: string | null
+  status: string
+  late_minutes: number
+  employee?: { employee_code: string; designation: string }
+}
+
+const columns: ColumnDef<AttendanceRecord>[] = [
   { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
-  { accessorKey: "employeeCode", header: "EmployeeId" },
-  { accessorKey: "employee", header: "EmployeeName" },
-  { accessorKey: "checkIn", header: "InTime" },
-  { accessorKey: "checkOut", header: "OutTime" },
-  { accessorKey: "late", header: "Late" },
-  { accessorKey: "overTime", header: "OverTime" },
+  {
+    accessorKey: "employee_id",
+    header: "Employee ID",
+    cell: ({ row }) => row.original.employee?.employee_code || row.original.employee_id.slice(0, 8),
+  },
+  { accessorKey: "date", header: "Date" },
+  { accessorKey: "check_in", header: "Check In" },
+  { accessorKey: "check_out", header: "Check Out" },
+  { accessorKey: "total_hours", header: "Total Hours" },
+  { accessorKey: "late_minutes", header: "Late (min)" },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const map: Record<string, "default" | "secondary" | "destructive"> = { Present: "default", Late: "destructive", Absent: "destructive", "Half Day": "secondary", Holiday: "secondary", Leave: "secondary" }
-      return <Badge variant={map[row.original.status]}>{row.original.status}</Badge>
+      const variant = row.original.status === "present" ? "default" : row.original.status === "late" ? "destructive" : "secondary"
+      return <Badge variant={variant} className="capitalize">{row.original.status}</Badge>
     },
   },
 ]
 
 export default function DailyAttendancePage() {
-  const [data, setData] = React.useState<DailyAttendance[]>([])
-  React.useEffect(() => setData(getDailyAttendance()), [])
+  const [data, setData] = React.useState<AttendanceRecord[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
+  const [date, setDate] = React.useState(new Date().toISOString().split("T")[0])
 
-  const [employeeId, setEmployeeId] = React.useState("")
-  const [companyFilter, setCompanyFilter] = React.useState("all")
-  const [deptFilter, setDeptFilter] = React.useState("all")
-  const [desigFilter, setDesigFilter] = React.useState("all")
-  const [lineFilter, setLineFilter] = React.useState("all")
-  const [groupFilter, setGroupFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-
-  const [applyKey, setApplyKey] = React.useState(0)
-  const [applied, setApplied] = React.useState<{
-    employeeId: string; company: string; department: string; designation: string; line: string; group: string; status: string
-  } | null>(null)
-
-  const filtered = React.useMemo(() => {
-    if (!applied) return data
-    let result = data
-    if (applied.employeeId.trim()) result = result.filter((r) => r.employeeCode.toLowerCase().includes(applied.employeeId.toLowerCase()))
-    if (applied.company !== "all") result = result.filter((r) => r.company === applied.company)
-    if (applied.department !== "all") result = result.filter((r) => r.department === applied.department)
-    if (applied.designation !== "all") result = result.filter((r) => r.designation === applied.designation)
-    if (applied.line !== "all") result = result.filter((r) => r.line === applied.line)
-    if (applied.group !== "all") result = result.filter((r) => r.group === applied.group)
-    if (applied.status !== "all") result = result.filter((r) => r.status === applied.status)
-    return result
-  }, [data, applied])
-
-  const applyFilters = () => { setApplied({ employeeId, company: companyFilter, department: deptFilter, designation: desigFilter, line: lineFilter, group: groupFilter, status: statusFilter }); setApplyKey((k) => k + 1) }
-
-  const resetFilters = () => {
-    setEmployeeId(""); setCompanyFilter("all"); setDeptFilter("all"); setDesigFilter("all")
-    setLineFilter("all"); setGroupFilter("all"); setStatusFilter("all")
-    setApplied(null); setApplyKey((k) => k + 1)
+  const fetchAttendance = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const { data: res } = await attendanceApi.list({ date })
+      setData(Array.isArray(res) ? res : [])
+    } catch {
+      setError("Failed to load attendance")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const hasAnyValue = employeeId || companyFilter !== "all" || deptFilter !== "all" || desigFilter !== "all" || lineFilter !== "all" || groupFilter !== "all" || statusFilter !== "all"
+  React.useEffect(() => {
+    fetchAttendance()
+  }, [date])
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -84,76 +80,33 @@ export default function DailyAttendancePage() {
 
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
+          <div className="flex items-center gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Employee ID</label>
-              <Input placeholder="Enter employee code" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
+              <label className="text-xs font-medium text-muted-foreground">Date</label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-40"
+              />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Company</label>
-              <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Companies</option>
-                {companyOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Departments</option>
-                {departmentOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Designation</label>
-              <select value={desigFilter} onChange={(e) => setDesigFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Designations</option>
-                {designationOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Line</label>
-              <select value={lineFilter} onChange={(e) => setLineFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Lines</option>
-                {lineOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Group</label>
-              <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Groups</option>
-                {groupOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Statuses</option>
-                {attendanceStatusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="mt-3 flex justify-end gap-2">
-            {hasAnyValue && (
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
-                <RotateCcwIcon className="mr-1 size-3.5" />
-                Reset
-              </Button>
-            )}
-            <Button size="sm" onClick={applyFilters}>
-              <SearchIcon className="mr-1 size-3.5" />
-              Apply Filter
-            </Button>
           </div>
         </div>
       </div>
 
-      <DataTable key={applyKey} data={filtered} columns={columns} />
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable data={data} columns={columns} />
+      )}
     </div>
   )
 }

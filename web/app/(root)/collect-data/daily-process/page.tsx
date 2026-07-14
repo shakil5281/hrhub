@@ -1,42 +1,167 @@
 "use client"
 
-import { RefreshCwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
-import type { ColumnDef } from "@tanstack/react-table"
-
-const dailyProcesses = [
-  { id: 1, date: "2026-07-13", device: "ZKTeco F18 (Main Gate)", rawLogs: 245, processed: 240, errors: 5, status: "Completed" },
-  { id: 2, date: "2026-07-13", device: "ZKTeco F18 (Side Gate)", rawLogs: 180, processed: 178, errors: 2, status: "Completed" },
-  { id: 3, date: "2026-07-13", device: "ZKTeco K14 (Office)", rawLogs: 65, processed: 65, errors: 0, status: "Completed" },
-  { id: 4, date: "2026-07-12", device: "ZKTeco F18 (Main Gate)", rawLogs: 312, processed: 310, errors: 2, status: "Completed" },
-  { id: 5, date: "2026-07-12", device: "ZKTeco F18 (Side Gate)", rawLogs: 198, processed: 195, errors: 3, status: "Completed" },
-  { id: 6, date: "2026-07-12", device: "ZKTeco K14 (Office)", rawLogs: 72, processed: 70, errors: 2, status: "Partial" },
-  { id: 7, date: "2026-07-11", device: "ZKTeco F18 (Main Gate)", rawLogs: 280, processed: 0, errors: 0, status: "Pending" },
-  { id: 8, date: "2026-07-11", device: "ZKTeco F18 (Side Gate)", rawLogs: 165, processed: 0, errors: 0, status: "Pending" },
-]
-
-type DailyProcess = (typeof dailyProcesses)[number]
-
-const columns: ColumnDef<DailyProcess>[] = [
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "device", header: "Device" },
-  { accessorKey: "rawLogs", header: "Raw Logs" },
-  { accessorKey: "processed", header: "Processed" },
-  { accessorKey: "errors", header: "Errors" },
-  { accessorKey: "status", header: "Status" },
-]
+import * as React from "react"
+import { format } from "date-fns"
+import { RefreshCwIcon, Loader2, Trash2Icon } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { DatePicker } from "@/components/ui/date-picker"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { dataLogApi, attendanceApi, companyApi } from "@/lib/api"
+import type { Company } from "@/components/data/company-data"
 
 export default function DailyProcessPage() {
+  const [processing, setProcessing] = React.useState(false)
+  const [deleting, setDeleting] = React.useState(false)
+  const [startDate, setStartDate] = React.useState<Date | undefined>()
+  const [endDate, setEndDate] = React.useState<Date | undefined>()
+  const [companyId, setCompanyId] = React.useState("")
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [todayCount, setTodayCount] = React.useState(0)
+
+  const fetchStats = async () => {
+    try {
+      const { data } = await attendanceApi.stats()
+      setTodayCount(data.today_count || 0)
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchCompanies = async () => {
+    try {
+      const { data } = await companyApi.list()
+      setCompanies(Array.isArray(data) ? data : [])
+    } catch {
+      // ignore
+    }
+  }
+
+  React.useEffect(() => {
+    fetchStats()
+    fetchCompanies()
+  }, [])
+
+  const handleProcess = async () => {
+    if (!companyId) {
+      toast.error("Please select a company")
+      return
+    }
+    setProcessing(true)
+    try {
+      const body: { company_id: string; start_date?: string; end_date?: string } = { company_id: companyId }
+      if (startDate) body.start_date = format(startDate, "yyyy-MM-dd")
+      if (endDate) body.end_date = format(endDate, "yyyy-MM-dd")
+      const { data } = await dataLogApi.process(body)
+      toast.success(data.message || "Data processed successfully")
+      fetchStats()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to process data"
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        toast.error(axiosErr.response?.data?.error || message)
+      } else {
+        toast.error(message)
+      }
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    setDeleting(true)
+    try {
+      await attendanceApi.deleteAll()
+      toast.success("All attendance records deleted permanently")
+      setTodayCount(0)
+    } catch {
+      toast.error("Failed to delete attendance records")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <RefreshCwIcon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-3xl font-bold tracking-tight">Daily Process</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Daily Process</h1>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-1">Process daily attendance data</p>
       </div>
-      <DataTable data={dailyProcesses} columns={columns} />
+
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Today&apos;s Attendance</p>
+                <p className="text-3xl font-bold">{todayCount}</p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2Icon className="mr-2 h-4 w-4" />
+                    Delete All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete all attendance records from the database.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAll} disabled={deleting}>
+                      {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardContent>
+            <div className="flex items-end gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Company</label>
+                <select
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select company</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>{c.company_name_en}</option>
+                  ))}
+                </select>
+              </div>
+              <Button onClick={handleProcess} disabled={processing}>
+                {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCwIcon className="mr-2 h-4 w-4" />}
+                Process Data
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

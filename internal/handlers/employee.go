@@ -16,14 +16,157 @@ func NewEmployeeHandler() *EmployeeHandler {
 }
 
 type CreateEmployeeRequest struct {
-	EmployeeCode string  `json:"employee_code" binding:"required"`
-	PunchNumber  string  `json:"punch_number"`
-	CompanyID    string  `json:"company_id"`
-	Designation  string  `json:"designation"`
-	ShiftID      string  `json:"shift_id"`
-	JoiningDate  string  `json:"joining_date"`
-	Salary       float64 `json:"salary"`
-	Status       string  `json:"status"`
+	// Personal
+	NameEn           string `json:"name_en"`
+	NameBn           string `json:"name_bn"`
+	FatherName       string `json:"father_name"`
+	MotherName       string `json:"mother_name"`
+	DateOfBirth      string `json:"date_of_birth"`
+	Gender           string `json:"gender"`
+	BloodGroup       string `json:"blood_group"`
+	MaritalStatus    string `json:"marital_status"`
+	Nationality      string `json:"nationality"`
+	NID              string `json:"nid"`
+	Phone            string `json:"phone"`
+	Email            string `json:"email"`
+	PresentAddress   string `json:"present_address"`
+	PermanentAddress string `json:"permanent_address"`
+
+	// Family
+	SpouseName         string `json:"spouse_name"`
+	EmergencyContact   string `json:"emergency_contact"`
+	EmergencyPhone     string `json:"emergency_phone"`
+	NumberOfDependents int    `json:"number_of_dependents"`
+
+	// Office
+	CompanyID      string `json:"company_id" binding:"required"`
+	BranchID       string `json:"branch_id"`
+	DepartmentID   string `json:"department_id"`
+	SectionID      string `json:"section_id"`
+	DesignationID  string `json:"designation_id"`
+	LineID         string `json:"line_id"`
+	GroupID        string `json:"group_id"`
+	FloorID        string `json:"floor_id"`
+	Designation    string `json:"designation"`
+	EmployeeCode   string `json:"employee_code" binding:"required"`
+	PunchNumber    string `json:"punch_number"`
+	Section        string `json:"section"`
+	Grade          string `json:"grade"`
+	Line           string `json:"line"`
+	Group          string `json:"group_name"`
+	JoiningDate    string `json:"joining_date" binding:"required"`
+	ShiftID        string `json:"shift_id"`
+	ReportsTo      string `json:"reports_to"`
+
+	// Address (present)
+	PresentDivisionID string `json:"present_division_id"`
+	PresentDistrictID string `json:"present_district_id"`
+	PresentUpazilaID  string `json:"present_upazila_id"`
+	PresentUnionID    string `json:"present_union_id"`
+	// Address (permanent)
+	PermanentDivisionID string `json:"permanent_division_id"`
+	PermanentDistrictID string `json:"permanent_district_id"`
+	PermanentUpazilaID  string `json:"permanent_upazila_id"`
+	PermanentUnionID    string `json:"permanent_union_id"`
+
+	// Salary
+	BasicSalary        float64 `json:"basic_salary"`
+	HouseRent          float64 `json:"house_rent"`
+	MedicalAllowance   float64 `json:"medical_allowance"`
+	TransportAllowance float64 `json:"transport_allowance"`
+	FoodAllowance      float64 `json:"food_allowance"`
+	OtherAllowance     float64 `json:"other_allowance"`
+	ProvidentFund      float64 `json:"provident_fund"`
+	Tax                float64 `json:"tax"`
+	TotalSalary        float64 `json:"total_salary"`
+
+	// Bank
+	BankName    string `json:"bank_name"`
+	BankAccount string `json:"bank_account"`
+	BankBranch  string `json:"bank_branch"`
+	RoutingNo   string `json:"routing_no"`
+	SwiftCode   string `json:"swift_code"`
+
+	// Status
+	Status string `json:"status"`
+}
+
+func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
+	// Personal
+	emp.NameEn = req.NameEn
+	emp.NameBn = req.NameBn
+	emp.FatherName = req.FatherName
+	emp.MotherName = req.MotherName
+	emp.DateOfBirth = req.DateOfBirth
+	emp.Gender = req.Gender
+	emp.BloodGroup = req.BloodGroup
+	emp.MaritalStatus = req.MaritalStatus
+	emp.Nationality = req.Nationality
+	emp.NID = req.NID
+	emp.Phone = req.Phone
+	emp.Email = req.Email
+	emp.PresentAddress = req.PresentAddress
+	emp.PermanentAddress = req.PermanentAddress
+
+	// Family
+	emp.SpouseName = req.SpouseName
+	emp.EmergencyContact = req.EmergencyContact
+	emp.EmergencyPhone = req.EmergencyPhone
+	emp.NumberOfDependents = req.NumberOfDependents
+
+	// Office
+	emp.CompanyID = req.CompanyID
+	setPtr := func(val string) *string {
+		if val == "" { return nil }
+		return &val
+	}
+	emp.BranchID = setPtr(req.BranchID)
+	emp.DepartmentID = setPtr(req.DepartmentID)
+	emp.SectionID = setPtr(req.SectionID)
+	emp.DesignationID = setPtr(req.DesignationID)
+	emp.LineID = setPtr(req.LineID)
+	emp.GroupID = setPtr(req.GroupID)
+	emp.FloorID = setPtr(req.FloorID)
+	emp.Designation = req.Designation
+	emp.EmployeeCode = req.EmployeeCode
+	emp.PunchNumber = req.PunchNumber
+	emp.Section = req.Section
+	emp.Grade = req.Grade
+	emp.Line = req.Line
+	emp.Group = req.Group
+	emp.ShiftID = setPtr(req.ShiftID)
+	emp.ReportsTo = setPtr(req.ReportsTo)
+	emp.PresentDivisionID = setPtr(req.PresentDivisionID)
+	emp.PresentDistrictID = setPtr(req.PresentDistrictID)
+	emp.PresentUpazilaID = setPtr(req.PresentUpazilaID)
+	emp.PresentUnionID = setPtr(req.PresentUnionID)
+	emp.PermanentDivisionID = setPtr(req.PermanentDivisionID)
+	emp.PermanentDistrictID = setPtr(req.PermanentDistrictID)
+	emp.PermanentUpazilaID = setPtr(req.PermanentUpazilaID)
+	emp.PermanentUnionID = setPtr(req.PermanentUnionID)
+
+	// Salary
+	emp.BasicSalary = req.BasicSalary
+	emp.HouseRent = req.HouseRent
+	emp.MedicalAllowance = req.MedicalAllowance
+	emp.TransportAllowance = req.TransportAllowance
+	emp.FoodAllowance = req.FoodAllowance
+	emp.OtherAllowance = req.OtherAllowance
+	emp.ProvidentFund = req.ProvidentFund
+	emp.Tax = req.Tax
+	emp.TotalSalary = req.TotalSalary
+
+	// Bank
+	emp.BankName = req.BankName
+	emp.BankAccount = req.BankAccount
+	emp.BankBranch = req.BankBranch
+	emp.RoutingNo = req.RoutingNo
+	emp.SwiftCode = req.SwiftCode
+
+	// Status
+	if req.Status != "" {
+		emp.Status = req.Status
+	}
 }
 
 // GetEmployees godoc
@@ -39,7 +182,7 @@ type CreateEmployeeRequest struct {
 // @Router       /employees [get]
 func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 	var employees []models.Employee
-	if err := database.DB.Preload("User").Preload("Shift").Find(&employees).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Find(&employees).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -83,19 +226,17 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 		CompanyID:    req.CompanyID,
 		Designation:  req.Designation,
 		JoiningDate:  jd,
-		Salary:       req.Salary,
 		Status:       status,
 	}
-	if req.ShiftID != "" {
-		employee.ShiftID = &req.ShiftID
-	}
+
+	bindEmployeeFields(&req, &employee)
 
 	if err := database.DB.Create(&employee).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	database.DB.Preload("User").Preload("Shift").First(&employee, "id = ?", employee.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&employee, "id = ?", employee.ID)
 	c.JSON(http.StatusCreated, employee)
 }
 
@@ -128,40 +269,21 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 		return
 	}
 
-	emp.EmployeeCode = req.EmployeeCode
-	if req.PunchNumber != "" {
-		emp.PunchNumber = req.PunchNumber
-	}
-	if req.CompanyID != "" {
-		emp.CompanyID = req.CompanyID
-	}
-	if req.Designation != "" {
-		emp.Designation = req.Designation
-	}
-	if req.Salary != 0 {
-		emp.Salary = req.Salary
-	}
 	if req.JoiningDate != "" {
 		jd, err := time.Parse("2006-01-02", req.JoiningDate)
 		if err == nil {
 			emp.JoiningDate = jd
 		}
 	}
-	if req.Status != "" {
-		emp.Status = req.Status
-	}
-	if req.ShiftID != "" {
-		emp.ShiftID = &req.ShiftID
-	} else {
-		emp.ShiftID = nil
-	}
+
+	bindEmployeeFields(&req, &emp)
 
 	if err := database.DB.Save(&emp).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	database.DB.Preload("User").Preload("Shift").First(&emp, "id = ?", emp.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&emp, "id = ?", emp.ID)
 	c.JSON(http.StatusOK, emp)
 }
 
@@ -179,7 +301,7 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 func (h *EmployeeHandler) GetEmployee(c *gin.Context) {
 	id := c.Param("id")
 	var emp models.Employee
-	if err := database.DB.Preload("User").Preload("Shift").First(&emp, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&emp, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
 		return
 	}

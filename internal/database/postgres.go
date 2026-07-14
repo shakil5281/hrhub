@@ -30,6 +30,11 @@ func Connect(cfg *config.Config) {
 		&models.Branch{},
 		&models.Department{},
 		&models.Employee{},
+		&models.Group{},
+		&models.Floor{},
+		&models.Section{},
+		&models.Designation{},
+		&models.Line{},
 		&models.Shift{},
 		&models.Attendance{},
 		&models.DataLog{},
@@ -40,6 +45,10 @@ func Connect(cfg *config.Config) {
 		&models.EmailVerification{},
 		&models.PasswordReset{},
 		&models.Session{},
+		&models.Division{},
+		&models.District{},
+		&models.Upazila{},
+		&models.Union{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

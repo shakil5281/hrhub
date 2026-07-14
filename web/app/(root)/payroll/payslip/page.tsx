@@ -1,7 +1,7 @@
 "use client"
 
 import { ReceiptIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 
 const payslips = [

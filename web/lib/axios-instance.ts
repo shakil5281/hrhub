@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,13 +29,14 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem("refresh_token")
         if (refreshToken) {
           const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1"}/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/auth/refresh`,
             { refresh_token: refreshToken }
           )
 
           const { access_token, refresh_token } = response.data
           localStorage.setItem("access_token", access_token)
           localStorage.setItem("refresh_token", refresh_token)
+          document.cookie = `auth_token=${access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
 
           originalRequest.headers.Authorization = `Bearer ${access_token}`
           return api(originalRequest)
@@ -43,6 +44,7 @@ api.interceptors.response.use(
       } catch {
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
+        document.cookie = "auth_token=; path=/; max-age=0"
         window.location.href = "/login"
       }
     }

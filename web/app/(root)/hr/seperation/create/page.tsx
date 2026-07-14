@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { UserXIcon } from "lucide-react"
-import { SeparationForm } from "@/components/separation-form"
-import { createSeparation, SeparationFormData } from "@/components/separation-data"
+import { SeparationForm } from "@/components/form/separation-form"
+import { createSeparation, SeparationFormData } from "@/components/data/separation-data"
 
 export default function CreateSeparationPage() {
   const router = useRouter()

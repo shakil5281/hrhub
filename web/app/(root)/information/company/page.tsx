@@ -1,6 +1,6 @@
 "use client"
 
-import { CompanyTable } from "@/components/company-table"
+import { CompanyTable } from "@/components/table/company-table"
 
 export default function CompanyListPage() {
   return (

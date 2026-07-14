@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { IdCardIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import { IdCard, getIdCards, deleteIdCard, departmentOptions, idCardStatusOptions } from "@/components/id-card-data"
+import { IdCard, getIdCards, deleteIdCard, departmentOptions, idCardStatusOptions } from "@/components/data/id-card-data"
 
 const columns: ColumnDef<IdCard>[] = [
   { accessorKey: "employee", header: "Employee" },

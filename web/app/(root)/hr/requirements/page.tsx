@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { ClipboardListIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
-import { DataTable } from "@/components/data-table"
+import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import { Requirement, getRequirements, deleteRequirement, departmentOptions, statusOptions, priorityOptions } from "@/components/requirement-data"
+import { Requirement, getRequirements, deleteRequirement, departmentOptions, statusOptions, priorityOptions } from "@/components/data/requirement-data"
 
 const columns: ColumnDef<Requirement>[] = [
   { accessorKey: "position", header: "Position" },

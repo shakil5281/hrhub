@@ -12,10 +12,12 @@ import (
 
 type AttendanceHandler struct {
 	attendanceRepo *repository.AttendanceRepository
+	employeeRepo   *repository.EmployeeRepository
+	dataLogRepo    *repository.DataLogRepository
 }
 
-func NewAttendanceHandler(attendanceRepo *repository.AttendanceRepository) *AttendanceHandler {
-	return &AttendanceHandler{attendanceRepo: attendanceRepo}
+func NewAttendanceHandler(attendanceRepo *repository.AttendanceRepository, employeeRepo *repository.EmployeeRepository, dataLogRepo *repository.DataLogRepository) *AttendanceHandler {
+	return &AttendanceHandler{attendanceRepo: attendanceRepo, employeeRepo: employeeRepo, dataLogRepo: dataLogRepo}
 }
 
 type CreateAttendanceRequest struct {
@@ -127,6 +129,24 @@ func (h *AttendanceHandler) Create(c *gin.Context) {
 
 	if req.ShiftID != "" {
 		attendance.ShiftID = &req.ShiftID
+	}
+
+	existing, err := h.attendanceRepo.FindByEmployeeAndDate(req.EmployeeID, req.Date)
+	if err == nil && existing != nil && existing.ID != "" {
+		existing.CheckIn = checkIn
+		existing.CheckOut = checkOut
+		existing.Status = status
+		existing.CompanyID = req.CompanyID
+		if req.ShiftID != "" {
+			existing.ShiftID = &req.ShiftID
+		}
+		existing.UpdatedBy = &userID
+		if err := h.attendanceRepo.Update(existing); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, existing)
+		return
 	}
 
 	if err := h.attendanceRepo.Create(attendance); err != nil {
@@ -241,6 +261,16 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 	employeeID := c.Query("employee_id")
 	departmentID := c.Query("department_id")
 	status := c.Query("status")
+
+	if employeeID != "" {
+		emp, err := h.employeeRepo.FindByEmployeeCode(employeeID)
+		if err != nil {
+			emp, err = h.employeeRepo.FindByPunchNumber(employeeID)
+		}
+		if err == nil && emp != nil {
+			employeeID = emp.ID
+		}
+	}
 
 	attendances, err := h.attendanceRepo.ListJobCard(startDate, endDate, companyID, employeeID, departmentID, status)
 	if err != nil {
@@ -363,4 +393,140 @@ func (h *AttendanceHandler) ClockOut(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, attendance)
+}
+
+// DeleteAllAttendances godoc
+//
+// @Summary      Delete all attendances
+// @Description  Permanently delete all attendance records
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/delete-all [delete]
+func (h *AttendanceHandler) DeleteAll(c *gin.Context) {
+	if err := h.attendanceRepo.DeleteAll(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "All attendance records deleted permanently"})
+}
+
+// AttendanceStats godoc
+//
+// @Summary      Attendance statistics
+// @Description  Get count of attendance records
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Router       /attendance/stats [get]
+func (h *AttendanceHandler) Stats(c *gin.Context) {
+	today := time.Now().Format("2006-01-02")
+	todayCount, _ := h.attendanceRepo.CountByDate(today)
+	c.JSON(http.StatusOK, gin.H{
+		"today_count": todayCount,
+		"today_date":  today,
+	})
+}
+
+// MissingAttendance godoc
+//
+// @Summary      Missing attendance
+// @Description  Find employees with punch data logs but no attendance record
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        date   query string true  "Date (YYYY-MM-DD)"
+// @Param        company_id query string false "Filter by company"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/missing [get]
+func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
+	date := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+	companyID := c.Query("company_id")
+
+	logs, err := h.dataLogRepo.ListByDateRange(date, date)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	badgeMap := make(map[string]string)
+	for _, log := range logs {
+		if log.BadgeNumber != "" {
+			badgeMap[log.BadgeNumber] = log.EmployeeName
+		}
+	}
+
+	attendances, _ := h.attendanceRepo.ListByDate(date)
+	attendedBadges := make(map[string]bool)
+	for _, a := range attendances {
+		if a.PunchNumber != nil {
+			attendedBadges[*a.PunchNumber] = true
+		}
+	}
+
+	var missing []map[string]interface{}
+	for badge, name := range badgeMap {
+		if !attendedBadges[badge] {
+			emp, err := h.employeeRepo.FindByEmployeeCode(badge)
+			if err != nil {
+				emp, err = h.employeeRepo.FindByPunchNumber(badge)
+			}
+			if err == nil && companyID != "" && emp.CompanyID != companyID {
+				continue
+			}
+			entry := map[string]interface{}{
+				"badge_number": badge,
+				"employee_name": name,
+			}
+			if emp != nil {
+				entry["employee_id"] = emp.ID
+				entry["employee_code"] = emp.EmployeeCode
+				entry["name_en"] = emp.NameEn
+				entry["designation"] = emp.Designation
+			}
+			missing = append(missing, entry)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"date":    date,
+		"missing": missing,
+		"total":   len(missing),
+	})
+}
+
+// AbsentAttendance godoc
+//
+// @Summary      Absent attendance
+// @Description  Get employees marked as absent for a date range
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        start_date query string false "Start date (YYYY-MM-DD)"
+// @Param        end_date   query string false "End date (YYYY-MM-DD)"
+// @Param        company_id query string false "Filter by company"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/absent [get]
+func (h *AttendanceHandler) AbsentAttendance(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", startDate)
+	companyID := c.Query("company_id")
+
+	attendances, err := h.attendanceRepo.ListByStatus(startDate, endDate, "absent", companyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"attendances": attendances,
+		"total":       len(attendances),
+		"start_date":  startDate,
+		"end_date":    endDate,
+	})
 }

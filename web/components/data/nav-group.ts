@@ -51,6 +51,9 @@ export const attendanceNav = [
   { title: "Job Card", url: "/attendance/job-card", icon: IdCardIcon },
   { title: "Over Time Sheet", url: "/attendance/over-time-sheet", icon: ClockIcon },
   { title: "Over Time Summary", url: "/attendance/over-time-summary", icon: ChartColumnIcon },
+  { title: "Manual Attendance", url: "/attendance/manual-attendance", icon: ClipboardCheckIcon },
+  { title: "Missing Attendance", url: "/attendance/missing-attendance", icon: UserXIcon },
+  { title: "Absent Status", url: "/attendance/absent-status", icon: UserXIcon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 

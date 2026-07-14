@@ -43,6 +43,16 @@ func (r *AttendanceRepository) Delete(id string) error {
 	return r.db.Where("id = ?", id).Delete(&models.Attendance{}).Error
 }
 
+func (r *AttendanceRepository) DeleteAll() error {
+	return r.db.Unscoped().Where("1 = 1").Delete(&models.Attendance{}).Error
+}
+
+func (r *AttendanceRepository) CountByDate(date string) (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Attendance{}).Where("date = ? AND deleted_at IS NULL", date).Count(&count).Error
+	return count, err
+}
+
 func (r *AttendanceRepository) ListJobCard(startDate, endDate, companyID, employeeID, departmentID, status string) ([]models.Attendance, error) {
 	var attendances []models.Attendance
 	query := r.db.Preload("Employee.User").Preload("Employee.Department").Preload("Shift").Where("date BETWEEN ? AND ? AND deleted_at IS NULL", startDate, endDate)
@@ -57,6 +67,16 @@ func (r *AttendanceRepository) ListJobCard(startDate, endDate, companyID, employ
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+	err := query.Order("date ASC, created_at ASC").Find(&attendances).Error
+	return attendances, err
+}
+
+func (r *AttendanceRepository) ListByStatus(startDate, endDate, status, companyID string) ([]models.Attendance, error) {
+	var attendances []models.Attendance
+	query := r.db.Preload("Employee").Where("date BETWEEN ? AND ? AND status = ? AND deleted_at IS NULL", startDate, endDate, status)
+	if companyID != "" {
+		query = query.Where("company_id = ?", companyID)
 	}
 	err := query.Order("date ASC, created_at ASC").Find(&attendances).Error
 	return attendances, err

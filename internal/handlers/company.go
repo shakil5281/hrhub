@@ -19,18 +19,20 @@ func NewCompanyHandler(companyRepo *repository.CompanyRepository) *CompanyHandle
 
 // CreateCompanyRequest represents the request body for creating a company
 type CreateCompanyRequest struct {
-	CompanyNameBn string `json:"company_name_bn" binding:"required"`
+	CompanyNameBn string `json:"company_name_bn"`
 	CompanyNameEn string `json:"company_name_en" binding:"required"`
 	Address      string `json:"address"`
 	Phone        string `json:"phone"`
+	Status       string `json:"status"`
 }
 
 // UpdateCompanyRequest represents the request body for updating a company
 type UpdateCompanyRequest struct {
-	CompanyNameBn string `json:"company_name_bn" binding:"required"`
+	CompanyNameBn string `json:"company_name_bn"`
 	CompanyNameEn string `json:"company_name_en" binding:"required"`
 	Address      string `json:"address"`
 	Phone        string `json:"phone"`
+	Status       string `json:"status"`
 }
 
 // ListCompanies godoc
@@ -105,6 +107,10 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
+	status := req.Status
+	if status == "" {
+		status = "active"
+	}
 	company := &models.Company{
 		CompanyNameBn: req.CompanyNameBn,
 		CompanyNameEn: req.CompanyNameEn,
@@ -112,7 +118,7 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 		Address:       req.Address,
 		Phone:         req.Phone,
 		OwnerID:       &userID,
-		Status:        "active",
+		Status:        status,
 		CreatedBy:     &userID,
 	}
 
@@ -167,6 +173,9 @@ func (h *CompanyHandler) Update(c *gin.Context) {
 	company.Slug = slug
 	company.Address = req.Address
 	company.Phone = req.Phone
+	if req.Status != "" {
+		company.Status = req.Status
+	}
 	company.UpdatedBy = &userID
 
 	if err := h.companyRepo.Update(company); err != nil {

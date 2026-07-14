@@ -3,8 +3,8 @@
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
 import { IdCardIcon } from "lucide-react"
-import { IdCardForm } from "@/components/id-card-form"
-import { updateIdCard, getIdCard, IdCardFormData } from "@/components/id-card-data"
+import { IdCardForm } from "@/components/form/id-card-form"
+import { updateIdCard, getIdCard, IdCardFormData } from "@/components/data/id-card-data"
 
 export default function EditIdCardPage() {
   const router = useRouter()

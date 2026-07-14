@@ -43,6 +43,21 @@ func (r *DataLogRepository) ListUnprocessedByDate(date string) ([]models.DataLog
 	return logs, err
 }
 
+func (r *DataLogRepository) ListUnprocessedByDateRange(start, end string) ([]models.DataLog, error) {
+	var logs []models.DataLog
+	err := r.db.Where("date >= ? AND date <= ? AND processed = false AND deleted_at IS NULL", start, end).
+		Order("date ASC, user_id ASC, punch_time ASC").Find(&logs).Error
+	return logs, err
+}
+
+func (r *DataLogRepository) ListUnprocessedDatesInRange(start, end string) ([]string, error) {
+	var dates []string
+	err := r.db.Model(&models.DataLog{}).
+		Where("date >= ? AND date <= ? AND processed = false AND deleted_at IS NULL", start, end).
+		Distinct("date").Order("date ASC").Pluck("date", &dates).Error
+	return dates, err
+}
+
 func (r *DataLogRepository) MarkProcessed(ids []string) error {
 	return r.db.Model(&models.DataLog{}).Where("id IN ?", ids).
 		Update("processed", true).Error
@@ -62,4 +77,16 @@ func (r *DataLogRepository) CountByDate(date string) (int64, error) {
 
 func (r *DataLogRepository) DeleteOlderThan(t time.Time) error {
 	return r.db.Where("punch_time < ?", t).Delete(&models.DataLog{}).Error
+}
+
+func (r *DataLogRepository) DeleteAll() error {
+	return r.db.Unscoped().Where("1 = 1").Delete(&models.DataLog{}).Error
+}
+
+func (r *DataLogRepository) ExistsByBadgeAndPunchTime(badgeNumber string, punchTime time.Time) bool {
+	var count int64
+	r.db.Model(&models.DataLog{}).
+		Where("badge_number = ? AND punch_time = ? AND deleted_at IS NULL", badgeNumber, punchTime).
+		Count(&count)
+	return count > 0
 }

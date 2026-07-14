@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
-import { SectionCards } from "@/components/section-cards"
+import { ChartAreaInteractive } from "@/components/card/chart-area-interactive"
+import { DataTable } from "@/components/table/data-table"
+import { SectionCards } from "@/components/card/section-cards"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { CircleCheckIcon, LoaderIcon } from "lucide-react"
