@@ -46,13 +46,43 @@ type ClockOutRequest struct {
 // @Tags         Attendance
 // @Security     BearerAuth
 // @Produce      json
-// @Param        date query string false "Date (YYYY-MM-DD)"
+// @Param        date           query string false "Date (YYYY-MM-DD)"
+// @Param        company_id     query string false "Filter by company"
+// @Param        department_id  query string false "Filter by department"
+// @Param        section_id     query string false "Filter by section"
+// @Param        designation_id query string false "Filter by designation"
+// @Param        line_id        query string false "Filter by line"
+// @Param        group_id       query string false "Filter by group"
+// @Param        shift_id       query string false "Filter by shift"
+// @Param        status         query string false "Filter by status"
+// @Param        employee_id    query string false "Filter by employee"
 // @Success      200  {array}   map[string]interface{}
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance [get]
 func (h *AttendanceHandler) List(c *gin.Context) {
 	date := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	status := c.Query("status")
+	employeeID := c.Query("employee_id")
+
+	hasFilters := companyID != "" || departmentID != "" || sectionID != "" || designationID != "" || lineID != "" || groupID != "" || shiftID != "" || status != "" || employeeID != ""
+	if hasFilters {
+		attendances, err := h.attendanceRepo.ListByDateFiltered(date, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status, employeeID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, attendances)
+		return
+	}
+
 	attendances, err := h.attendanceRepo.ListByDate(date)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -260,6 +290,11 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 	companyID := c.Query("company_id")
 	employeeID := c.Query("employee_id")
 	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
 	status := c.Query("status")
 
 	if employeeID != "" {
@@ -272,7 +307,7 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 		}
 	}
 
-	attendances, err := h.attendanceRepo.ListJobCard(startDate, endDate, companyID, employeeID, departmentID, status)
+	attendances, err := h.attendanceRepo.ListJobCard(startDate, endDate, companyID, employeeID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -431,6 +466,125 @@ func (h *AttendanceHandler) Stats(c *gin.Context) {
 	})
 }
 
+// Summary godoc
+//
+// @Summary      Daily attendance summary
+// @Description  Get aggregated attendance summary by date/company/department
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        start_date    query string false "Start date (YYYY-MM-DD)"
+// @Param        end_date      query string false "End date (YYYY-MM-DD)"
+// @Param        company_id    query string false "Filter by company"
+// @Param        department_id query string false "Filter by department"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/summary [get]
+func (h *AttendanceHandler) Summary(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", startDate)
+	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	statusFilter := c.Query("status")
+
+	result, err := h.attendanceRepo.Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"summaries": result,
+		"total":     len(result),
+		"start_date": startDate,
+		"end_date":  endDate,
+	})
+}
+
+// Overtime godoc
+//
+// @Summary      Overtime sheet
+// @Description  Get employee overtime records for a date range
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        start_date    query string false "Start date (YYYY-MM-DD)"
+// @Param        end_date      query string false "End date (YYYY-MM-DD)"
+// @Param        company_id    query string false "Filter by company"
+// @Param        department_id query string false "Filter by department"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/overtime [get]
+func (h *AttendanceHandler) Overtime(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", startDate)
+	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	statusFilter := c.Query("status")
+
+	records, err := h.attendanceRepo.Overtime(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"records":    records,
+		"total":      len(records),
+		"start_date": startDate,
+		"end_date":   endDate,
+	})
+}
+
+// OvertimeSummary godoc
+//
+// @Summary      Overtime summary by department
+// @Description  Get department-level overtime aggregation
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        start_date    query string false "Start date (YYYY-MM-DD)"
+// @Param        end_date      query string false "End date (YYYY-MM-DD)"
+// @Param        company_id    query string false "Filter by company"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/overtime-summary [get]
+func (h *AttendanceHandler) OvertimeSummary(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", startDate)
+	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	statusFilter := c.Query("status")
+
+	result, err := h.attendanceRepo.OvertimeSummary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"summaries": result,
+		"total":     len(result),
+		"start_date": startDate,
+		"end_date":  endDate,
+	})
+}
+
 // MissingAttendance godoc
 //
 // @Summary      Missing attendance
@@ -439,13 +593,19 @@ func (h *AttendanceHandler) Stats(c *gin.Context) {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        date   query string true  "Date (YYYY-MM-DD)"
-// @Param        company_id query string false "Filter by company"
+// @Param        company_id    query string false "Filter by company"
+// @Param        department_id query string false "Filter by department"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/missing [get]
 func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 	date := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
 	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
 
 	logs, err := h.dataLogRepo.ListByDateRange(date, date)
 	if err != nil {
@@ -475,8 +635,25 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 			if err != nil {
 				emp, err = h.employeeRepo.FindByPunchNumber(badge)
 			}
-			if err == nil && companyID != "" && emp.CompanyID != companyID {
-				continue
+			if err == nil {
+				if companyID != "" && emp.CompanyID != companyID {
+					continue
+				}
+				if departmentID != "" && (emp.DepartmentID == nil || *emp.DepartmentID != departmentID) {
+					continue
+				}
+				if sectionID != "" && (emp.SectionID == nil || *emp.SectionID != sectionID) {
+					continue
+				}
+				if designationID != "" && (emp.DesignationID == nil || *emp.DesignationID != designationID) {
+					continue
+				}
+				if lineID != "" && (emp.LineID == nil || *emp.LineID != lineID) {
+					continue
+				}
+				if groupID != "" && (emp.GroupID == nil || *emp.GroupID != groupID) {
+					continue
+				}
 			}
 			entry := map[string]interface{}{
 				"badge_number": badge,
@@ -507,8 +684,9 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        start_date query string false "Start date (YYYY-MM-DD)"
-// @Param        end_date   query string false "End date (YYYY-MM-DD)"
-// @Param        company_id query string false "Filter by company"
+// @Param        end_date      query string false "End date (YYYY-MM-DD)"
+// @Param        company_id    query string false "Filter by company"
+// @Param        department_id query string false "Filter by department"
 // @Success      200  {object}  map[string]interface{}
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/absent [get]
@@ -516,8 +694,15 @@ func (h *AttendanceHandler) AbsentAttendance(c *gin.Context) {
 	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
 	endDate := c.DefaultQuery("end_date", startDate)
 	companyID := c.Query("company_id")
+	departmentID := c.Query("department_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	employeeID := c.Query("employee_id")
 
-	attendances, err := h.attendanceRepo.ListByStatus(startDate, endDate, "absent", companyID)
+	attendances, err := h.attendanceRepo.ListByStatus(startDate, endDate, "absent", companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, employeeID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

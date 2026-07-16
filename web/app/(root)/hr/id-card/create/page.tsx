@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation"
 import { IdCardIcon } from "lucide-react"
 import { IdCardForm } from "@/components/form/id-card-form"
-import { createIdCard, IdCardFormData } from "@/components/data/id-card-data"
 
 export default function CreateIdCardPage() {
   const router = useRouter()
-  const handleSuccess = (data: IdCardFormData) => { createIdCard(data); router.push("/hr/id-card") }
+
+  const handleSuccess = () => {
+    router.push("/hr/id-card")
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

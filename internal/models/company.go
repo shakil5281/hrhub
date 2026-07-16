@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -15,7 +16,7 @@ type Company struct {
 	Phone        string         `json:"phone" gorm:"type:varchar(20)"`
 	OwnerID      *string        `json:"owner_id" gorm:"type:uuid"`
 	Status       string         `json:"status" gorm:"type:varchar(20);default:active"`
-	Settings     map[string]any `json:"settings" gorm:"type:jsonb"`
+	Settings     datatypes.JSON `json:"settings" gorm:"type:jsonb"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `json:"-" gorm:"index"`

@@ -1,19 +1,27 @@
 "use client"
 
 import * as React from "react"
-import { UserXIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
+import { UserXIcon, PlusIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import { Separation, getSeparations, deleteSeparation, departmentOptions, separationTypeOptions, separationStatusOptions } from "@/components/data/separation-data"
+import { Separation, separationTypeOptions, separationStatusOptions } from "@/components/data/separation-data"
+import { separationApi, departmentApi } from "@/lib/api"
+import type { Department } from "@/components/data/organization-data"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
 
 const columns: ColumnDef<Separation>[] = [
   { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employeeCode", header: "Code" },
-  { accessorKey: "department", header: "Department" },
+  { accessorKey: "employee_code", header: "Code" },
+  {
+    accessorKey: "department",
+    header: "Department",
+    cell: ({ row }) => <span>{row.original.department?.name || row.original.department_id}</span>,
+  },
   { accessorKey: "type", header: "Type" },
   { accessorKey: "date", header: "Date" },
   {
@@ -29,32 +37,70 @@ const columns: ColumnDef<Separation>[] = [
 export default function SeperationPage() {
   const router = useRouter()
   const [data, setData] = React.useState<Separation[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [filters, setFilters] = React.useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = React.useState(false)
 
-  const [search, setSearch] = React.useState("")
-  const [deptFilter, setDeptFilter] = React.useState("all")
-  const [typeFilter, setTypeFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-
-  const loadData = React.useCallback(() => setData(getSeparations()), [])
-  React.useEffect(loadData, [loadData])
-
-  const filtered = React.useMemo(() => {
-    let result = data
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter((s) => s.employee.toLowerCase().includes(q) || s.employeeCode.toLowerCase().includes(q))
+  const fetchData = React.useCallback(async (f?: Record<string, string>) => {
+    setLoading(true)
+    try {
+      const [sepRes, deptRes] = await Promise.all([
+        separationApi.list(f),
+        departmentApi.list(),
+      ])
+      setData(Array.isArray(sepRes.data) ? sepRes.data : [])
+      setDepartments(Array.isArray(deptRes.data) ? deptRes.data : [])
+    } catch {
+      toast.error("Failed to load separations")
+    } finally {
+      setLoading(false)
     }
-    if (deptFilter !== "all") result = result.filter((s) => s.department === deptFilter)
-    if (typeFilter !== "all") result = result.filter((s) => s.type === typeFilter)
-    if (statusFilter !== "all") result = result.filter((s) => s.status === statusFilter)
-    return result
-  }, [data, search, deptFilter, typeFilter, statusFilter])
+  }, [])
 
-  const clearFilters = () => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all") }
-  const hasFilters = search || deptFilter !== "all" || typeFilter !== "all" || statusFilter !== "all"
+  React.useEffect(() => { fetchData() }, [fetchData])
+
+  const handleApply = async () => {
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) {
+      if (v) active[k] = v
+    }
+    setSubmitting(true)
+    await fetchData(active)
+    setSubmitting(false)
+  }
+
+  const handleReset = () => {
+    setFilters({})
+    fetchData()
+  }
+
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleEdit = (s: Separation) => router.push(`/hr/seperation/${s.id}/edit`)
-  const handleDelete = (s: Separation) => { deleteSeparation(s.id); loadData() }
+  const handleDelete = async (s: Separation) => {
+    try {
+      await separationApi.delete(s.id)
+      toast.success("Separation deleted")
+      fetchData()
+    } catch {
+      toast.error("Failed to delete separation")
+    }
+  }
+
+  const filterDefs: FilterDef[] = [
+    { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
+    { key: "employee_code", label: "Code", type: "text", placeholder: "Filter by code..." },
+    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "type", label: "Type", type: "select", options: separationTypeOptions.map((o) => ({ value: o.value, label: o.label })) },
+    { key: "status", label: "Status", type: "select", options: separationStatusOptions.map((o) => ({ value: o.value, label: o.label })) },
+  ]
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -73,52 +119,17 @@ export default function SeperationPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Search</label>
-              <div className="relative">
-                <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Employee or code…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Departments</option>
-                {departmentOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Type</label>
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Types</option>
-                {separationTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Statuses</option>
-                {separationStatusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          </div>
-          {hasFilters && (
-            <div className="mt-3 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <RotateCcwIcon className="mr-1 size-3.5" />
-                Clear Filters
-              </Button>
-            </div>
-          )}
-        </div>
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={submitting}
+        />
       </div>
 
-      <DataTable key={filtered.length} data={filtered} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <DataTable data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
     </div>
   )
 }

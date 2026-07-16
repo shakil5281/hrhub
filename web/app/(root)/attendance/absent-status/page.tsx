@@ -4,9 +4,17 @@ import * as React from "react"
 import { UserXIcon, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/ui/date-picker"
-import { attendanceApi } from "@/lib/api"
+import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
+
+interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
+interface Section { id: string; name: string }
+interface Designation { id: string; name: string }
+interface Line { id: string; name: string }
+interface Group { id: string; name: string }
+interface Shift { id: string; name: string }
 
 interface AbsentRecord {
   id: string
@@ -20,33 +28,119 @@ interface AbsentRecord {
   }
 }
 
+const today = new Date().toISOString().split("T")[0]
+
 export default function AbsentStatusPage() {
   const [data, setData] = React.useState<AbsentRecord[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [startDate, setStartDate] = React.useState<Date | undefined>(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 7)
-    return d
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
+  const [shifts, setShifts] = React.useState<Shift[]>([])
+  const [filters, setFilters] = React.useState<Record<string, string>>({
+    date: today,
   })
-  const [endDate, setEndDate] = React.useState<Date | undefined>(new Date())
 
-  const fetchData = async () => {
-    if (!startDate || !endDate) return
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    { key: "date", label: "Date", type: "datepicker" },
+    {
+      key: "company_id", label: "Company", type: "select",
+      options: companies.map((c) => ({ value: c.id, label: c.company_name_en })),
+    },
+    {
+      key: "department_id", label: "Department", type: "select",
+      options: departments.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "section_id", label: "Section", type: "select",
+      options: sections.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      key: "designation_id", label: "Designation", type: "select",
+      options: designations.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "line_id", label: "Line", type: "select",
+      options: lines.map((l) => ({ value: l.id, label: l.name })),
+    },
+    {
+      key: "group_id", label: "Group", type: "select",
+      options: groups.map((g) => ({ value: g.id, label: g.name })),
+    },
+    {
+      key: "shift_id", label: "Shift", type: "select",
+      options: shifts.map((s) => ({ value: s.id, label: s.name })),
+    },
+    { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Enter employee code..." },
+  ], [companies, departments, sections, designations, lines, groups, shifts])
+
+  const fetchData = React.useCallback(async (params: Record<string, string>) => {
     setLoading(true)
     setError("")
     try {
-      const params: Record<string, string> = {
-        start_date: format(startDate, "yyyy-MM-dd"),
-        end_date: format(endDate, "yyyy-MM-dd"),
-      }
-      const { data: res } = await attendanceApi.absent(params)
-      setData(res.attendances || [])
+      const active: Record<string, string> = {}
+      const date = params.date || today
+      active.start_date = date
+      active.end_date = date
+      if (params.company_id) active.company_id = params.company_id
+      if (params.department_id) active.department_id = params.department_id
+      if (params.section_id) active.section_id = params.section_id
+      if (params.designation_id) active.designation_id = params.designation_id
+      if (params.line_id) active.line_id = params.line_id
+      if (params.group_id) active.group_id = params.group_id
+      if (params.shift_id) active.shift_id = params.shift_id
+      if (params.employee_id) active.employee_id = params.employee_id
+      const { data: res } = await attendanceApi.absent(active)
+      setData(res?.attendances || [])
     } catch {
       setError("Failed to load absent data")
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  React.useEffect(() => {
+    const init = async () => {
+      const [cRes, dRes, secRes, desRes, lRes, gRes, sRes] = await Promise.all([
+        companyApi.list(),
+        departmentApi.list(),
+        sectionApi.list(),
+        designationApi.list(),
+        lineApi.list(),
+        groupApi.list(),
+        shiftApi.list(),
+      ])
+      if (Array.isArray(cRes.data)) setCompanies(cRes.data)
+      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
+      if (Array.isArray(secRes.data)) setSections(secRes.data)
+      if (Array.isArray(desRes.data)) setDesignations(desRes.data)
+      if (Array.isArray(lRes.data)) setLines(lRes.data)
+      if (Array.isArray(gRes.data)) setGroups(gRes.data)
+      if (Array.isArray(sRes.data)) setShifts(sRes.data)
+    }
+    init()
+    fetchData({ date: today })
+  }, [])
+
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleApply = () => {
+    const active: Record<string, string> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) active[key] = value
+    }
+    fetchData(active)
+  }
+
+  const handleReset = () => {
+    setFilters({ date: today })
+    fetchData({ date: today })
   }
 
   return (
@@ -62,23 +156,21 @@ export default function AbsentStatusPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-end gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Start Date</label>
-              <DatePicker value={startDate} onChange={setStartDate} className="w-40" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">End Date</label>
-              <DatePicker value={endDate} onChange={setEndDate} className="w-40" />
-            </div>
-            <Button onClick={fetchData} disabled={loading || !startDate || !endDate}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Search
-            </Button>
-          </div>
-        </div>
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={loading}
+        />
       </div>
+
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
 
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card overflow-hidden">
@@ -110,7 +202,7 @@ export default function AbsentStatusPage() {
                 ) : data.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
-                      No absent records found. Click &quot;Search&quot; to check.
+                      No absent records found.
                     </td>
                   </tr>
                 ) : (

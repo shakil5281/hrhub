@@ -24,6 +24,10 @@ func Setup(
 	districtHandler *handlers.DistrictHandler,
 	upazilaHandler *handlers.UpazilaHandler,
 	unionHandler *handlers.UnionHandler,
+	requirementHandler *handlers.RequirementHandler,
+	separationHandler *handlers.SeparationHandler,
+	idCardHandler *handlers.IdCardHandler,
+	leaveHandler *handlers.LeaveHandler,
 	jwtSecret string,
 ) {
 	r.GET("/health", handlers.HealthCheck)
@@ -192,6 +196,9 @@ func Setup(
 	{
 		attendance.GET("", attendanceHandler.List)
 		attendance.GET("/:id", attendanceHandler.GetByID)
+		attendance.GET("/summary", attendanceHandler.Summary)
+		attendance.GET("/overtime", attendanceHandler.Overtime)
+		attendance.GET("/overtime-summary", attendanceHandler.OvertimeSummary)
 		attendance.GET("/job-card", attendanceHandler.ListJobCard)
 		attendance.GET("/stats", attendanceHandler.Stats)
 		attendance.GET("/missing", attendanceHandler.MissingAttendance)
@@ -213,6 +220,77 @@ func Setup(
 		dataLog.POST("/import", dataLogHandler.Import)
 		dataLog.POST("/process", dataLogHandler.Process)
 		dataLog.DELETE("/delete-all", dataLogHandler.DeleteAll)
+	}
+
+	// Protected requirement routes
+	requirement := api.Group("/requirements")
+	requirement.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		requirement.GET("", requirementHandler.List)
+		requirement.GET("/:id", requirementHandler.GetByID)
+		requirement.POST("", requirementHandler.Create)
+		requirement.PUT("/:id", requirementHandler.Update)
+		requirement.DELETE("/:id", requirementHandler.Delete)
+	}
+
+	// Protected separation routes
+	separation := api.Group("/separations")
+	separation.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		separation.GET("", separationHandler.List)
+		separation.GET("/:id", separationHandler.GetByID)
+		separation.POST("", separationHandler.Create)
+		separation.PUT("/:id", separationHandler.Update)
+		separation.DELETE("/:id", separationHandler.Delete)
+	}
+
+	// Protected id-card routes
+	idCard := api.Group("/id-cards")
+	idCard.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		idCard.GET("", idCardHandler.List)
+		idCard.GET("/:id", idCardHandler.GetByID)
+		idCard.POST("", idCardHandler.Create)
+		idCard.PUT("/:id", idCardHandler.Update)
+		idCard.DELETE("/:id", idCardHandler.Delete)
+	}
+
+	// Protected leave-type routes
+	leaveType := api.Group("/leave-types")
+	leaveType.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		leaveType.GET("", leaveHandler.ListLeaveTypes)
+		leaveType.GET("/:id", leaveHandler.GetLeaveType)
+		leaveType.POST("", leaveHandler.CreateLeaveType)
+		leaveType.PUT("/:id", leaveHandler.UpdateLeaveType)
+		leaveType.DELETE("/:id", leaveHandler.DeleteLeaveType)
+	}
+
+	// Protected leave routes
+	leaves := api.Group("/leaves")
+	leaves.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		leaves.GET("", leaveHandler.ListLeaves)
+		leaves.GET("/:id", leaveHandler.GetLeave)
+		leaves.POST("", leaveHandler.ApplyLeave)
+		leaves.PUT("/:id", leaveHandler.UpdateLeave)
+		leaves.DELETE("/:id", leaveHandler.DeleteLeave)
+		leaves.PUT("/:id/approve", leaveHandler.ApproveLeave)
+		leaves.PUT("/:id/reject", leaveHandler.RejectLeave)
+	}
+
+	// Protected leave-balance routes
+	leaveBalance := api.Group("/leave-balance")
+	leaveBalance.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		leaveBalance.GET("", leaveHandler.ListLeaveBalance)
+	}
+
+	// Protected leave-report routes
+	leaveReport := api.Group("/leave-reports")
+	leaveReport.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		leaveReport.GET("/monthly", leaveHandler.MonthlyLeaveReport)
 	}
 
 	// Protected upload routes

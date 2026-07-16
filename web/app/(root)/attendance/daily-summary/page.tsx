@@ -1,68 +1,166 @@
 "use client"
 
 import * as React from "react"
-import { FileTextIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
+import { FileTextIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
-import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/ui/date-picker"
-import {
-  DailySummary, getDailySummaries,
-  companyOptions, departmentOptions, lineOptions,
-} from "@/components/data/daily-summary-data"
+import { format } from "date-fns"
+import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
 
-const columns: ColumnDef<DailySummary>[] = [
+interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
+interface Section { id: string; name: string }
+interface Designation { id: string; name: string }
+interface Line { id: string; name: string }
+interface Group { id: string; name: string }
+interface Shift { id: string; name: string }
+
+interface DailySummaryRecord {
+  id: string
+  date: string
+  company_id: string
+  present: number
+  late: number
+  absent: number
+  half_day: number
+  total: number
+}
+
+const columns: ColumnDef<DailySummaryRecord>[] = [
+  { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
   { accessorKey: "date", header: "Date" },
-  { accessorKey: "company", header: "Company" },
-  { accessorKey: "department", header: "Department" },
-  { accessorKey: "line", header: "Line" },
   { accessorKey: "present", header: "Present" },
   { accessorKey: "late", header: "Late" },
   { accessorKey: "absent", header: "Absent" },
-  { accessorKey: "halfDay", header: "Half Day" },
-  { accessorKey: "leave", header: "Leave" },
-  { accessorKey: "holiday", header: "Holiday" },
+  { accessorKey: "half_day", header: "Half Day" },
   { accessorKey: "total", header: "Total" },
 ]
 
+const today = new Date().toISOString().split("T")[0]
+
 export default function DailySummaryPage() {
-  const [data, setData] = React.useState<DailySummary[]>([])
-  React.useEffect(() => setData(getDailySummaries()), [])
+  const [data, setData] = React.useState<DailySummaryRecord[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
+  const [shifts, setShifts] = React.useState<Shift[]>([])
+  const [filters, setFilters] = React.useState<Record<string, string>>({
+    date: today,
+  })
 
-  const [dateFrom, setDateFrom] = React.useState<Date | undefined>()
-  const [dateTo, setDateTo] = React.useState<Date | undefined>()
-  const [companyFilter, setCompanyFilter] = React.useState("all")
-  const [deptFilter, setDeptFilter] = React.useState("all")
-  const [lineFilter, setLineFilter] = React.useState("all")
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    { key: "date", label: "Date", type: "datepicker" },
+    {
+      key: "company_id", label: "Company", type: "select",
+      options: companies.map((c) => ({ value: c.id, label: c.company_name_en })),
+    },
+    {
+      key: "department_id", label: "Department", type: "select",
+      options: departments.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "section_id", label: "Section", type: "select",
+      options: sections.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      key: "designation_id", label: "Designation", type: "select",
+      options: designations.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "line_id", label: "Line", type: "select",
+      options: lines.map((l) => ({ value: l.id, label: l.name })),
+    },
+    {
+      key: "group_id", label: "Group", type: "select",
+      options: groups.map((g) => ({ value: g.id, label: g.name })),
+    },
+    {
+      key: "shift_id", label: "Shift", type: "select",
+      options: shifts.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      key: "status", label: "Status", type: "select",
+      options: [
+        { value: "present", label: "Present" },
+        { value: "late", label: "Late" },
+        { value: "absent", label: "Absent" },
+        { value: "half_day", label: "Half Day" },
+      ],
+    },
+    { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Enter employee code..." },
+  ], [companies, departments, sections, designations, lines, groups, shifts])
 
-  const [applyKey, setApplyKey] = React.useState(0)
-  const [applied, setApplied] = React.useState<{
-    dateFrom: Date | undefined; dateTo: Date | undefined; company: string; department: string; line: string
-  } | null>(null)
-
-  const filtered = React.useMemo(() => {
-    if (!applied) return data
-    let result = data
-    if (applied.dateFrom) result = result.filter((r) => new Date(r.date) >= applied.dateFrom!)
-    if (applied.dateTo) {
-      const end = new Date(applied.dateTo)
-      end.setHours(23, 59, 59, 999)
-      result = result.filter((r) => new Date(r.date) <= end)
+  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+    setLoading(true)
+    setError("")
+    try {
+      const apiParams: Record<string, string> = {}
+      const date = params.date || today
+      apiParams.start_date = date
+      apiParams.end_date = date
+      if (params.company_id) apiParams.company_id = params.company_id
+      if (params.department_id) apiParams.department_id = params.department_id
+      if (params.section_id) apiParams.section_id = params.section_id
+      if (params.designation_id) apiParams.designation_id = params.designation_id
+      if (params.line_id) apiParams.line_id = params.line_id
+      if (params.group_id) apiParams.group_id = params.group_id
+      if (params.shift_id) apiParams.shift_id = params.shift_id
+      if (params.status) apiParams.status = params.status
+      const { data: res } = await attendanceApi.summary(apiParams)
+      setData((res?.summaries || []).map((r: any, i: number) => ({ ...r, id: r.id || `${r.date}-${r.company_id}-${i}` })))
+    } catch {
+      setError("Failed to load summary")
+    } finally {
+      setLoading(false)
     }
-    if (applied.company !== "all") result = result.filter((r) => r.company === applied.company)
-    if (applied.department !== "all") result = result.filter((r) => r.department === applied.department)
-    if (applied.line !== "all") result = result.filter((r) => r.line === applied.line)
-    return result
-  }, [data, applied])
+  }, [])
 
-  const applyFilters = () => { setApplied({ dateFrom, dateTo, company: companyFilter, department: deptFilter, line: lineFilter }); setApplyKey((k) => k + 1) }
+  React.useEffect(() => {
+    const init = async () => {
+      const [cRes, dRes, secRes, desRes, lRes, gRes, sRes] = await Promise.all([
+        companyApi.list(),
+        departmentApi.list(),
+        sectionApi.list(),
+        designationApi.list(),
+        lineApi.list(),
+        groupApi.list(),
+        shiftApi.list(),
+      ])
+      if (Array.isArray(cRes.data)) setCompanies(cRes.data)
+      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
+      if (Array.isArray(secRes.data)) setSections(secRes.data)
+      if (Array.isArray(desRes.data)) setDesignations(desRes.data)
+      if (Array.isArray(lRes.data)) setLines(lRes.data)
+      if (Array.isArray(gRes.data)) setGroups(gRes.data)
+      if (Array.isArray(sRes.data)) setShifts(sRes.data)
+    }
+    init()
+    fetchData({ date: today })
+  }, [])
 
-  const resetFilters = () => {
-    setDateFrom(undefined); setDateTo(undefined); setCompanyFilter("all"); setDeptFilter("all"); setLineFilter("all")
-    setApplied(null); setApplyKey((k) => k + 1)
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
-  const hasAnyValue = dateFrom || dateTo || companyFilter !== "all" || deptFilter !== "all" || lineFilter !== "all"
+  const handleApply = () => {
+    const active: Record<string, string> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) active[key] = value
+    }
+    fetchData(active)
+  }
+
+  const handleReset = () => {
+    setFilters({ date: today })
+    fetchData({ date: today })
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -77,57 +175,41 @@ export default function DailySummaryPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">From Date</label>
-              <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="From date" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">To Date</label>
-              <DatePicker value={dateTo} onChange={setDateTo} placeholder="To date" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Company</label>
-              <select value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Companies</option>
-                {companyOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Departments</option>
-                {departmentOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Line</label>
-              <select value={lineFilter} onChange={(e) => setLineFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Lines</option>
-                {lineOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="mt-3 flex justify-end gap-2">
-            {hasAnyValue && (
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
-                <RotateCcwIcon className="mr-1 size-3.5" />
-                Reset
-              </Button>
-            )}
-            <Button size="sm" onClick={applyFilters}>
-              <SearchIcon className="mr-1 size-3.5" />
-              Apply Filter
-            </Button>
-          </div>
-        </div>
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={loading}
+        />
       </div>
 
-      <DataTable key={applyKey} data={filtered} columns={columns} />
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
+
+      <div className="px-4 lg:px-6">
+        <h2 className="text-lg font-semibold mb-2">
+          Summary for{" "}
+          {filters.date
+            ? (() => {
+                const parts = filters.date.split("-")
+                return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : filters.date
+              })()
+            : "-"}
+        </h2>
+      </div>
+
+      {loading ? (
+        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable data={data} columns={columns} />
+      )}
     </div>
   )
 }

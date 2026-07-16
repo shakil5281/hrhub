@@ -1,43 +1,239 @@
 "use client"
 
-import { CalendarCheckIcon } from "lucide-react"
+import * as React from "react"
+import { CalendarCheckIcon, Loader2, PlusIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { leaveApi, companyApi, departmentApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
-const leaves = [
-  { id: 1, employee: "Rafiqul Islam", type: "Annual Leave", from: "2026-07-10", to: "2026-07-14", days: 5, reason: "Family vacation", status: "Approved" },
-  { id: 2, employee: "Shamima Akter", type: "Sick Leave", from: "2026-07-12", to: "2026-07-13", days: 2, reason: "Fever", status: "Approved" },
-  { id: 3, employee: "Kamal Hossain", type: "Casual Leave", from: "2026-07-15", to: "2026-07-15", days: 1, reason: "Personal work", status: "Pending" },
-  { id: 4, employee: "Nasrin Sultana", type: "Annual Leave", from: "2026-07-20", to: "2026-07-25", days: 6, reason: "Vacation", status: "Approved" },
-  { id: 5, employee: "Jahangir Alam", type: "Emergency Leave", from: "2026-07-18", to: "2026-07-18", days: 1, reason: "Urgent family matter", status: "Approved" },
-  { id: 6, employee: "Maksuda Khatun", type: "Sick Leave", from: "2026-07-22", to: "2026-07-23", days: 2, reason: "Doctor appointment", status: "Pending" },
-  { id: 7, employee: "Abdur Rahman", type: "Annual Leave", from: "2026-08-01", to: "2026-08-05", days: 5, reason: "Holiday", status: "Pending" },
-  { id: 8, employee: "Shahidul Islam", type: "Casual Leave", from: "2026-07-25", to: "2026-07-25", days: 1, reason: "Personal", status: "Approved" },
-]
+interface LeaveRecord {
+  id: string
+  employee_id: string
+  leave_type_id: string
+  from_date: string
+  to_date: string
+  total_days: number
+  reason: string
+  status: string
+  rejection_reason?: string
+  employee?: { employee_code: string; name_en: string }
+  leave_type?: { name: string }
+}
 
-type Leave = (typeof leaves)[number]
+interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
 
-const columns: ColumnDef<Leave>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "type", header: "Leave Type" },
-  { accessorKey: "from", header: "From" },
-  { accessorKey: "to", header: "To" },
-  { accessorKey: "days", header: "Days" },
-  { accessorKey: "reason", header: "Reason" },
-  { accessorKey: "status", header: "Status" },
-]
+const today = new Date().toISOString().split("T")[0]
+
+const statusBadge = (status: string) => {
+  const variant = status === "approved" ? "default" : status === "rejected" ? "destructive" : status === "cancelled" ? "secondary" : "outline"
+  return <Badge variant={variant} className="capitalize">{status}</Badge>
+}
 
 export default function LeavePage() {
+  const router = useRouter()
+  const [data, setData] = React.useState<LeaveRecord[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [filters, setFilters] = React.useState<Record<string, string>>({
+    from_date: today,
+    to_date: today,
+  })
+  const [rejectDialogOpen, setRejectDialogOpen] = React.useState(false)
+  const [rejectingId, setRejectingId] = React.useState<string | null>(null)
+  const [rejectReason, setRejectReason] = React.useState("")
+
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    { key: "from_date", label: "Start Date", type: "datepicker" },
+    { key: "to_date", label: "End Date", type: "datepicker" },
+    {
+      key: "company_id", label: "Company", type: "select",
+      options: companies.map((c) => ({ value: c.id, label: c.company_name_en })),
+    },
+    {
+      key: "department_id", label: "Department", type: "select",
+      options: departments.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "status", label: "Status", type: "select", options: [
+        { value: "pending", label: "Pending" },
+        { value: "approved", label: "Approved" },
+        { value: "rejected", label: "Rejected" },
+        { value: "cancelled", label: "Cancelled" },
+      ],
+    },
+    { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Employee code..." },
+  ], [companies, departments])
+
+  const columns: ColumnDef<LeaveRecord>[] = React.useMemo(() => [
+    { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
+    { accessorKey: "employee.name_en", header: "Employee", cell: ({ row }) => row.original.employee?.name_en || "-" },
+    { accessorKey: "leave_type.name", header: "Leave Type", cell: ({ row }) => row.original.leave_type?.name || "-" },
+    { accessorKey: "from_date", header: "From" },
+    { accessorKey: "to_date", header: "To" },
+    { accessorKey: "total_days", header: "Days" },
+    { accessorKey: "reason", header: "Reason" },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => statusBadge(row.original.status),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        if (row.original.status !== "pending") return null
+        return (
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 px-2 text-xs"
+              onClick={() => handleApprove(row.original.id)}
+            >
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 px-2 text-xs"
+              onClick={() => { setRejectingId(row.original.id); setRejectReason(""); setRejectDialogOpen(true) }}
+            >
+              Reject
+            </Button>
+          </div>
+        )
+      },
+    },
+  ], [])
+
+  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+    setLoading(true)
+    try {
+      const active: Record<string, string> = {}
+      if (params.from_date) active.from_date = params.from_date
+      if (params.to_date) active.to_date = params.to_date
+      if (params.company_id) active.company_id = params.company_id
+      if (params.department_id) active.department_id = params.department_id
+      if (params.employee_id) active.employee_id = params.employee_id
+      if (params.status) active.status = params.status
+      const { data: res } = await leaveApi.list(active)
+      setData(Array.isArray(res) ? res : [])
+    } catch {
+      setData([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    Promise.all([
+      companyApi.list(),
+      departmentApi.list(),
+    ]).then(([cRes, dRes]) => {
+      setCompanies(Array.isArray(cRes.data) ? cRes.data : [])
+      setDepartments(Array.isArray(dRes.data) ? dRes.data : [])
+    }).catch(() => {})
+    fetchData({ from_date: today, to_date: today })
+  }, [])
+
+  const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+
+  const handleApply = () => {
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
+    fetchData(active)
+  }
+
+  const handleReset = () => {
+    setFilters({ from_date: today, to_date: today })
+    fetchData({ from_date: today, to_date: today })
+  }
+
+  const handleApprove = async (id: string) => {
+    try {
+      await leaveApi.approve(id)
+      toast.success("Leave approved")
+      fetchData(filters)
+    } catch {
+      toast.error("Failed to approve leave")
+    }
+  }
+
+  const handleReject = async () => {
+    if (!rejectingId) return
+    try {
+      await leaveApi.reject(rejectingId, rejectReason)
+      toast.success("Leave rejected")
+      setRejectDialogOpen(false)
+      setRejectingId(null)
+      setRejectReason("")
+      fetchData(filters)
+    } catch {
+      toast.error("Failed to reject leave")
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <div className="px-4 lg:px-6">
+      <div className="px-4 lg:px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarCheckIcon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-3xl font-bold tracking-tight">Leave</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Leave</h1>
+            <p className="text-muted-foreground mt-1">Manage employee leave applications</p>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-1">Manage employee leave applications</p>
+        <Button onClick={() => router.push("/leave/leave-entry")}>
+          <PlusIcon className="mr-2 h-4 w-4" />
+          Leave Entry
+        </Button>
       </div>
-      <DataTable data={leaves} columns={columns} />
+
+      <div className="px-4 lg:px-6">
+        <FilterBar filters={filterDefs} values={filters} onChange={handleChange} onApply={handleApply} onReset={handleReset} submitting={loading} />
+      </div>
+
+      {loading ? (
+        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <DataTable key={data.length} data={data} columns={columns} />
+      )}
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Leave</DialogTitle>
+            <DialogDescription>Provide a reason for rejecting this leave application.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-reason">Rejection Reason *</Label>
+            <Textarea
+              id="reject-reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter reason..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={!rejectReason.trim()}>
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

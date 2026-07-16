@@ -134,3 +134,11 @@
   font-family: "SutonnyMJ";
   font-size: 18px;
 }
+
+@utility scrollbar-none {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -4,33 +4,38 @@ import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, UserXIcon } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  separationSchema, SeparationFormData, getSeparation,
-  separationTypeOptions, separationStatusOptions, departmentOptions,
+  separationSchema, SeparationFormData,
+  separationTypeOptions, separationStatusOptions,
 } from "../data/separation-data"
+import { separationApi, departmentApi } from "@/lib/api"
+import type { Department } from "@/components/data/organization-data"
 
 interface SeparationFormProps {
   initialData?: Partial<SeparationFormData>
-  onSuccess: (data: SeparationFormData) => void
+  onSuccess: () => void
   onCancel?: () => void
   isEditing?: boolean
-  separationId?: number
+  separationId?: string
 }
 
 export function SeparationForm({ initialData, onSuccess, onCancel, isEditing = false, separationId }: SeparationFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [departments, setDepartments] = React.useState<Department[]>([])
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<SeparationFormData>({
+  const { handleSubmit, formState: { errors }, setValue, watch, register } = useForm<SeparationFormData>({
     resolver: zodResolver(separationSchema),
     defaultValues: {
       employee: "",
-      employeeCode: "",
-      department: "",
+      employee_code: "",
+      department_id: "",
       type: "Resignation",
       date: "",
       status: "Pending",
@@ -39,38 +44,47 @@ export function SeparationForm({ initialData, onSuccess, onCancel, isEditing = f
     },
   })
 
+  const departmentId = watch("department_id")
+  const typeVal = watch("type")
+  const statusVal = watch("status")
+
   React.useEffect(() => {
-    if (separationId && isEditing) {
-      setIsLoading(true)
-      const s = getSeparation(separationId)
-      if (s) {
-        reset({
-          employee: s.employee,
-          employeeCode: s.employeeCode,
-          department: s.department,
-          type: s.type,
-          date: s.date,
-          status: s.status,
-          reason: s.reason,
-        })
-      }
-      setIsLoading(false)
-    }
-  }, [separationId, isEditing, reset])
+    departmentApi.list().then(({ data }) => {
+      setDepartments(Array.isArray(data) ? data : [])
+    }).catch(() => {})
+  }, [])
 
   const onSubmit = async (data: SeparationFormData) => {
     setIsSubmitting(true)
-    await new Promise((r) => setTimeout(r, 300))
-    onSuccess(data)
-    setIsSubmitting(false)
-  }
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+    setError("")
+    try {
+      if (isEditing && separationId) {
+        await separationApi.update(separationId, data)
+        toast.success("Separation updated successfully")
+      } else {
+        await separationApi.create(data)
+        toast.success("Separation created successfully")
+      }
+      onSuccess()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save separation"
+      let detail = message
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        detail = axiosErr.response?.data?.error || message
+      }
+      setError(detail)
+      toast.error(detail)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {error && (
+        <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+      )}
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><UserXIcon className="h-5 w-5" /> Separation Details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -81,25 +95,30 @@ export function SeparationForm({ initialData, onSuccess, onCancel, isEditing = f
               {errors.employee && <p className="text-sm text-destructive">{errors.employee.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employeeCode">Employee Code *</Label>
-              <Input id="employeeCode" {...register("employeeCode")} aria-invalid={!!errors.employeeCode} />
-              {errors.employeeCode && <p className="text-sm text-destructive">{errors.employeeCode.message}</p>}
+              <Label htmlFor="employee_code">Employee Code *</Label>
+              <Input id="employee_code" {...register("employee_code")} aria-invalid={!!errors.employee_code} />
+              {errors.employee_code && <p className="text-sm text-destructive">{errors.employee_code.message}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="department">Department *</Label>
-              <select id="department" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" {...register("department")}>
-                <option value="">Select department</option>
-                {departmentOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              {errors.department && <p className="text-sm text-destructive">{errors.department.message}</p>}
+              <Label htmlFor="department_id">Department *</Label>
+              <Select value={departmentId} onValueChange={(val) => setValue("department_id", val)}>
+                <SelectTrigger id="department_id"><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {errors.department_id && <p className="text-sm text-destructive">{errors.department_id.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="type">Separation Type *</Label>
-              <select id="type" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" {...register("type")}>
-                {separationTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <Select value={typeVal} onValueChange={(val) => setValue("type", val as SeparationFormData["type"])}>
+                <SelectTrigger id="type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {separationTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="date">Separation Date *</Label>
@@ -110,9 +129,12 @@ export function SeparationForm({ initialData, onSuccess, onCancel, isEditing = f
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="status">Status *</Label>
-              <select id="status" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" {...register("status")}>
-                {separationStatusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <Select value={statusVal} onValueChange={(val) => setValue("status", val as SeparationFormData["status"])}>
+                <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {separationStatusOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="reason">Reason</Label>
@@ -122,10 +144,9 @@ export function SeparationForm({ initialData, onSuccess, onCancel, isEditing = f
         </CardContent>
       </Card>
       <div className="flex justify-end gap-3">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>}
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isEditing ? "Update" : "Create"}
+          {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : (isEditing ? "Update" : "Create")}
         </Button>
       </div>
     </form>

@@ -257,7 +257,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       {error && <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>}
 
       {/* Personal Information */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Personal Information</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -336,7 +336,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Present Address */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg"><MapPinned className="h-4 w-4" /> Present Address</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-4">
@@ -377,7 +377,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Permanent Address */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg"><MapPinned className="h-4 w-4" /> Permanent Address</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-4">
@@ -418,7 +418,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Family & Emergency */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Family & Emergency</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -443,7 +443,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Office Details */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Office Details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -550,7 +550,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Salary */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Salary & Benefits</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -599,7 +599,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Bank Information */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Bank Information</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -630,7 +630,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       </Card>
 
       {/* Image & Signature */}
-      <Card className="ring-0 border-0 shadow-none">
+      <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Image & Signature</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">

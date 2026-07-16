@@ -2,16 +2,44 @@
 
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
-import { IdCardIcon } from "lucide-react"
+import { IdCardIcon, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { IdCardForm } from "@/components/form/id-card-form"
-import { updateIdCard, getIdCard, IdCardFormData } from "@/components/data/id-card-data"
+import { idCardApi } from "@/lib/api"
+import type { IdCardFormData } from "@/components/data/id-card-data"
 
 export default function EditIdCardPage() {
   const router = useRouter()
   const params = useParams()
-  const id = Number(params.id)
-  const handleSuccess = (data: IdCardFormData) => { updateIdCard(id, data); router.push("/hr/id-card") }
-  const card = getIdCard(id)
+  const id = params.id as string
+  const [card, setCard] = React.useState<IdCardFormData | null>(null)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    idCardApi.get(id).then(({ data }) => {
+      setCard({
+        employee: data.employee,
+        employee_code: data.employee_code,
+        designation_id: data.designation_id,
+        department_id: data.department_id,
+        card_no: data.card_no,
+        issued: data.issued,
+        expiry: data.expiry,
+        status: data.status,
+      })
+    }).catch(() => {
+      toast.error("ID card not found")
+      router.push("/hr/id-card")
+    }).finally(() => setLoading(false))
+  }, [id, router])
+
+  const handleSuccess = () => {
+    router.push("/hr/id-card")
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  }
 
   if (!card) {
     return (
@@ -35,14 +63,11 @@ export default function EditIdCardPage() {
       </div>
       <div className="px-4 lg:px-6">
         <IdCardForm
-          initialData={{
-            employee: card.employee, employeeCode: card.employeeCode,
-            designation: card.designation, department: card.department,
-            cardNo: card.cardNo, issued: card.issued, expiry: card.expiry, status: card.status,
-          }}
+          initialData={card}
           onSuccess={handleSuccess}
           onCancel={() => router.push("/hr/id-card")}
-          isEditing cardId={id}
+          isEditing
+          cardId={id}
         />
       </div>
     </div>

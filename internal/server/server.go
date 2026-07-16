@@ -44,6 +44,9 @@ func New(cfg *config.Config) *gin.Engine {
 	attendanceRepo := repository.NewAttendanceRepository(database.DB)
 	dataLogRepo := repository.NewDataLogRepository(database.DB)
 	employeeRepo := repository.NewEmployeeRepository(database.DB)
+	requirementRepo := repository.NewRequirementRepository(database.DB)
+	separationRepo := repository.NewSeparationRepository(database.DB)
+	idCardRepo := repository.NewIdCardRepository(database.DB)
 
 	authService := service.NewAuthService(userRepo, authRepo, jwtCfg)
 	authHandler := handlers.NewAuthHandler(authService)
@@ -56,6 +59,9 @@ func New(cfg *config.Config) *gin.Engine {
 	sectionHandler := handlers.NewSectionHandler(sectionRepo)
 	desigHandler := handlers.NewDesignationHandler(desigRepo)
 	lineHandler := handlers.NewLineHandler(lineRepo)
+	requirementHandler := handlers.NewRequirementHandler(requirementRepo)
+	separationHandler := handlers.NewSeparationHandler(separationRepo)
+	idCardHandler := handlers.NewIdCardHandler(idCardRepo)
 	divisionHandler := handlers.NewDivisionHandler(divisionRepo)
 	districtHandler := handlers.NewDistrictHandler(districtRepo)
 	upazilaHandler := handlers.NewUpazilaHandler(upazilaRepo)
@@ -63,7 +69,9 @@ func New(cfg *config.Config) *gin.Engine {
 	attendanceHandler := handlers.NewAttendanceHandler(attendanceRepo, employeeRepo, dataLogRepo)
 
 	mdbReader := service.NewMDBReader()
-	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, mdbReader)
+	leaveRepo := repository.NewLeaveRepository(database.DB)
+	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, leaveRepo, mdbReader)
+	leaveHandler := handlers.NewLeaveHandler(leaveRepo, employeeRepo, attendanceRepo)
 
 	r := gin.Default()
 
@@ -76,7 +84,7 @@ func New(cfg *config.Config) *gin.Engine {
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, cfg.JWTSecret)
+	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, requirementHandler, separationHandler, idCardHandler, leaveHandler, cfg.JWTSecret)
 
 	return r
 }

@@ -2,20 +2,19 @@
 
 import * as React from "react"
 import { format } from "date-fns"
-import { DatabaseIcon, Loader2, RefreshCw, DownloadIcon, Trash2Icon } from "lucide-react"
+import { DatabaseIcon, Loader2, DownloadIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatePicker } from "@/components/ui/date-picker"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { dataLogApi } from "@/lib/api"
 
 export default function LogCollectPage() {
   const [importing, setImporting] = React.useState(false)
-  const [fetching, setFetching] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
-  const [startDate, setStartDate] = React.useState<Date | undefined>()
-  const [endDate, setEndDate] = React.useState<Date | undefined>()
+  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date())
+  const [endDate, setEndDate] = React.useState<Date | undefined>(new Date())
   const [todayCount, setTodayCount] = React.useState(0)
 
   const fetchStats = async () => {
@@ -47,22 +46,6 @@ export default function LogCollectPage() {
     }
   }
 
-  const handleFetch = async () => {
-    setFetching(true)
-    try {
-      const params: Record<string, string> = {}
-      if (startDate) params.start = format(startDate, "yyyy-MM-dd")
-      if (endDate) params.end = format(endDate, "yyyy-MM-dd")
-      const { data } = await dataLogApi.list(params)
-      const count = Array.isArray(data) ? data.length : 0
-      toast.success(`Found ${count} log records`)
-    } catch {
-      toast.error("Failed to fetch data logs")
-    } finally {
-      setFetching(false)
-    }
-  }
-
   const handleDeleteAll = async () => {
     setDeleting(true)
     try {
@@ -83,18 +66,19 @@ export default function LogCollectPage() {
           <DatabaseIcon className="h-6 w-6 text-muted-foreground" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Log Collect</h1>
+            <p className="text-muted-foreground mt-1">Import and view raw punch data from ZKTeco devices</p>
           </div>
         </div>
       </div>
 
       <div className="px-4 lg:px-6">
         <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Today&apos;s Collected Logs</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Today&apos;s Collected Logs</p>
-                <p className="text-3xl font-bold">{todayCount}</p>
-              </div>
+              <p className="text-4xl font-bold">{todayCount}</p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -125,8 +109,11 @@ export default function LogCollectPage() {
 
       <div className="px-4 lg:px-6">
         <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Import & Fetch Logs</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Start Date</label>
                 <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
@@ -135,18 +122,17 @@ export default function LogCollectPage() {
                 <label className="text-xs font-medium text-muted-foreground">End Date</label>
                 <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
               </div>
-              <Button onClick={handleImport} disabled={importing}>
-                {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
-                Import from MDB
-              </Button>
-              <Button variant="outline" onClick={handleFetch} disabled={fetching}>
-                {fetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                Fetch Logs
-              </Button>
+              <div>
+                <Button onClick={handleImport} disabled={importing}>
+                  {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+                  Import from MDB
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
     </div>
   )
 }

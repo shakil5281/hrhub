@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-5000}:5000"
+    environment:
+      PORT: ${API_PORT:-5000}
+      DB_HOST: host.docker.internal
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-shakil}
+      DB_PASS: ${DB_PASS:-123456}
+      DB_NAME: ${DB_NAME:-hrhub}
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET:-hrhub-secret-key-change-in-production-2024}
+    volumes:
+      - uploads:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads:

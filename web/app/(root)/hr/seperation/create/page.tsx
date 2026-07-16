@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation"
 import { UserXIcon } from "lucide-react"
 import { SeparationForm } from "@/components/form/separation-form"
-import { createSeparation, SeparationFormData } from "@/components/data/separation-data"
 
 export default function CreateSeparationPage() {
   const router = useRouter()
-  const handleSuccess = (data: SeparationFormData) => { createSeparation(data); router.push("/hr/seperation") }
+
+  const handleSuccess = () => {
+    router.push("/hr/seperation")
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

@@ -1,0 +1,176 @@
+package repository
+
+import (
+	"time"
+
+	"github.com/shakil5281/hrhub-api/internal/models"
+	"gorm.io/gorm"
+)
+
+type LeaveRepository struct {
+	db *gorm.DB
+}
+
+func NewLeaveRepository(db *gorm.DB) *LeaveRepository {
+	return &LeaveRepository{db: db}
+}
+
+// --- Leave Types ---
+
+func (r *LeaveRepository) CreateLeaveType(lt *models.LeaveType) error {
+	return r.db.Create(lt).Error
+}
+
+func (r *LeaveRepository) FindLeaveTypeByID(id string) (*models.LeaveType, error) {
+	var lt models.LeaveType
+	err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&lt).Error
+	return &lt, err
+}
+
+func (r *LeaveRepository) ListLeaveTypes(companyID string) ([]models.LeaveType, error) {
+	var list []models.LeaveType
+	q := r.db.Where("deleted_at IS NULL")
+	if companyID != "" {
+		q = q.Where("company_id = ?", companyID)
+	}
+	err := q.Order("name ASC").Find(&list).Error
+	return list, err
+}
+
+func (r *LeaveRepository) UpdateLeaveType(lt *models.LeaveType) error {
+	return r.db.Save(lt).Error
+}
+
+func (r *LeaveRepository) DeleteLeaveType(id string) error {
+	return r.db.Where("id = ?", id).Delete(&models.LeaveType{}).Error
+}
+
+// --- Leave Applications ---
+
+func (r *LeaveRepository) CreateLeave(l *models.Leave) error {
+	return r.db.Create(l).Error
+}
+
+func (r *LeaveRepository) FindLeaveByID(id string) (*models.Leave, error) {
+	var l models.Leave
+	err := r.db.Preload("Employee").Preload("LeaveType").Preload("Company").
+		Where("id = ? AND deleted_at IS NULL", id).First(&l).Error
+	return &l, err
+}
+
+func (r *LeaveRepository) ListLeaves(companyID, departmentID, employeeID, status, fromDate, toDate string) ([]models.Leave, error) {
+	var list []models.Leave
+	q := r.db.Preload("Employee").Preload("LeaveType").
+		Where("leaves.deleted_at IS NULL")
+	if companyID != "" {
+		q = q.Where("leaves.company_id = ?", companyID)
+	}
+	if departmentID != "" {
+		q = q.Where("leaves.employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+	}
+	if employeeID != "" {
+		q = q.Where("leaves.employee_id = ?", employeeID)
+	}
+	if status != "" {
+		q = q.Where("leaves.status = ?", status)
+	}
+	if fromDate != "" {
+		q = q.Where("leaves.from_date >= ?", fromDate)
+	}
+	if toDate != "" {
+		q = q.Where("leaves.to_date <= ?", toDate)
+	}
+	err := q.Order("leaves.created_at DESC").Find(&list).Error
+	return list, err
+}
+
+func (r *LeaveRepository) FindApprovedByEmployeeAndDate(employeeID, date string) (*models.Leave, error) {
+	var leave models.Leave
+	err := r.db.Where("employee_id = ? AND status = 'approved' AND from_date <= ? AND to_date >= ? AND deleted_at IS NULL",
+		employeeID, date, date).First(&leave).Error
+	return &leave, err
+}
+
+func (r *LeaveRepository) ListApprovedByDate(date string) ([]models.Leave, error) {
+	var leaves []models.Leave
+	err := r.db.Where("status = 'approved' AND from_date <= ? AND to_date >= ? AND deleted_at IS NULL",
+		date, date).Find(&leaves).Error
+	return leaves, err
+}
+
+func (r *LeaveRepository) UpdateLeave(l *models.Leave) error {
+	return r.db.Save(l).Error
+}
+
+func (r *LeaveRepository) DeleteLeave(id string) error {
+	return r.db.Where("id = ?", id).Delete(&models.Leave{}).Error
+}
+
+// --- Leave Allocations / Balance ---
+
+func (r *LeaveRepository) UpsertAllocation(a *models.LeaveAllocation) error {
+	var existing models.LeaveAllocation
+	err := r.db.Where("employee_id = ? AND leave_type_id = ? AND year = ?", a.EmployeeID, a.LeaveTypeID, a.Year).First(&existing).Error
+	if err == nil {
+		a.ID = existing.ID
+		a.CreatedAt = existing.CreatedAt
+		return r.db.Save(a).Error
+	}
+	return r.db.Create(a).Error
+}
+
+func (r *LeaveRepository) FindAllocation(employeeID, leaveTypeID string, year int) (*models.LeaveAllocation, error) {
+	var a models.LeaveAllocation
+	err := r.db.Where("employee_id = ? AND leave_type_id = ? AND year = ? AND deleted_at IS NULL", employeeID, leaveTypeID, year).First(&a).Error
+	return &a, err
+}
+
+func (r *LeaveRepository) ListAllocations(employeeID string, year int) ([]models.LeaveAllocation, error) {
+	var list []models.LeaveAllocation
+	q := r.db.Preload("LeaveType").Where("deleted_at IS NULL")
+	if employeeID != "" {
+		q = q.Where("employee_id = ?", employeeID)
+	}
+	if year > 0 {
+		q = q.Where("year = ?", year)
+	}
+	err := q.Order("created_at ASC").Find(&list).Error
+	return list, err
+}
+
+func (r *LeaveRepository) ListAllocationsByEmployees(employeeIDs []string, year int) ([]models.LeaveAllocation, error) {
+	var list []models.LeaveAllocation
+	q := r.db.Preload("Employee").Preload("LeaveType").Where("deleted_at IS NULL")
+	if len(employeeIDs) > 0 {
+		q = q.Where("employee_id IN ?", employeeIDs)
+	}
+	if year > 0 {
+		q = q.Where("year = ?", year)
+	}
+	err := q.Order("created_at ASC").Find(&list).Error
+	return list, err
+}
+
+// --- Monthly Report ---
+
+func (r *LeaveRepository) MonthlyReport(month, year int, companyID, departmentID string) ([]map[string]interface{}, error) {
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	endDate := startDate.AddDate(0, 1, -1)
+	startStr := startDate.Format("2006-01-02")
+	endStr := endDate.Format("2006-01-02")
+
+	q := r.db.Table("leaves").
+		Select("departments.id as department_id, departments.name as department_name, COUNT(*) as total, SUM(CASE WHEN leaves.status = 'approved' THEN 1 ELSE 0 END) as approved, SUM(CASE WHEN leaves.status = 'rejected' THEN 1 ELSE 0 END) as rejected, SUM(CASE WHEN leaves.status = 'pending' THEN 1 ELSE 0 END) as pending").
+		Joins("JOIN employees ON employees.id = leaves.employee_id").
+		Joins("JOIN departments ON departments.id = employees.department_id").
+		Where("leaves.deleted_at IS NULL AND leaves.from_date >= ? AND leaves.from_date <= ?", startStr, endStr)
+	if companyID != "" {
+		q = q.Where("leaves.company_id = ?", companyID)
+	}
+	if departmentID != "" {
+		q = q.Where("employees.department_id = ?", departmentID)
+	}
+	var results []map[string]interface{}
+	err := q.Group("departments.id, departments.name").Order("departments.name ASC").Find(&results).Error
+	return results, err
+}

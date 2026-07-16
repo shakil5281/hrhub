@@ -1,32 +1,85 @@
 "use client"
 
-import { FileTextIcon } from "lucide-react"
+import * as React from "react"
+import { FileTextIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { leaveBalanceApi, employeeApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
 
-const leaveDetails = [
-  { id: 1, employee: "Rafiqul Islam", type: "Annual Leave", total: 14, used: 5, remaining: 9, pending: 0 },
-  { id: 2, employee: "Shamima Akter", type: "Annual Leave", total: 14, used: 3, remaining: 11, pending: 0 },
-  { id: 3, employee: "Kamal Hossain", type: "Sick Leave", total: 10, used: 2, remaining: 8, pending: 1 },
-  { id: 4, employee: "Nasrin Sultana", type: "Annual Leave", total: 14, used: 8, remaining: 6, pending: 0 },
-  { id: 5, employee: "Jahangir Alam", type: "Casual Leave", total: 6, used: 4, remaining: 2, pending: 0 },
-  { id: 6, employee: "Maksuda Khatun", type: "Sick Leave", total: 10, used: 1, remaining: 9, pending: 2 },
-  { id: 7, employee: "Abdur Rahman", type: "Annual Leave", total: 14, used: 10, remaining: 4, pending: 5 },
-  { id: 8, employee: "Shahidul Islam", type: "Casual Leave", total: 6, used: 2, remaining: 4, pending: 0 },
-]
+interface BalanceRecord {
+  id: string
+  employee_id: string
+  leave_type: string
+  year: number
+  total: number
+  used: number
+  pending: number
+  remaining: number
+}
 
-type LeaveDetail = (typeof leaveDetails)[number]
+interface Employee { id: string; employee_code: string; name_en: string }
 
-const columns: ColumnDef<LeaveDetail>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "type", header: "Leave Type" },
+const thisYear = new Date().getFullYear()
+
+const columns: ColumnDef<BalanceRecord>[] = [
+  { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
+  { accessorKey: "leave_type", header: "Leave Type" },
   { accessorKey: "total", header: "Total" },
   { accessorKey: "used", header: "Used" },
-  { accessorKey: "remaining", header: "Remaining" },
   { accessorKey: "pending", header: "Pending" },
+  { accessorKey: "remaining", header: "Remaining" },
 ]
 
 export default function LeaveDetailsPage() {
+  const [data, setData] = React.useState<BalanceRecord[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [employees, setEmployees] = React.useState<Employee[]>([])
+  const [filters, setFilters] = React.useState<Record<string, string>>({})
+
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    {
+      key: "employee_id", label: "Employee", type: "select",
+      options: employees.map((e) => ({ value: e.id, label: `${e.employee_code} - ${e.name_en}` })),
+    },
+  ], [employees])
+
+  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+    setLoading(true)
+    try {
+      const active: Record<string, string> = { year: String(thisYear) }
+      if (params.employee_id) active.employee_id = params.employee_id
+      const { data: res } = await leaveBalanceApi.list(active)
+      setData(Array.isArray(res) ? res.map((r: any, i: number) => ({ ...r, id: r.id || `${r.employee_id}-${r.leave_type}-${i}` })) : [])
+    } catch {
+      setData([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    employeeApi.list().then((res) => {
+      const list = res.data?.employees || res.data || []
+      setEmployees(Array.isArray(list) ? list : [])
+    }).catch(() => {})
+    fetchData({})
+  }, [])
+
+  const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+
+  const handleApply = () => {
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
+    fetchData(active)
+  }
+
+  const handleReset = () => {
+    setFilters({})
+    fetchData({})
+  }
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
@@ -36,7 +89,14 @@ export default function LeaveDetailsPage() {
         </div>
         <p className="text-muted-foreground mt-1">Employee leave balance details</p>
       </div>
-      <DataTable data={leaveDetails} columns={columns} />
+      <div className="px-4 lg:px-6">
+        <FilterBar filters={filterDefs} values={filters} onChange={handleChange} onApply={handleApply} onReset={handleReset} submitting={loading} />
+      </div>
+      {loading ? (
+        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <DataTable data={data} columns={columns} />
+      )}
     </div>
   )
 }

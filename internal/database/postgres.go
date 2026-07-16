@@ -49,6 +49,12 @@ func Connect(cfg *config.Config) {
 		&models.District{},
 		&models.Upazila{},
 		&models.Union{},
+		&models.Requirement{},
+		&models.Separation{},
+		&models.IdCard{},
+		&models.LeaveType{},
+		&models.LeaveAllocation{},
+		&models.Leave{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

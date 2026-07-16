@@ -3,13 +3,11 @@
 import { useRouter } from "next/navigation"
 import { ClipboardListIcon } from "lucide-react"
 import { RequirementForm } from "@/components/form/requirement-form"
-import { createRequirement, RequirementFormData } from "@/components/data/requirement-data"
 
 export default function CreateRequirementPage() {
   const router = useRouter()
 
-  const handleSuccess = (data: RequirementFormData) => {
-    createRequirement(data)
+  const handleSuccess = () => {
     router.push("/hr/requirements")
   }
 

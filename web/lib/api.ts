@@ -37,7 +37,7 @@ export const companyApi = {
 }
 
 export const employeeApi = {
-  list: () => api.get("/employees"),
+  list: (params?: Record<string, string>) => api.get("/employees", { params }),
   get: (id: string) => api.get(`/employees/${id}`),
   create: (data: Record<string, unknown>) => api.post("/employees", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/employees/${id}`, data),
@@ -113,6 +113,9 @@ export const attendanceApi = {
   deleteAll: () => api.delete("/attendance/delete-all"),
   missing: (params: Record<string, string>) => api.get("/attendance/missing", { params }),
   absent: (params: Record<string, string>) => api.get("/attendance/absent", { params }),
+  summary: (params?: Record<string, string>) => api.get("/attendance/summary", { params }),
+  overtime: (params?: Record<string, string>) => api.get("/attendance/overtime", { params }),
+  overtimeSummary: (params?: Record<string, string>) => api.get("/attendance/overtime-summary", { params }),
 }
 
 export const dataLogApi = {
@@ -153,6 +156,56 @@ export const unionApi = {
   create: (data: Record<string, unknown>) => api.post("/unions", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/unions/${id}`, data),
   delete: (id: string) => api.delete(`/unions/${id}`),
+}
+
+export const requirementApi = {
+  list: (params?: Record<string, string>) => api.get("/requirements", { params }),
+  get: (id: string) => api.get(`/requirements/${id}`),
+  create: (data: Record<string, unknown>) => api.post("/requirements", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/requirements/${id}`, data),
+  delete: (id: string) => api.delete(`/requirements/${id}`),
+}
+
+export const separationApi = {
+  list: (params?: Record<string, string>) => api.get("/separations", { params }),
+  get: (id: string) => api.get(`/separations/${id}`),
+  create: (data: Record<string, unknown>) => api.post("/separations", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/separations/${id}`, data),
+  delete: (id: string) => api.delete(`/separations/${id}`),
+}
+
+export const idCardApi = {
+  list: (params?: Record<string, string>) => api.get("/id-cards", { params }),
+  get: (id: string) => api.get(`/id-cards/${id}`),
+  create: (data: Record<string, unknown>) => api.post("/id-cards", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/id-cards/${id}`, data),
+  delete: (id: string) => api.delete(`/id-cards/${id}`),
+}
+
+export const leaveTypeApi = {
+  list: (companyId?: string) => api.get("/leave-types", { params: companyId ? { company_id: companyId } : {} }),
+  get: (id: string) => api.get(`/leave-types/${id}`),
+  create: (data: Record<string, unknown>) => api.post("/leave-types", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/leave-types/${id}`, data),
+  delete: (id: string) => api.delete(`/leave-types/${id}`),
+}
+
+export const leaveApi = {
+  list: (params?: Record<string, string>) => api.get("/leaves", { params }),
+  get: (id: string) => api.get(`/leaves/${id}`),
+  apply: (data: Record<string, unknown>) => api.post("/leaves", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/leaves/${id}`, data),
+  cancel: (id: string) => api.delete(`/leaves/${id}`),
+  approve: (id: string) => api.put(`/leaves/${id}/approve`),
+  reject: (id: string, reason: string) => api.put(`/leaves/${id}/reject`, { rejection_reason: reason }),
+}
+
+export const leaveBalanceApi = {
+  list: (params?: Record<string, string>) => api.get("/leave-balance", { params }),
+}
+
+export const leaveReportApi = {
+  monthly: (params?: Record<string, string>) => api.get("/leave-reports/monthly", { params }),
 }
 
 export const uploadApi = {

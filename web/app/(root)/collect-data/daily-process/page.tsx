@@ -5,7 +5,7 @@ import { format } from "date-fns"
 import { RefreshCwIcon, Loader2, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatePicker } from "@/components/ui/date-picker"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { dataLogApi, attendanceApi, companyApi } from "@/lib/api"
@@ -14,8 +14,8 @@ import type { Company } from "@/components/data/company-data"
 export default function DailyProcessPage() {
   const [processing, setProcessing] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
-  const [startDate, setStartDate] = React.useState<Date | undefined>()
-  const [endDate, setEndDate] = React.useState<Date | undefined>()
+  const [startDate, setStartDate] = React.useState<Date | undefined>(new Date())
+  const [endDate, setEndDate] = React.useState<Date | undefined>(new Date())
   const [companyId, setCompanyId] = React.useState("")
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [todayCount, setTodayCount] = React.useState(0)
@@ -89,18 +89,19 @@ export default function DailyProcessPage() {
           <RefreshCwIcon className="h-6 w-6 text-muted-foreground" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Daily Process</h1>
+            <p className="text-muted-foreground mt-1">Process raw punch data into attendance records</p>
           </div>
         </div>
       </div>
 
       <div className="px-4 lg:px-6">
         <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Today&apos;s Attendance</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Today&apos;s Attendance</p>
-                <p className="text-3xl font-bold">{todayCount}</p>
-              </div>
+              <p className="text-4xl font-bold">{todayCount}</p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -131,16 +132,11 @@ export default function DailyProcessPage() {
 
       <div className="px-4 lg:px-6">
         <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Process Parameters</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="flex items-end gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Start Date</label>
-                <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted-foreground">End Date</label>
-                <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
-              </div>
+            <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Company</label>
                 <select
@@ -154,14 +150,25 @@ export default function DailyProcessPage() {
                   ))}
                 </select>
               </div>
-              <Button onClick={handleProcess} disabled={processing}>
-                {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCwIcon className="mr-2 h-4 w-4" />}
-                Process Data
-              </Button>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                <DatePicker value={startDate} onChange={setStartDate} placeholder="Start date" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                <DatePicker value={endDate} onChange={setEndDate} placeholder="End date" />
+              </div>
+              <div>
+                <Button onClick={handleProcess} disabled={processing}>
+                  {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCwIcon className="mr-2 h-4 w-4" />}
+                  Process Data
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
     </div>
   )
 }

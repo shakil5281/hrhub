@@ -1,21 +1,34 @@
 "use client"
 
 import * as React from "react"
-import { IdCardIcon, PlusIcon, SearchIcon, RotateCcwIcon } from "lucide-react"
+import { IdCardIcon, PlusIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
-import { IdCard, getIdCards, deleteIdCard, departmentOptions, idCardStatusOptions } from "@/components/data/id-card-data"
+import { IdCard, idCardStatusOptions } from "@/components/data/id-card-data"
+import { idCardApi, departmentApi, designationApi } from "@/lib/api"
+import type { Department } from "@/components/data/organization-data"
+import type { Designation } from "@/components/data/organization-data"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
 
 const columns: ColumnDef<IdCard>[] = [
   { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employeeCode", header: "Code" },
-  { accessorKey: "designation", header: "Designation" },
-  { accessorKey: "department", header: "Department" },
-  { accessorKey: "cardNo", header: "Card No" },
+  { accessorKey: "employee_code", header: "Code" },
+  {
+    accessorKey: "designation",
+    header: "Designation",
+    cell: ({ row }) => <span>{row.original.designation?.name || row.original.designation_id}</span>,
+  },
+  {
+    accessorKey: "department",
+    header: "Department",
+    cell: ({ row }) => <span>{row.original.department?.name || row.original.department_id}</span>,
+  },
+  { accessorKey: "card_no", header: "Card No" },
   { accessorKey: "issued", header: "Issued" },
   { accessorKey: "expiry", header: "Expiry" },
   {
@@ -31,30 +44,74 @@ const columns: ColumnDef<IdCard>[] = [
 export default function IdCardPage() {
   const router = useRouter()
   const [data, setData] = React.useState<IdCard[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [filters, setFilters] = React.useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = React.useState(false)
 
-  const [search, setSearch] = React.useState("")
-  const [deptFilter, setDeptFilter] = React.useState("all")
-  const [statusFilter, setStatusFilter] = React.useState("all")
-
-  const loadData = React.useCallback(() => setData(getIdCards()), [])
-  React.useEffect(loadData, [loadData])
-
-  const filtered = React.useMemo(() => {
-    let result = data
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter((c) => c.employee.toLowerCase().includes(q) || c.employeeCode.toLowerCase().includes(q) || c.cardNo.toLowerCase().includes(q))
+  const fetchData = React.useCallback(async (f?: Record<string, string>) => {
+    setLoading(true)
+    try {
+      const [cardRes, deptRes, desigRes] = await Promise.all([
+        idCardApi.list(f),
+        departmentApi.list(),
+        designationApi.list(),
+      ])
+      setData(Array.isArray(cardRes.data) ? cardRes.data : [])
+      setDepartments(Array.isArray(deptRes.data) ? deptRes.data : [])
+      setDesignations(Array.isArray(desigRes.data) ? desigRes.data : [])
+    } catch {
+      toast.error("Failed to load ID cards")
+    } finally {
+      setLoading(false)
     }
-    if (deptFilter !== "all") result = result.filter((c) => c.department === deptFilter)
-    if (statusFilter !== "all") result = result.filter((c) => c.status === statusFilter)
-    return result
-  }, [data, search, deptFilter, statusFilter])
+  }, [])
 
-  const clearFilters = () => { setSearch(""); setDeptFilter("all"); setStatusFilter("all") }
-  const hasFilters = search || deptFilter !== "all" || statusFilter !== "all"
+  React.useEffect(() => { fetchData() }, [fetchData])
+
+  const handleApply = async () => {
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) {
+      if (v) active[k] = v
+    }
+    setSubmitting(true)
+    await fetchData(active)
+    setSubmitting(false)
+  }
+
+  const handleReset = () => {
+    setFilters({})
+    fetchData()
+  }
+
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleEdit = (c: IdCard) => router.push(`/hr/id-card/${c.id}/edit`)
-  const handleDelete = (c: IdCard) => { deleteIdCard(c.id); loadData() }
+  const handleDelete = async (c: IdCard) => {
+    try {
+      await idCardApi.delete(c.id)
+      toast.success("ID card deleted")
+      fetchData()
+    } catch {
+      toast.error("Failed to delete ID card")
+    }
+  }
+
+  const filterDefs: FilterDef[] = [
+    { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
+    { key: "employee_code", label: "Code", type: "text", placeholder: "Filter by code..." },
+    { key: "card_no", label: "Card No", type: "text", placeholder: "Filter by card no..." },
+    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "designation_id", label: "Designation", type: "select", options: designations.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "status", label: "Status", type: "select", options: idCardStatusOptions.map((o) => ({ value: o.value, label: o.label })) },
+  ]
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -73,44 +130,17 @@ export default function IdCardPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Search</label>
-              <div className="relative">
-                <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Employee, code or card…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Departments</option>
-                {departmentOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50">
-                <option value="all">All Statuses</option>
-                {idCardStatusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          </div>
-          {hasFilters && (
-            <div className="mt-3 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <RotateCcwIcon className="mr-1 size-3.5" />
-                Clear Filters
-              </Button>
-            </div>
-          )}
-        </div>
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={submitting}
+        />
       </div>
 
-      <DataTable key={filtered.length} data={filtered} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <DataTable data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
     </div>
   )
 }

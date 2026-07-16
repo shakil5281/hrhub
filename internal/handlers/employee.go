@@ -172,17 +172,76 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 // GetEmployees godoc
 //
 // @Summary      List employees
-// @Description  Get all employees
+// @Description  Get all employees with optional filters
 // @Tags         Employees
 // @Security     BearerAuth
 // @Produce      json
+// @Param        company_id      query string false "Filter by company ID"
+// @Param        department_id   query string false "Filter by department ID"
+// @Param        section_id      query string false "Filter by section ID"
+// @Param        designation_id  query string false "Filter by designation ID"
+// @Param        line_id         query string false "Filter by line ID"
+// @Param        shift_id        query string false "Filter by shift ID"
+// @Param        group_id        query string false "Filter by group ID"
+// @Param        floor_id        query string false "Filter by floor ID"
+// @Param        status          query string false "Filter by status (active/inactive)"
+// @Param        employee_code   query string false "Filter by employee code (partial match)"
+// @Param        gender          query string false "Filter by gender"
+// @Param        blood_group     query string false "Filter by blood group"
+// @Param        min_salary      query string false "Minimum total salary"
+// @Param        max_salary      query string false "Maximum total salary"
 // @Success      200  {array}   map[string]interface{}
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /employees [get]
 func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 	var employees []models.Employee
-	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Find(&employees).Error; err != nil {
+	query := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift")
+
+	if v := c.Query("company_id"); v != "" {
+		query = query.Where("company_id = ?", v)
+	}
+	if v := c.Query("department_id"); v != "" {
+		query = query.Where("department_id = ?", v)
+	}
+	if v := c.Query("section_id"); v != "" {
+		query = query.Where("section_id = ?", v)
+	}
+	if v := c.Query("designation_id"); v != "" {
+		query = query.Where("designation_id = ?", v)
+	}
+	if v := c.Query("line_id"); v != "" {
+		query = query.Where("line_id = ?", v)
+	}
+	if v := c.Query("shift_id"); v != "" {
+		query = query.Where("shift_id = ?", v)
+	}
+	if v := c.Query("group_id"); v != "" {
+		query = query.Where("group_id = ?", v)
+	}
+	if v := c.Query("floor_id"); v != "" {
+		query = query.Where("floor_id = ?", v)
+	}
+	if v := c.Query("status"); v != "" {
+		query = query.Where("status = ?", v)
+	}
+	if v := c.Query("employee_code"); v != "" {
+		query = query.Where("employee_code ILIKE ?", "%"+v+"%")
+	}
+	if v := c.Query("gender"); v != "" {
+		query = query.Where("gender = ?", v)
+	}
+	if v := c.Query("blood_group"); v != "" {
+		query = query.Where("blood_group = ?", v)
+	}
+	if v := c.Query("min_salary"); v != "" {
+		query = query.Where("total_salary >= ?", v)
+	}
+	if v := c.Query("max_salary"); v != "" {
+		query = query.Where("total_salary <= ?", v)
+	}
+
+	if err := query.Find(&employees).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

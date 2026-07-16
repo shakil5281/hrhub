@@ -87,7 +87,7 @@ export function DatePicker({ value, onChange, placeholder = "Pick a date", class
 
   return (
     <div className={cn("relative flex items-center", className)}>
-      <div className="flex items-center h-10 w-full rounded border border-input bg-transparent text-sm focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+      <div className="flex items-center h-10 w-48 rounded border border-input bg-transparent text-sm focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
         <input
           ref={ddRef}
           type="text"

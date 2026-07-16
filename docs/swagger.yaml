@@ -1,5 +1,26 @@
 basePath: /api/v1
 definitions:
+  handlers.ApplyLeaveRequest:
+    properties:
+      company_id:
+        type: string
+      employee_id:
+        type: string
+      from_date:
+        type: string
+      leave_type_id:
+        type: string
+      reason:
+        type: string
+      to_date:
+        type: string
+    required:
+    - company_id
+    - employee_id
+    - from_date
+    - leave_type_id
+    - to_date
+    type: object
   handlers.ClockInRequest:
     properties:
       employee_id:
@@ -77,6 +98,8 @@ definitions:
         type: string
       designation:
         type: string
+      designation_id:
+        type: string
       email:
         type: string
       emergency_contact:
@@ -87,11 +110,15 @@ definitions:
         type: string
       father_name:
         type: string
+      floor_id:
+        type: string
       food_allowance:
         type: number
       gender:
         type: string
       grade:
+        type: string
+      group_id:
         type: string
       group_name:
         type: string
@@ -100,6 +127,8 @@ definitions:
       joining_date:
         type: string
       line:
+        type: string
+      line_id:
         type: string
       marital_status:
         type: string
@@ -122,9 +151,27 @@ definitions:
         type: number
       permanent_address:
         type: string
+      permanent_district_id:
+        type: string
+      permanent_division_id:
+        description: Address (permanent)
+        type: string
+      permanent_union_id:
+        type: string
+      permanent_upazila_id:
+        type: string
       phone:
         type: string
       present_address:
+        type: string
+      present_district_id:
+        type: string
+      present_division_id:
+        description: Address (present)
+        type: string
+      present_union_id:
+        type: string
+      present_upazila_id:
         type: string
       provident_fund:
         type: number
@@ -135,6 +182,8 @@ definitions:
       routing_no:
         type: string
       section:
+        type: string
+      section_id:
         type: string
       shift_id:
         type: string
@@ -156,6 +205,40 @@ definitions:
     - company_id
     - employee_code
     - joining_date
+    type: object
+  handlers.CreateFloorRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handlers.CreateGroupRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handlers.CreateLeaveTypeRequest:
+    properties:
+      applicable_gender:
+        type: string
+      carry_forward_days:
+        type: integer
+      code:
+        type: string
+      company_id:
+        type: string
+      name:
+        type: string
+      total_days:
+        type: integer
+    required:
+    - code
+    - company_id
+    - name
+    - total_days
     type: object
   handlers.CreateShiftRequest:
     properties:
@@ -215,6 +298,13 @@ definitions:
     - name
     - password
     type: object
+  handlers.RejectLeaveRequest:
+    properties:
+      rejection_reason:
+        type: string
+    required:
+    - rejection_reason
+    type: object
   handlers.UpdateCompanyRequest:
     properties:
       address:
@@ -229,6 +319,49 @@ definitions:
         type: string
     required:
     - company_name_en
+    type: object
+  handlers.UpdateFloorRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handlers.UpdateGroupRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handlers.UpdateLeaveRequest:
+    properties:
+      from_date:
+        type: string
+      leave_type_id:
+        type: string
+      reason:
+        type: string
+      to_date:
+        type: string
+      total_days:
+        type: integer
+    type: object
+  handlers.UpdateLeaveTypeRequest:
+    properties:
+      applicable_gender:
+        type: string
+      carry_forward_days:
+        type: integer
+      name:
+        type: string
+      status:
+        type: string
+      total_days:
+        type: integer
+    required:
+    - name
+    - total_days
     type: object
   handlers.UpdateShiftRequest:
     properties:
@@ -305,6 +438,42 @@ paths:
       - description: Date (YYYY-MM-DD)
         in: query
         name: date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by shift
+        in: query
+        name: shift_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by employee
+        in: query
+        name: employee_id
         type: string
       produces:
       - application/json
@@ -500,6 +669,10 @@ paths:
         in: query
         name: company_id
         type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
       produces:
       - application/json
       responses:
@@ -688,6 +861,10 @@ paths:
         in: query
         name: company_id
         type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
       produces:
       - application/json
       responses:
@@ -707,6 +884,80 @@ paths:
       summary: Missing attendance
       tags:
       - Attendance
+  /attendance/overtime:
+    get:
+      description: Get employee overtime records for a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Overtime sheet
+      tags:
+      - Attendance
+  /attendance/overtime-summary:
+    get:
+      description: Get department-level overtime aggregation
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Overtime summary by department
+      tags:
+      - Attendance
   /attendance/stats:
     get:
       description: Get count of attendance records
@@ -721,6 +972,45 @@ paths:
       security:
       - BearerAuth: []
       summary: Attendance statistics
+      tags:
+      - Attendance
+  /attendance/summary:
+    get:
+      description: Get aggregated attendance summary by date/company/department
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Daily attendance summary
       tags:
       - Attendance
   /auth/change-password:
@@ -1320,7 +1610,64 @@ paths:
       - Data Logs
   /employees:
     get:
-      description: Get all employees
+      description: Get all employees with optional filters
+      parameters:
+      - description: Filter by company ID
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department ID
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by section ID
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation ID
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line ID
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by shift ID
+        in: query
+        name: shift_id
+        type: string
+      - description: Filter by group ID
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by floor ID
+        in: query
+        name: floor_id
+        type: string
+      - description: Filter by status (active/inactive)
+        in: query
+        name: status
+        type: string
+      - description: Filter by employee code (partial match)
+        in: query
+        name: employee_code
+        type: string
+      - description: Filter by gender
+        in: query
+        name: gender
+        type: string
+      - description: Filter by blood group
+        in: query
+        name: blood_group
+        type: string
+      - description: Minimum total salary
+        in: query
+        name: min_salary
+        type: string
+      - description: Maximum total salary
+        in: query
+        name: max_salary
+        type: string
       produces:
       - application/json
       responses:
@@ -1493,6 +1840,368 @@ paths:
       summary: Update employee
       tags:
       - Employees
+  /floors:
+    get:
+      description: Get all floors
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List floors
+      tags:
+      - Floors
+    post:
+      consumes:
+      - application/json
+      description: Create a new floor
+      parameters:
+      - description: Floor details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateFloorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create floor
+      tags:
+      - Floors
+  /floors/{id}:
+    delete:
+      description: Soft delete a floor
+      parameters:
+      - description: Floor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete floor
+      tags:
+      - Floors
+    get:
+      description: Get a floor by its ID
+      parameters:
+      - description: Floor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get floor by ID
+      tags:
+      - Floors
+    put:
+      consumes:
+      - application/json
+      description: Update an existing floor
+      parameters:
+      - description: Floor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated floor details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateFloorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update floor
+      tags:
+      - Floors
+  /groups:
+    get:
+      description: Get all groups
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List groups
+      tags:
+      - Groups
+    post:
+      consumes:
+      - application/json
+      description: Create a new group
+      parameters:
+      - description: Group details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create group
+      tags:
+      - Groups
+  /groups/{id}:
+    delete:
+      description: Soft delete a group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete group
+      tags:
+      - Groups
+    get:
+      description: Get a group by its ID
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get group by ID
+      tags:
+      - Groups
+    put:
+      consumes:
+      - application/json
+      description: Update an existing group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated group details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update group
+      tags:
+      - Groups
   /health:
     get:
       description: Check if the server is running
@@ -1508,6 +2217,497 @@ paths:
       summary: Health check
       tags:
       - System
+  /leave-balance:
+    get:
+      description: Get leave balance for employees
+      parameters:
+      - description: Filter by employee
+        in: query
+        name: employee_id
+        type: string
+      - description: 'Year (default: current)'
+        in: query
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get leave balance
+      tags:
+      - Leave Balance
+  /leave-reports/monthly:
+    get:
+      description: Get monthly leave report grouped by department
+      parameters:
+      - description: 'Month (1-12, default: current)'
+        in: query
+        name: month
+        type: integer
+      - description: 'Year (default: current)'
+        in: query
+        name: year
+        type: integer
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Monthly leave report
+      tags:
+      - Leave Reports
+  /leave-types:
+    get:
+      description: Get all leave types
+      parameters:
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List leave types
+      tags:
+      - Leave Types
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave type details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateLeaveTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create leave type
+      tags:
+      - Leave Types
+  /leave-types/{id}:
+    delete:
+      parameters:
+      - description: Leave Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete leave type
+      tags:
+      - Leave Types
+    get:
+      parameters:
+      - description: Leave Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get leave type by ID
+      tags:
+      - Leave Types
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated leave type
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateLeaveTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update leave type
+      tags:
+      - Leave Types
+  /leaves:
+    get:
+      description: Get all leave applications with optional filters
+      parameters:
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by employee
+        in: query
+        name: employee_id
+        type: string
+      - description: Filter by status (pending|approved|rejected|cancelled)
+        in: query
+        name: status
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: from_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: to_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List leave applications
+      tags:
+      - Leaves
+    post:
+      consumes:
+      - application/json
+      description: Submit a new leave application. Validates allocation balance.
+      parameters:
+      - description: Leave application
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ApplyLeaveRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Apply for leave
+      tags:
+      - Leaves
+  /leaves/{id}:
+    delete:
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel leave application
+      tags:
+      - Leaves
+    get:
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get leave by ID
+      tags:
+      - Leaves
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated leave
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateLeaveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update leave application
+      tags:
+      - Leaves
+  /leaves/{id}/approve:
+    put:
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve leave application
+      tags:
+      - Leaves
+  /leaves/{id}/reject:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RejectLeaveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject leave application
+      tags:
+      - Leaves
   /shifts:
     get:
       description: Get all shifts

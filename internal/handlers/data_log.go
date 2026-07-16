@@ -1,8 +1,9 @@
 package handlers
 
-import (
+	import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +12,47 @@ import (
 	"github.com/shakil5281/hrhub-api/internal/service"
 )
 
+func generateDateRange(start, end string) ([]string, error) {
+	startDate, err := time.Parse("2006-01-02", start)
+	if err != nil {
+		return nil, err
+	}
+	endDate, err := time.Parse("2006-01-02", end)
+	if err != nil {
+		return nil, err
+	}
+	var dates []string
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		dates = append(dates, d.Format("2006-01-02"))
+	}
+	return dates, nil
+}
+
+func isWeekend(dateStr string, weekendDays string) bool {
+	if weekendDays == "" {
+		return false
+	}
+	t, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return false
+	}
+	dayName := t.Weekday().String()
+	dayAbbr := dayName[:3]
+	for _, d := range strings.Split(weekendDays, ",") {
+		tr := strings.TrimSpace(d)
+		if strings.EqualFold(tr, dayAbbr) || strings.EqualFold(tr, dayName) {
+			return true
+		}
+	}
+	return false
+}
+
 type DataLogHandler struct {
 	dataLogRepo    *repository.DataLogRepository
 	attendanceRepo *repository.AttendanceRepository
 	employeeRepo   *repository.EmployeeRepository
 	shiftRepo      *repository.ShiftRepository
+	leaveRepo      *repository.LeaveRepository
 	mdbReader      *service.MDBReader
 }
 
@@ -24,6 +61,7 @@ func NewDataLogHandler(
 	attendanceRepo *repository.AttendanceRepository,
 	employeeRepo *repository.EmployeeRepository,
 	shiftRepo *repository.ShiftRepository,
+	leaveRepo *repository.LeaveRepository,
 	mdbReader *service.MDBReader,
 ) *DataLogHandler {
 	return &DataLogHandler{
@@ -31,6 +69,7 @@ func NewDataLogHandler(
 		attendanceRepo: attendanceRepo,
 		employeeRepo:   employeeRepo,
 		shiftRepo:      shiftRepo,
+		leaveRepo:      leaveRepo,
 		mdbReader:      mdbReader,
 	}
 }
@@ -169,19 +208,9 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 		endDate = startDate
 	}
 
-	dates, err := h.dataLogRepo.ListUnprocessedDatesInRange(startDate, endDate)
+	dates, err := generateDateRange(startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if len(dates) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"message":   "No unprocessed logs found for date range",
-			"start":     startDate,
-			"end":       endDate,
-			"processed": 0,
-		})
 		return
 	}
 
@@ -189,153 +218,259 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 	totalLogs := 0
 	var results []map[string]interface{}
 
+	shiftCache := make(map[string]*models.Shift)
+	getShift := func(id string) *models.Shift {
+		if s, ok := shiftCache[id]; ok {
+			return s
+		}
+		s, err := h.shiftRepo.FindByID(id)
+		if err != nil || s == nil {
+			shiftCache[id] = nil
+			return nil
+		}
+		shiftCache[id] = s
+		return s
+	}
+
 	for _, date := range dates {
-		logs, err := h.dataLogRepo.ListUnprocessedByDate(date)
-		if err != nil || len(logs) == 0 {
-			continue
-		}
-		totalLogs += len(logs)
+		dayProcessed := 0
+		logs, _ := h.dataLogRepo.ListUnprocessedByDate(date)
 
-		type employeeLogs struct {
-			EmployeeName string
-			BadgeNumber  string
-			Punches      []models.DataLog
-			LogIDs       []string
+		// Build badge-to-employee mapping for all unique badge numbers
+		badgeSet := make(map[string]bool)
+		for _, l := range logs {
+			if l.BadgeNumber != "" {
+				badgeSet[l.BadgeNumber] = true
+			}
 		}
-		grouped := make(map[int]*employeeLogs)
+		badgeNumbers := make([]string, 0, len(badgeSet))
+		for b := range badgeSet {
+			badgeNumbers = append(badgeNumbers, b)
+		}
 
-		for _, log := range logs {
-			if grouped[log.UserID] == nil {
-				grouped[log.UserID] = &employeeLogs{
-					EmployeeName: log.EmployeeName,
-					BadgeNumber:  log.BadgeNumber,
+		employeeByBadge := make(map[string]*models.Employee)
+		if len(badgeNumbers) > 0 {
+			byCode, _ := h.employeeRepo.FindByEmployeeCodes(badgeNumbers)
+			for i := range byCode {
+				employeeByBadge[byCode[i].EmployeeCode] = &byCode[i]
+			}
+			// Try punch_number fallback for unmatched
+			unmatched := make([]string, 0)
+			for _, b := range badgeNumbers {
+				if _, ok := employeeByBadge[b]; !ok {
+					unmatched = append(unmatched, b)
 				}
 			}
-			grouped[log.UserID].Punches = append(grouped[log.UserID].Punches, log)
-			grouped[log.UserID].LogIDs = append(grouped[log.UserID].LogIDs, log.ID)
+			if len(unmatched) > 0 {
+				byPunch, _ := h.employeeRepo.FindByPunchNumbers(unmatched)
+				for i := range byPunch {
+					employeeByBadge[byPunch[i].PunchNumber] = &byPunch[i]
+				}
+			}
 		}
 
-		dayProcessed := 0
-		var processedIDs []string
-		for _, empLogs := range grouped {
-			punches := empLogs.Punches
-			if len(punches) == 0 || empLogs.BadgeNumber == "" {
-				continue
+		// Fetch all attendance for this date and approved leaves for this date
+		activeEmployees, _ := h.employeeRepo.ListActive(req.CompanyID)
+		allEmployeeIDs := make([]string, len(activeEmployees))
+		for i := range activeEmployees {
+			allEmployeeIDs[i] = activeEmployees[i].ID
+		}
+
+		existingAttList, _ := h.attendanceRepo.ListByDateAndEmployeeIDs(date, allEmployeeIDs)
+		existingAttByEmp := make(map[string]*models.Attendance, len(existingAttList))
+		for i := range existingAttList {
+			existingAttByEmp[existingAttList[i].EmployeeID] = &existingAttList[i]
+		}
+
+		approvedLeaves, _ := h.leaveRepo.ListApprovedByDate(date)
+		onLeaveSet := make(map[string]bool, len(approvedLeaves))
+		for _, l := range approvedLeaves {
+			onLeaveSet[l.EmployeeID] = true
+		}
+
+		// Process punch logs - group by ZK user ID
+		var logIDsToMark []string
+		if len(logs) > 0 {
+			totalLogs += len(logs)
+
+			type empPunches struct {
+				BadgeNumber string
+				Punches     []models.DataLog
+				LogIDs      []string
+			}
+			grouped := make(map[int]*empPunches)
+
+			for _, log := range logs {
+				if grouped[log.UserID] == nil {
+					grouped[log.UserID] = &empPunches{
+						BadgeNumber: log.BadgeNumber,
+					}
+				}
+				grouped[log.UserID].Punches = append(grouped[log.UserID].Punches, log)
+				grouped[log.UserID].LogIDs = append(grouped[log.UserID].LogIDs, log.ID)
 			}
 
-			employee, err := h.employeeRepo.FindByEmployeeCode(empLogs.BadgeNumber)
-			if err != nil {
-				employee, err = h.employeeRepo.FindByPunchNumber(empLogs.BadgeNumber)
-				if err != nil {
+			for _, gp := range grouped {
+				punches := gp.Punches
+				if len(punches) == 0 || gp.BadgeNumber == "" {
 					continue
 				}
-			}
-			if req.CompanyID != "" && employee.CompanyID != req.CompanyID {
-				continue
-			}
 
-			var checkIn *string
-			var checkOut *string
-			var status = "present"
-
-			// Look up shift for time-based check-in/out logic
-			var shiftID *string
-			var lateMinutes int
-			var shift *models.Shift
-			if employee.ShiftID != nil {
-				shift, _ = h.shiftRepo.FindByID(*employee.ShiftID)
-				if shift != nil {
-					shiftID = &shift.ID
+				employee, ok := employeeByBadge[gp.BadgeNumber]
+				if !ok {
+					continue
 				}
-			}
+				if req.CompanyID != "" && employee.CompanyID != req.CompanyID {
+					continue
+				}
 
-			// Determine shift out time for reference
-			var shiftOutTime time.Time
-			if shift != nil && shift.EndTime != "" {
-				shiftOutTime, _ = time.Parse("15:04", shift.EndTime)
-			}
+				logIDsToMark = append(logIDsToMark, gp.LogIDs...)
 
-			// Find check-in: first 'I' punch that is BEFORE or near shift end time
-			// (if all punches are after shift end, no check-in)
-			for _, p := range punches {
-				if p.PunchType == "I" || p.PunchType == "i" {
-					punchT := p.PunchTime.Format("15:04")
-					punchTime, _ := time.Parse("15:04", punchT)
-					// If shift out is known and punch is after shift out, skip (this is outTime)
-					if !shiftOutTime.IsZero() && punchTime.After(shiftOutTime) {
-						continue
+				var checkIn *string
+				var checkOut *string
+				var status = "present"
+
+				var shiftID *string
+				var lateMinutes int
+				var shift *models.Shift
+				if employee.ShiftID != nil {
+					shift = getShift(*employee.ShiftID)
+					if shift != nil {
+						shiftID = &shift.ID
 					}
-					checkIn = &punchT
-					break
 				}
-			}
 
-			// Find check-out: last 'O' punch, or last 'I' punch after shift out time
-			// First try last 'O' punch
-			for i := len(punches) - 1; i >= 0; i-- {
-				if punches[i].PunchType == "O" || punches[i].PunchType == "o" {
-					t := punches[i].PunchTime.Format("15:04")
-					checkOut = &t
-					break
+				isWeekendDay := false
+				if shift != nil && shift.WeekendDays != "" && isWeekend(date, shift.WeekendDays) {
+					isWeekendDay = true
+					status = "weekend"
 				}
-			}
-			// If no 'O' punch, find last punch after shift out time (all 'I' config)
-			if checkOut == nil && !shiftOutTime.IsZero() {
-				for i := len(punches) - 1; i >= 0; i-- {
-					punchT := punches[i].PunchTime.Format("15:04")
-					punchTime, _ := time.Parse("15:04", punchT)
-					if punchTime.After(shiftOutTime) {
-						checkOut = &punchT
+
+				var shiftOutTime time.Time
+				if shift != nil && shift.EndTime != "" {
+					shiftOutTime, _ = time.Parse("15:04", shift.EndTime)
+				}
+
+				for _, p := range punches {
+					if p.PunchType == "I" || p.PunchType == "i" {
+						punchT := p.PunchTime.Format("15:04")
+						punchTime, _ := time.Parse("15:04", punchT)
+						if !shiftOutTime.IsZero() && punchTime.After(shiftOutTime) {
+							continue
+						}
+						checkIn = &punchT
 						break
 					}
 				}
-			}
-			// Fallback: if still no check-out and multiple punches, last punch is out
-			if checkOut == nil && len(punches) > 1 {
-				lastPunch := punches[len(punches)-1]
-				t := lastPunch.PunchTime.Format("15:04")
-				checkOut = &t
-			}
 
-			if checkIn == nil && checkOut == nil {
-				status = "absent"
-			} else if checkIn == nil {
-				status = "late"
-			}
+				for i := len(punches) - 1; i >= 0; i-- {
+					if punches[i].PunchType == "O" || punches[i].PunchType == "o" {
+						t := punches[i].PunchTime.Format("15:04")
+						checkOut = &t
+						break
+					}
+				}
+				if checkOut == nil && !shiftOutTime.IsZero() {
+					for i := len(punches) - 1; i >= 0; i-- {
+						punchT := punches[i].PunchTime.Format("15:04")
+						punchTime, _ := time.Parse("15:04", punchT)
+						if punchTime.After(shiftOutTime) {
+							checkOut = &punchT
+							break
+						}
+					}
+				}
+				if checkOut == nil && len(punches) > 1 {
+					lastPunch := punches[len(punches)-1]
+					t := lastPunch.PunchTime.Format("15:04")
+					checkOut = &t
+				}
 
-			// Late calculation
-			if shift != nil && checkIn != nil {
-				shiftStart, _ := time.Parse("15:04", shift.StartTime)
-				grace := time.Duration(shift.LateGraceMinutes) * time.Minute
-				deadline := shiftStart.Add(grace)
-				actualIn, err := time.Parse("15:04", *checkIn)
-				if err == nil && actualIn.After(deadline) {
-					lateMinutes = int(actualIn.Sub(shiftStart).Minutes())
+				if !isWeekendDay {
+					if checkIn == nil && checkOut == nil {
+						status = "absent"
+					} else if checkIn == nil {
+						status = "late"
+					}
+				}
+
+				if !isWeekendDay && shift != nil && checkIn != nil {
+					shiftStart, _ := time.Parse("15:04", shift.StartTime)
+					grace := time.Duration(shift.LateGraceMinutes) * time.Minute
+					deadline := shiftStart.Add(grace)
+					actualIn, err := time.Parse("15:04", *checkIn)
+					if err == nil && actualIn.After(deadline) {
+						lateMinutes = int(actualIn.Sub(shiftStart).Minutes())
+					}
+				}
+
+				if !isWeekendDay && onLeaveSet[employee.ID] {
+					status = "on_leave"
+				}
+
+				if existing, exists := existingAttByEmp[employee.ID]; exists {
+					existing.CheckIn = checkIn
+					existing.CheckOut = checkOut
+					existing.Status = status
+					existing.ShiftID = shiftID
+					existing.LateMinutes = lateMinutes
+					existing.PunchNumber = &gp.BadgeNumber
+					if h.attendanceRepo.Update(existing) == nil {
+						dayProcessed++
+					}
+				} else {
+					att := &models.Attendance{
+						EmployeeID:  employee.ID,
+						CompanyID:   employee.CompanyID,
+						Date:        date,
+						CheckIn:     checkIn,
+						CheckOut:    checkOut,
+						Status:      status,
+						ShiftID:     shiftID,
+						LateMinutes: lateMinutes,
+						PunchNumber: &gp.BadgeNumber,
+					}
+					if err := h.attendanceRepo.Create(att); err == nil {
+						dayProcessed++
+					}
+					existingAttByEmp[employee.ID] = att
 				}
 			}
+		}
 
-			attendance := &models.Attendance{
-				EmployeeID:  employee.ID,
-				CompanyID:   employee.CompanyID,
-				Date:        date,
-				CheckIn:     checkIn,
-				CheckOut:    checkOut,
-				Status:      status,
-				ShiftID:     shiftID,
-				LateMinutes: lateMinutes,
-				PunchNumber: &empLogs.BadgeNumber,
-			}
+		if len(logIDsToMark) > 0 {
+			_ = h.dataLogRepo.MarkProcessed(logIDsToMark)
+		}
 
-			if err := h.attendanceRepo.Create(attendance); err != nil {
+		// Create attendance for active employees with NO existing record
+		for _, emp := range activeEmployees {
+			if existingAttByEmp[emp.ID] != nil {
 				continue
 			}
-			processedIDs = append(processedIDs, empLogs.LogIDs...)
-			dayProcessed++
+			var shiftID *string
+			status := "absent"
+			if emp.ShiftID != nil {
+				shiftID = emp.ShiftID
+				shift := getShift(*emp.ShiftID)
+				if shift != nil && shift.WeekendDays != "" && isWeekend(date, shift.WeekendDays) {
+					status = "weekend"
+				}
+			}
+			if onLeaveSet[emp.ID] {
+				status = "on_leave"
+			}
+			att := &models.Attendance{
+				EmployeeID: emp.ID,
+				CompanyID:  emp.CompanyID,
+				Date:       date,
+				Status:     status,
+				ShiftID:    shiftID,
+			}
+			if err := h.attendanceRepo.Create(att); err == nil {
+				dayProcessed++
+			}
 		}
 
-		if len(processedIDs) > 0 {
-			_ = h.dataLogRepo.MarkProcessed(processedIDs)
-		}
 		totalProcessed += dayProcessed
 		results = append(results, map[string]interface{}{
 			"date":      date,

@@ -2,11 +2,17 @@
 
 import * as React from "react"
 import { UserXIcon, Loader2 } from "lucide-react"
-import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/ui/date-picker"
-import { attendanceApi } from "@/lib/api"
+import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
+
+interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
+interface Section { id: string; name: string }
+interface Designation { id: string; name: string }
+interface Line { id: string; name: string }
+interface Group { id: string; name: string }
 
 interface MissingRecord {
   badge_number: string
@@ -16,25 +22,107 @@ interface MissingRecord {
   designation?: string
 }
 
+const today = new Date().toISOString().split("T")[0]
+
 export default function MissingAttendancePage() {
   const [data, setData] = React.useState<MissingRecord[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [date, setDate] = React.useState<Date | undefined>(new Date())
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
+  const [filters, setFilters] = React.useState<Record<string, string>>({
+    date: today,
+  })
 
-  const fetchData = async () => {
-    if (!date) return
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    { key: "date", label: "Date", type: "datepicker" },
+    {
+      key: "company_id", label: "Company", type: "select",
+      options: companies.map((c) => ({ value: c.id, label: c.company_name_en })),
+    },
+    {
+      key: "department_id", label: "Department", type: "select",
+      options: departments.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "section_id", label: "Section", type: "select",
+      options: sections.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      key: "designation_id", label: "Designation", type: "select",
+      options: designations.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "line_id", label: "Line", type: "select",
+      options: lines.map((l) => ({ value: l.id, label: l.name })),
+    },
+    {
+      key: "group_id", label: "Group", type: "select",
+      options: groups.map((g) => ({ value: g.id, label: g.name })),
+    },
+  ], [companies, departments, sections, designations, lines, groups])
+
+  const fetchData = React.useCallback(async (params: Record<string, string>) => {
     setLoading(true)
     setError("")
     try {
-      const params: Record<string, string> = { date: format(date, "yyyy-MM-dd") }
-      const { data: res } = await attendanceApi.missing(params)
-      setData(res.missing || [])
+      const active: Record<string, string> = {}
+      if (params.date) active.date = params.date
+      if (params.company_id) active.company_id = params.company_id
+      if (params.department_id) active.department_id = params.department_id
+      if (params.section_id) active.section_id = params.section_id
+      if (params.designation_id) active.designation_id = params.designation_id
+      if (params.line_id) active.line_id = params.line_id
+      if (params.group_id) active.group_id = params.group_id
+      const { data: res } = await attendanceApi.missing(active)
+      setData(res?.missing || [])
     } catch {
       setError("Failed to load missing attendance data")
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  React.useEffect(() => {
+    const init = async () => {
+      const [cRes, dRes, secRes, desRes, lRes, gRes] = await Promise.all([
+        companyApi.list(),
+        departmentApi.list(),
+        sectionApi.list(),
+        designationApi.list(),
+        lineApi.list(),
+        groupApi.list(),
+      ])
+      if (Array.isArray(cRes.data)) setCompanies(cRes.data)
+      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
+      if (Array.isArray(secRes.data)) setSections(secRes.data)
+      if (Array.isArray(desRes.data)) setDesignations(desRes.data)
+      if (Array.isArray(lRes.data)) setLines(lRes.data)
+      if (Array.isArray(gRes.data)) setGroups(gRes.data)
+    }
+    init()
+    fetchData({ date: today })
+  }, [])
+
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleApply = () => {
+    const active: Record<string, string> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) active[key] = value
+    }
+    fetchData(active)
+  }
+
+  const handleReset = () => {
+    setFilters({ date: today })
+    fetchData({ date: today })
   }
 
   return (
@@ -50,19 +138,21 @@ export default function MissingAttendancePage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-end gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Date</label>
-              <DatePicker value={date} onChange={setDate} className="w-40" />
-            </div>
-            <Button onClick={fetchData} disabled={loading || !date}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Search
-            </Button>
-          </div>
-        </div>
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={loading}
+        />
       </div>
+
+      {error && (
+        <div className="px-4 lg:px-6">
+          <div className="rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">{error}</div>
+        </div>
+      )}
 
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card overflow-hidden">
@@ -93,7 +183,7 @@ export default function MissingAttendancePage() {
                 ) : data.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
-                      No missing attendance found. Click &quot;Search&quot; to check.
+                      No missing attendance found.
                     </td>
                   </tr>
                 ) : (

@@ -2,16 +2,43 @@
 
 import * as React from "react"
 import { useRouter, useParams } from "next/navigation"
-import { UserXIcon } from "lucide-react"
+import { UserXIcon, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { SeparationForm } from "@/components/form/separation-form"
-import { updateSeparation, getSeparation, SeparationFormData } from "@/components/data/separation-data"
+import { separationApi } from "@/lib/api"
+import type { SeparationFormData } from "@/components/data/separation-data"
 
 export default function EditSeparationPage() {
   const router = useRouter()
   const params = useParams()
-  const id = Number(params.id)
-  const handleSuccess = (data: SeparationFormData) => { updateSeparation(id, data); router.push("/hr/seperation") }
-  const separation = getSeparation(id)
+  const id = params.id as string
+  const [separation, setSeparation] = React.useState<SeparationFormData | null>(null)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    separationApi.get(id).then(({ data }) => {
+      setSeparation({
+        employee: data.employee,
+        employee_code: data.employee_code,
+        department_id: data.department_id,
+        type: data.type,
+        date: data.date,
+        status: data.status,
+        reason: data.reason || "",
+      })
+    }).catch(() => {
+      toast.error("Separation not found")
+      router.push("/hr/seperation")
+    }).finally(() => setLoading(false))
+  }, [id, router])
+
+  const handleSuccess = () => {
+    router.push("/hr/seperation")
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  }
 
   if (!separation) {
     return (
@@ -35,14 +62,11 @@ export default function EditSeparationPage() {
       </div>
       <div className="px-4 lg:px-6">
         <SeparationForm
-          initialData={{
-            employee: separation.employee, employeeCode: separation.employeeCode,
-            department: separation.department, type: separation.type,
-            date: separation.date, status: separation.status, reason: separation.reason,
-          }}
+          initialData={separation}
           onSuccess={handleSuccess}
           onCancel={() => router.push("/hr/seperation")}
-          isEditing separationId={id}
+          isEditing
+          separationId={id}
         />
       </div>
     </div>

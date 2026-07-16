@@ -46,3 +46,6 @@ desktop.ini
 # Temporary files
 *.tmp
 *.bak
+
+# Docker
+.docker/
