@@ -25,7 +25,7 @@ interface LeaveRecord {
   reason: string
   status: string
   rejection_reason?: string
-  employee?: { employee_code: string; name_en: string }
+  employee?: { employee_id: string; name_en: string }
   leave_type?: { name: string }
 }
 

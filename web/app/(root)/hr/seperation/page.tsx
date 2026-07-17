@@ -16,7 +16,7 @@ import type { FilterDef } from "@/components/filter-bar"
 
 const columns: ColumnDef<Separation>[] = [
   { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employee_code", header: "Code" },
+  { accessorKey: "employee_id", header: "Emp. ID" },
   {
     accessorKey: "department",
     header: "Department",
@@ -92,7 +92,7 @@ export default function SeperationPage() {
 
   const filterDefs: FilterDef[] = [
     { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
-    { key: "employee_code", label: "Code", type: "text", placeholder: "Filter by code..." },
+    { key: "employee_id", label: "Code", type: "text", placeholder: "Filter by code..." },
     { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
     { key: "type", label: "Type", type: "select", options: separationTypeOptions.map((o) => ({ value: o.value, label: o.label })) },
     { key: "status", label: "Status", type: "select", options: separationStatusOptions.map((o) => ({ value: o.value, label: o.label })) },

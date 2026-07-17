@@ -18,7 +18,7 @@ func NewIdCardHandler(repo *repository.IdCardRepository) *IdCardHandler {
 
 type CreateIdCardRequest struct {
 	Employee      string `json:"employee" binding:"required"`
-	EmployeeCode  string `json:"employee_code"`
+	EmployeeID    string `json:"employee_id"`
 	DesignationID string `json:"designation_id"`
 	DepartmentID  string `json:"department_id" binding:"required"`
 	CardNo        string `json:"card_no" binding:"required"`
@@ -29,7 +29,7 @@ type CreateIdCardRequest struct {
 
 type UpdateIdCardRequest struct {
 	Employee      string `json:"employee" binding:"required"`
-	EmployeeCode  string `json:"employee_code"`
+	EmployeeID    string `json:"employee_id"`
 	DesignationID string `json:"designation_id"`
 	DepartmentID  string `json:"department_id" binding:"required"`
 	CardNo        string `json:"card_no" binding:"required"`
@@ -40,14 +40,14 @@ type UpdateIdCardRequest struct {
 
 func (h *IdCardHandler) List(c *gin.Context) {
 	employee := c.Query("employee")
-	employeeCode := c.Query("employee_code")
+	employeeID := c.Query("employee_id")
 	departmentID := c.Query("department_id")
 	designationID := c.Query("designation_id")
 	status := c.Query("status")
 	cardNo := c.Query("card_no")
 
-	if employee != "" || employeeCode != "" || departmentID != "" || designationID != "" || status != "" || cardNo != "" {
-		items, err := h.repo.ListFiltered(employee, employeeCode, departmentID, designationID, status, cardNo)
+	if employee != "" || employeeID != "" || departmentID != "" || designationID != "" || status != "" || cardNo != "" {
+		items, err := h.repo.ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -88,7 +88,7 @@ func (h *IdCardHandler) Create(c *gin.Context) {
 
 	item := &models.IdCard{
 		Employee:      req.Employee,
-		EmployeeCode:  req.EmployeeCode,
+		EmployeeID:    req.EmployeeID,
 		DesignationID: req.DesignationID,
 		DepartmentID:  req.DepartmentID,
 		CardNo:        req.CardNo,
@@ -121,7 +121,7 @@ func (h *IdCardHandler) Update(c *gin.Context) {
 	}
 
 	item.Employee = req.Employee
-	item.EmployeeCode = req.EmployeeCode
+	item.EmployeeID = req.EmployeeID
 	item.DesignationID = req.DesignationID
 	item.DepartmentID = req.DepartmentID
 	item.CardNo = req.CardNo

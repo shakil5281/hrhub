@@ -7,8 +7,11 @@ export interface Company {
   company_name_en: string
   company_name_bn: string
   slug: string
-  address: string
+  address_bn: string
+  address_en: string
   phone: string
+  email: string
+  signature: string
   status: "active" | "inactive"
   created_at: string
   updated_at: string
@@ -17,8 +20,11 @@ export interface Company {
 export const companySchema = z.object({
   company_name_en: z.string().min(2, "Company Name (English) must be at least 2 characters"),
   company_name_bn: z.string().default(""),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  address_bn: z.string().default(""),
+  address_en: z.string().default(""),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  email: z.string().email("Invalid email address").or(z.string().length(0)).default(""),
+  signature: z.string().default(""),
   status: z.enum(["active", "inactive"]).default("active"),
 })
 

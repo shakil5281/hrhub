@@ -3,7 +3,7 @@ import type { Department, Designation } from "./organization-data";
 export interface IdCard {
     id: string;
     employee: string;
-    employee_code: string;
+    employee_id: string;
     designation_id: string;
     department_id: string;
     card_no: string;
@@ -17,7 +17,7 @@ export interface IdCard {
 }
 export declare const idCardSchema: z.ZodObject<{
     employee: z.ZodString;
-    employee_code: z.ZodString;
+    employee_id: z.ZodString;
     designation_id: z.ZodString;
     department_id: z.ZodString;
     card_no: z.ZodString;

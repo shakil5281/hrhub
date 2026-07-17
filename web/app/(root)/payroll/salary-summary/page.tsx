@@ -1,43 +1,145 @@
 "use client"
 
-import { FileBarChartIcon } from "lucide-react"
+import * as React from "react"
+import { FileBarChartIcon, Loader2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { salaryApi, companyApi } from "@/lib/api"
+import { toast } from "sonner"
 
-const salarySummaries = [
-  { id: 1, department: "Production", employees: 48, basic: 1050000, houseRent: 525000, medical: 105000, transport: 72000, total: 1752000, deductions: 175200, netTotal: 1576800 },
-  { id: 2, department: "Admin", employees: 14, basic: 420000, houseRent: 210000, medical: 42000, transport: 28000, total: 700000, deductions: 70000, netTotal: 630000 },
-  { id: 3, department: "Security", employees: 18, basic: 324000, houseRent: 162000, medical: 32400, transport: 18000, total: 536400, deductions: 53640, netTotal: 482760 },
-  { id: 4, department: "IT", employees: 8, basic: 280000, houseRent: 140000, medical: 28000, transport: 16000, total: 464000, deductions: 46400, netTotal: 417600 },
-  { id: 5, department: "QC", employees: 10, basic: 220000, houseRent: 110000, medical: 22000, transport: 15000, total: 367000, deductions: 36700, netTotal: 330300 },
-  { id: 6, department: "Cleaning", employees: 12, basic: 144000, houseRent: 72000, medical: 14400, transport: 12000, total: 242400, deductions: 24240, netTotal: 218160 },
-  { id: 7, department: "Logistics", employees: 14, basic: 252000, houseRent: 126000, medical: 25200, transport: 14000, total: 417200, deductions: 41720, netTotal: 375480 },
-  { id: 8, department: "Finance", employees: 10, basic: 280000, houseRent: 140000, medical: 28000, transport: 20000, total: 468000, deductions: 46800, netTotal: 421200 },
-]
+interface Company { id: string; company_name_en: string }
 
-type SalarySummary = (typeof salarySummaries)[number]
+interface DeptSummary extends Record<string, unknown> {
+  id: string
+  department: string
+  employees: number
+  house_rent: number
+  medical: number
+  transport: number
+  gross_salary: number
+  deductions: number
+  net_salary: number
+}
 
-const columns: ColumnDef<SalarySummary>[] = [
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+const currentYear = new Date().getFullYear()
+const currentMonth = new Date().getMonth()
+const YEARS = Array.from({length:10},(_,i)=>currentYear-5+i)
+
+const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const columns: ColumnDef<DeptSummary>[] = [
   { accessorKey: "department", header: "Department" },
   { accessorKey: "employees", header: "Employees" },
-  { accessorKey: "basic", header: "Basic Total" },
-  { accessorKey: "houseRent", header: "House Rent" },
-  { accessorKey: "total", header: "Gross Total" },
-  { accessorKey: "deductions", header: "Deductions" },
-  { accessorKey: "netTotal", header: "Net Total" },
+  { accessorKey: "gross_salary", header: "Basic Total", cell: ({row}) => fmt(row.original.gross_salary) },
+  { accessorKey: "house_rent", header: "House Rent", cell: ({row}) => fmt(row.original.house_rent) },
+  { accessorKey: "medical", header: "Medical", cell: ({row}) => fmt(row.original.medical) },
+  { accessorKey: "transport", header: "Transport", cell: ({row}) => fmt(row.original.transport) },
+  { accessorKey: "deductions", header: "Deductions", cell: ({row}) => fmt(row.original.deductions) },
+  { accessorKey: "net_salary", header: "Net Total", cell: ({row}) => fmt(row.original.net_salary) },
 ]
 
 export default function SalarySummaryPage() {
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [companyId, setCompanyId] = React.useState("")
+  const [month, setMonth] = React.useState(currentMonth)
+  const [year, setYear] = React.useState(currentYear)
+  const [data, setData] = React.useState<{
+    summaries: DeptSummary[]
+    total_employees: number
+    grand_totals: Record<string, number>
+  } | null>(null)
+  const [loading, setLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    companyApi.list().then(({data})=>{
+      if (Array.isArray(data) && data.length>0) {
+        setCompanies(data)
+        setCompanyId(data[0].id)
+      }
+    })
+  }, [])
+
+  const handleLoad = async () => {
+    if (!companyId) { toast.error("Select a company"); return }
+    setLoading(true)
+    try {
+      const { data: res } = await salaryApi.summary({ company_id: companyId, month: String(month+1), year: String(year) })
+      setData({...res, summaries: res.summaries.map((s: DeptSummary, i: number) => ({...s, id: `s-${i}`}))})
+    } catch { toast.error("Failed to load summary") }
+    finally { setLoading(false) }
+  }
+
+  React.useEffect(() => { if (companyId) handleLoad() }, [companyId, month, year])
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <FileBarChartIcon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-3xl font-bold tracking-tight">Salary Summary</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Salary Summary</h1>
+            <p className="text-muted-foreground mt-1">Salary summary by department</p>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-1">Salary summary by department</p>
       </div>
-      <DataTable data={salarySummaries} columns={columns} />
+
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Filters</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Company</label>
+                <select value={companyId} onChange={e=>setCompanyId(e.target.value)} className="flex h-10 w-60 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">Select</option>
+                  {companies.map(c=><option key={c.id} value={c.id}>{c.company_name_en}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Month</label>
+                <select value={month} onChange={e=>setMonth(Number(e.target.value))} className="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {MONTHS.map((n,i)=><option key={n} value={i}>{n}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Year</label>
+                <select value={year} onChange={e=>setYear(Number(e.target.value))} className="flex h-10 w-28 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <Button onClick={handleLoad} disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileBarChartIcon className="mr-2 h-4 w-4" />}
+                Load
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : data ? (
+        <div className="px-4 lg:px-6">
+          <h2 className="text-lg font-semibold mb-2">{MONTHS[month]} {year} - Salary Summary</h2>
+          <DataTable data={data.summaries} columns={columns} />
+          <div className="mt-4 rounded-md border bg-muted/30 p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
+              <div><span className="text-muted-foreground">Total Employees</span><p className="font-semibold">{data.total_employees}</p></div>
+              <div><span className="text-muted-foreground">Gross Total</span><p className="font-semibold">{fmt(data.grand_totals.gross_salary)}</p></div>
+              <div><span className="text-muted-foreground">House Rent</span><p className="font-semibold">{fmt(data.grand_totals.house_rent)}</p></div>
+              <div><span className="text-muted-foreground">Medical</span><p className="font-semibold">{fmt(data.grand_totals.medical)}</p></div>
+              <div><span className="text-muted-foreground">Transport</span><p className="font-semibold">{fmt(data.grand_totals.transport)}</p></div>
+              <div><span className="text-muted-foreground">Deductions</span><p className="font-semibold">{fmt(data.grand_totals.deductions)}</p></div>
+              <div><span className="text-muted-foreground">Net Total</span><p className="font-semibold">{fmt(data.grand_totals.net_salary)}</p></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="px-4 lg:px-6 text-center text-muted-foreground py-12">Select filters and click Load to view salary summary</div>
+      )}
     </div>
   )
 }

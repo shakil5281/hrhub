@@ -18,8 +18,11 @@ import {
 import { CommandIcon } from "lucide-react"
 import { NavGroup } from "./nav-group"
 import { navMain, navGroup, navSecondary, documents } from "../data"
+import { useSearchDialog } from "@/contexts/search-context"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { setOpen } = useSearchDialog()
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -31,7 +34,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="#">
                 <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">HR Hub</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -51,6 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             icon: React.createElement(item.icon),
           }))}
           className="mt-auto"
+          onSearchClick={() => setOpen(true)}
         />
       </SidebarContent>
     </Sidebar>

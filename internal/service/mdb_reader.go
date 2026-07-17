@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var datePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 type ZKPunchRecord struct {
 	UserID      int    `json:"user_id"`
@@ -41,10 +44,19 @@ func (r *MDBReader) ReadPunches(filePath string, startDate, endDate string) ([]Z
 
 	dateFilter := ""
 	if startDate != "" && endDate != "" {
+		if !datePattern.MatchString(startDate) || !datePattern.MatchString(endDate) {
+			return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD")
+		}
 		dateFilter = fmt.Sprintf(" WHERE CHECKTIME >= #%s 00:00:00# AND CHECKTIME <= #%s 23:59:59#", startDate, endDate)
 	} else if startDate != "" {
+		if !datePattern.MatchString(startDate) {
+			return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD")
+		}
 		dateFilter = fmt.Sprintf(" WHERE CHECKTIME >= #%s 00:00:00#", startDate)
 	} else if endDate != "" {
+		if !datePattern.MatchString(endDate) {
+			return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD")
+		}
 		dateFilter = fmt.Sprintf(" WHERE CHECKTIME <= #%s 23:59:59#", endDate)
 	}
 

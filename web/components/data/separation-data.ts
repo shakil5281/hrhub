@@ -6,7 +6,7 @@ import type { Department } from "./organization-data"
 export interface Separation {
   id: string
   employee: string
-  employee_code: string
+  employee_id: string
   department_id: string
   type: "Resignation" | "Termination" | "Retirement" | "Contract End" | "Other"
   date: string
@@ -19,7 +19,7 @@ export interface Separation {
 
 export const separationSchema = z.object({
   employee: z.string().min(2, "Employee name is required"),
-  employee_code: z.string().min(1, "Employee code is required"),
+  employee_id: z.string().min(1, "Employee code is required"),
   department_id: z.string().min(1, "Department is required"),
   type: z.enum(["Resignation", "Termination", "Retirement", "Contract End", "Other"]),
   date: z.string().min(1, "Date is required"),

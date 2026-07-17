@@ -12,7 +12,7 @@ import { format } from "date-fns"
 import { leaveApi, companyApi, employeeApi, leaveTypeApi } from "@/lib/api"
 
 interface Company { id: string; company_name_en: string }
-interface Employee { id: string; employee_code: string; name_en: string }
+interface Employee { id: string; employee_id: string; name_en: string }
 interface LeaveType { id: string; name: string; total_days: number }
 
 export default function LeaveEntryPage() {
@@ -103,7 +103,7 @@ export default function LeaveEntryPage() {
           >
             <option value="">Select employee</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>{e.employee_code} - {e.name_en}</option>
+              <option key={e.id} value={e.id}>{e.employee_id} - {e.name_en}</option>
             ))}
           </select>
         </div>

@@ -17,9 +17,9 @@ interface Group { id: string; name: string }
 interface MissingRecord {
   badge_number: string
   employee_name: string
-  employee_code?: string
+  employee_id?: string
   name_en?: string
-  designation?: string
+  designation_ref?: { name: string }
 }
 
 const today = new Date().toISOString().split("T")[0]
@@ -191,9 +191,9 @@ export default function MissingAttendancePage() {
                     <tr key={row.badge_number} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="px-3 py-2">{i + 1}</td>
                       <td className="px-3 py-2">{row.badge_number}</td>
-                      <td className="px-3 py-2">{row.employee_code || "-"}</td>
+                      <td className="px-3 py-2">{row.employee_id || "-"}</td>
                       <td className="px-3 py-2">{row.name_en || row.employee_name}</td>
-                      <td className="px-3 py-2">{row.designation || "-"}</td>
+                      <td className="px-3 py-2">{row.designation_ref?.name || "-"}</td>
                     </tr>
                   ))
                 )}

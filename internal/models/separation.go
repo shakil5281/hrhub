@@ -8,9 +8,9 @@ import (
 
 type Separation struct {
 	ID           string         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	EmployeeID   *string        `json:"employee_id" gorm:"type:uuid"`
+	EmployeeRefID *string       `json:"employee_ref_id" gorm:"type:uuid"`
 	Employee     string         `json:"employee" gorm:"type:varchar(255);not null"`
-	EmployeeCode string         `json:"employee_code" gorm:"type:varchar(50)"`
+	EmployeeID   string         `json:"employee_id" gorm:"type:varchar(50)"`
 	DepartmentID string         `json:"department_id" gorm:"type:uuid;not null"`
 	Type         string         `json:"type" gorm:"type:varchar(50);not null"`
 	Date         string         `json:"date" gorm:"type:varchar(10)"`

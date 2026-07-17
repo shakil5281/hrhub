@@ -33,7 +33,7 @@ export function IdCardForm({ initialData, onSuccess, onCancel, isEditing = false
   const { handleSubmit, formState: { errors }, setValue, watch, register } = useForm<IdCardFormData>({
     resolver: zodResolver(idCardSchema),
     defaultValues: {
-      employee: "", employee_code: "", designation_id: "", department_id: "",
+      employee: "", employee_id: "", designation_id: "", department_id: "",
       card_no: "", issued: "", expiry: "", status: "Active",
       ...initialData,
     },
@@ -93,9 +93,9 @@ export function IdCardForm({ initialData, onSuccess, onCancel, isEditing = false
               {errors.employee && <p className="text-sm text-destructive">{errors.employee.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employee_code">Employee Code *</Label>
-              <Input id="employee_code" {...register("employee_code")} aria-invalid={!!errors.employee_code} />
-              {errors.employee_code && <p className="text-sm text-destructive">{errors.employee_code.message}</p>}
+              <Label htmlFor="employee_id">Emp. ID *</Label>
+              <Input id="employee_id" {...register("employee_id")} aria-invalid={!!errors.employee_id} />
+              {errors.employee_id && <p className="text-sm text-destructive">{errors.employee_id.message}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

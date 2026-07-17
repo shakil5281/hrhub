@@ -26,7 +26,17 @@ import {
   CalendarRangeIcon,
   DatabaseIcon,
   RefreshCwIcon,
+  BarChart3Icon,
+  ShieldIcon,
+  UserCogIcon,
+  ShieldCheckIcon,
+  Settings2Icon,
 } from "lucide-react"
+
+export const monthlyReportNav = [
+  { title: "Monthly Leave Report", url: "/leave/monthly-leave-report", icon: ChartColumnIcon },
+  { title: "Monthly Attendance Report", url: "/attendance/monthly-attendance", icon: BarChart3Icon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 export const informationNav = [
   { title: "Company", url: "/information/company", icon: Building2Icon },
@@ -49,6 +59,7 @@ export const attendanceNav = [
   { title: "Daily Attendance", url: "/attendance/daily-attendance", icon: ClipboardCheckIcon },
   { title: "Daily Summary", url: "/attendance/daily-summary", icon: FileTextIcon },
   { title: "Job Card", url: "/attendance/job-card", icon: IdCardIcon },
+  { title: "Job Age", url: "/attendance/job-age", icon: ClockIcon },
   { title: "Over Time Sheet", url: "/attendance/over-time-sheet", icon: ClockIcon },
   { title: "Over Time Summary", url: "/attendance/over-time-summary", icon: ChartColumnIcon },
   { title: "Manual Attendance", url: "/attendance/manual-attendance", icon: ClipboardCheckIcon },
@@ -62,7 +73,6 @@ export const leaveNav = [
   { title: "Leave Type", url: "/leave/leave-type", icon: TagIcon },
   { title: "Leave", url: "/leave/leave", icon: CalendarCheckIcon },
   { title: "Leave Details", url: "/leave/leave-details", icon: FileTextIcon },
-  { title: "Monthly Leave Report", url: "/leave/monthly-leave-report", icon: ChartColumnIcon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 export const payrollNav = [
@@ -77,6 +87,13 @@ export const payrollNav = [
 export const collectDataNav = [
   { title: "Log Collect", url: "/collect-data/log-collect", icon: DatabaseIcon },
   { title: "Daily Process", url: "/collect-data/daily-process", icon: RefreshCwIcon },
+  { title: "Monthly Process", url: "/collect-data/monthly-process", icon: CalendarRangeIcon },
+] as const satisfies { title: string; url: string; icon: LucideIcon }[]
+
+export const administratorNav = [
+  { title: "User Management", url: "/admin/users", icon: UserCogIcon },
+  { title: "Roles & Permissions", url: "/admin/roles", icon: ShieldCheckIcon },
+  { title: "System Settings", url: "/admin/settings", icon: Settings2Icon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 export const navGroup = [
@@ -115,6 +132,18 @@ export const navGroup = [
     icon: DatabaseIcon,
     url: "#",
     items: collectDataNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Monthly Report",
+    icon: ChartColumnIcon,
+    url: "#",
+    items: monthlyReportNav.map(({ title, url }) => ({ title, url })),
+  },
+  {
+    title: "Administrator",
+    icon: ShieldIcon,
+    url: "#",
+    items: administratorNav.map(({ title, url }) => ({ title, url })),
   },
 ] as const satisfies {
   title: string

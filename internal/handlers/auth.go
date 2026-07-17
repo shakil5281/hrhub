@@ -173,13 +173,44 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	userID := c.GetString("user_id")
 
-	user, err := h.authService.GetUser(userID)
+	profile, err := h.authService.GetProfile(userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, profile)
+}
+
+// UpdateProfile godoc
+//
+// @Summary      Update user profile
+// @Description  Update current authenticated user's profile (name)
+// @Tags         Auth
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body service.UpdateProfileRequest true "Profile update"
+// @Success      200  {object}  service.ProfileResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Router       /auth/profile [put]
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req service.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	profile, err := h.authService.UpdateProfile(userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, profile)
 }
 
 // GetSessions godoc

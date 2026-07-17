@@ -8,10 +8,11 @@ import {
   Loader2, UserCircle, Languages, BriefcaseIcon, CalendarDays, UsersRound, Droplet, Heart, Globe, CreditCard,
   Phone, Mail, MapPin, AlertTriangle, PhoneCall, Users, Building2, Badge, Fingerprint,
   Award, CalendarClock, Clock, Layers, Star, Minus, Folder, LayoutGrid, UserCog, ToggleLeft,
-  Banknote, Home, Stethoscope, Car, UtensilsCrossed, PlusCircle, PiggyBank, Receipt,
-  Calculator, Landmark, Hash, Key, Camera, PenTool, MapPinned
+  Banknote, Home, Stethoscope, Car, UtensilsCrossed, PlusCircle,
+  Calculator, Smartphone, Hash, Camera, PenTool, MapPinned
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,9 +62,8 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       company_id: "",
-      employee_code: "",
+      employee_id: "",
       punch_number: "",
-      designation: "",
       joining_date: "",
       shift_id: null,
       status: "active",
@@ -71,15 +71,16 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       gender: "", blood_group: "", marital_status: "", nationality: "", nid: "",
       phone: "", email: "", present_address: "", permanent_address: "",
       spouse_name: "", emergency_contact: "", emergency_phone: "", number_of_dependents: 0,
-      section: "", grade: "", line: "", group_name: "",
+      grade: "",
       department_id: null, section_id: null, designation_id: null, line_id: null,
       group_id: null, floor_id: null,
       branch_id: null, reports_to: null,
       present_division_id: null, present_district_id: null, present_upazila_id: null, present_union_id: null,
       permanent_division_id: null, permanent_district_id: null, permanent_upazila_id: null, permanent_union_id: null,
-      basic_salary: 0, house_rent: 0, medical_allowance: 0, transport_allowance: 0,
-      food_allowance: 0, other_allowance: 0, provident_fund: 0, tax: 0, total_salary: 0,
-      bank_name: "", bank_account: "", bank_branch: "", routing_no: "", swift_code: "",
+      gross_salary: 0, basic_salary: 0, house_rent: 0,
+      transport_allowance: 450, food_allowance: 1250,
+      medical_allowance: 750, other_allowance: 0,
+      account_type: "", account_number: "",
       image_url: "", signature_url: "",
       ...initialData,
     },
@@ -93,6 +94,11 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
   const watchPermDiv = watch("permanent_division_id")
   const watchPermDist = watch("permanent_district_id")
   const watchPermUpa = watch("permanent_upazila_id")
+  const watchDesig = watch("designation_id")
+  const watchLine = watch("line_id")
+  const watchGroup = watch("group_id")
+  const watchFloor = watch("floor_id")
+  const watchGrossSalary = watch("gross_salary")
 
   // Fetch static lists
   React.useEffect(() => {
@@ -209,6 +215,28 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     } else { setPermUnions([]) }
   }, [watchPermUpa])
 
+  // Auto-calculate salary from gross
+  const prevGross = React.useRef(watchGrossSalary)
+  React.useEffect(() => {
+    const changed = watchGrossSalary !== prevGross.current
+    prevGross.current = watchGrossSalary
+    if (changed && watchGrossSalary && watchGrossSalary > 0) {
+      const gross = watchGrossSalary
+      const transport = 450
+      const food = 1250
+      const medical = 750
+      const others = 0
+      const basic = Math.round((gross - transport - food - medical - others) / 1.5)
+      const houseRent = gross - basic - transport - food - medical - others
+      setValue("transport_allowance", transport)
+      setValue("food_allowance", food)
+      setValue("medical_allowance", medical)
+      setValue("other_allowance", others)
+      setValue("basic_salary", basic)
+      setValue("house_rent", houseRent)
+    }
+  }, [watchGrossSalary])
+
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true)
     setError("")
@@ -241,12 +269,13 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       onSuccess()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to save employee"
+      let detail = message
       if (typeof err === "object" && err !== null && "response" in err) {
         const axiosErr = err as { response?: { data?: { error?: string } } }
-        setError(axiosErr.response?.data?.error || message)
-      } else {
-        setError(message)
+        detail = axiosErr.response?.data?.error || message
       }
+      setError(detail)
+      toast.error(detail)
     } finally {
       setIsSubmitting(false)
     }
@@ -456,9 +485,9 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
               {errors.company_id && <p className="text-sm text-destructive">{errors.company_id.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employee_code" className="flex items-center text-red-500 gap-1.5 px-2"><Badge className="h-3.5 w-3.5" /> Employee Code *</Label>
-              <Input size='md' id="employee_code" placeholder="EMP001" {...register("employee_code")} aria-invalid={!!errors.employee_code} />
-              {errors.employee_code && <p className="text-sm text-destructive">{errors.employee_code.message}</p>}
+              <Label htmlFor="employee_id" className="flex items-center text-red-500 gap-1.5 px-2"><Badge className="h-3.5 w-3.5" /> Emp. ID *</Label>
+              <Input size='md' id="employee_id" placeholder="EMP001" {...register("employee_id")} aria-invalid={!!errors.employee_id} />
+              {errors.employee_id && <p className="text-sm text-destructive">{errors.employee_id.message}</p>}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -470,7 +499,11 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="joining_date" className="flex items-center text-red-500 gap-1.5 px-2"><CalendarClock className="h-3.5 w-3.5" /> Joining Date *</Label>
-              <Input size='md' id="joining_date" type="date" {...register("joining_date")} aria-invalid={!!errors.joining_date} />
+              <DatePicker
+                value={watch("joining_date") ? new Date(watch("joining_date")!) : undefined}
+                onChange={(date) => setValue("joining_date", date ? format(date, "yyyy-MM-dd") : "")}
+                placeholder="Select joining date"
+              />
               {errors.joining_date && <p className="text-sm text-destructive">{errors.joining_date.message}</p>}
             </div>
             <div className="space-y-2">
@@ -553,77 +586,63 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       <Card>
         <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Salary & Benefits</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="basic_salary" className="flex items-center text-neutral-600 gap-1.5 px-2"><Banknote className="h-3.5 w-3.5" /> Basic Salary</Label>
-              <Input size='md' id="basic_salary" type="number" min="0" {...register("basic_salary", { valueAsNumber: true })} />
+              <Label htmlFor="gross_salary" className="flex items-center text-red-500 gap-1.5 px-2"><Calculator className="h-3.5 w-3.5" /> Gross Salary *</Label>
+              <Input size='md' id="gross_salary" type="number" min="0" {...register("gross_salary", { valueAsNumber: true })} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="basic_salary" className="flex items-center text-neutral-600 gap-1.5 px-2"><Banknote className="h-3.5 w-3.5" /> Basic Salary</Label>
+              <Input size='md' id="basic_salary" type="number" {...register("basic_salary", { valueAsNumber: true })} readOnly className="bg-muted" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <Label htmlFor="house_rent" className="flex items-center text-neutral-600 gap-1.5 px-2"><Home className="h-3.5 w-3.5" /> House Rent</Label>
-              <Input size='md' id="house_rent" type="number" min="0" {...register("house_rent", { valueAsNumber: true })} />
+              <Input size='md' id="house_rent" type="number" {...register("house_rent", { valueAsNumber: true })} readOnly className="bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transport_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><Car className="h-3.5 w-3.5" /> Transport Allowance</Label>
+              <Input size='md' id="transport_allowance" type="number" {...register("transport_allowance", { valueAsNumber: true })} readOnly className="bg-muted" />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="food_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><UtensilsCrossed className="h-3.5 w-3.5" /> Food Allowance</Label>
+              <Input size='md' id="food_allowance" type="number" {...register("food_allowance", { valueAsNumber: true })} readOnly className="bg-muted" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="medical_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><Stethoscope className="h-3.5 w-3.5" /> Medical Allowance</Label>
-              <Input size='md' id="medical_allowance" type="number" min="0" {...register("medical_allowance", { valueAsNumber: true })} />
+              <Input size='md' id="medical_allowance" type="number" {...register("medical_allowance", { valueAsNumber: true })} readOnly className="bg-muted" />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="transport_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><Car className="h-3.5 w-3.5" /> Transport Allowance</Label>
-              <Input size='md' id="transport_allowance" type="number" min="0" {...register("transport_allowance", { valueAsNumber: true })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="food_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><UtensilsCrossed className="h-3.5 w-3.5" /> Food Allowance</Label>
-              <Input size='md' id="food_allowance" type="number" min="0" {...register("food_allowance", { valueAsNumber: true })} />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="other_allowance" className="flex items-center text-neutral-600 gap-1.5 px-2"><PlusCircle className="h-3.5 w-3.5" /> Other Allowance</Label>
               <Input size='md' id="other_allowance" type="number" min="0" {...register("other_allowance", { valueAsNumber: true })} />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="provident_fund" className="flex items-center text-neutral-600 gap-1.5 px-2"><PiggyBank className="h-3.5 w-3.5" /> Provident Fund</Label>
-              <Input size='md' id="provident_fund" type="number" min="0" {...register("provident_fund", { valueAsNumber: true })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tax" className="flex items-center text-neutral-600 gap-1.5 px-2"><Receipt className="h-3.5 w-3.5" /> Tax</Label>
-              <Input size='md' id="tax" type="number" min="0" {...register("tax", { valueAsNumber: true })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="total_salary" className="flex items-center text-neutral-600 gap-1.5 px-2"><Calculator className="h-3.5 w-3.5" /> Total Salary</Label>
-              <Input size='md' id="total_salary" type="number" min="0" {...register("total_salary", { valueAsNumber: true })} />
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Bank Information */}
+      {/* Account Information */}
       <Card>
-        <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Bank Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center text-neutral-600 gap-2 text-lg">Account Information</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="bank_name" className="flex items-center text-neutral-600 gap-1.5 px-2"><Landmark className="h-3.5 w-3.5" /> Bank Name</Label>
-              <Input size='md' id="bank_name" placeholder="Bank name" {...register("bank_name")} />
+              <Label htmlFor="account_type" className="flex items-center text-neutral-600 gap-1.5 px-2"><Smartphone className="h-3.5 w-3.5" /> Account Type</Label>
+              <select id="account_type" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("account_type")}>
+                <option value="">Select type</option>
+                <option value="mCash">mCash</option>
+                <option value="Card">Card</option>
+              </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bank_account" className="flex items-center text-neutral-600 gap-1.5 px-2"><Hash className="h-3.5 w-3.5" /> Account Number</Label>
-              <Input size='md' id="bank_account" placeholder="Account number" {...register("bank_account")} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="bank_branch" className="flex items-center text-neutral-600 gap-1.5 px-2"><MapPin className="h-3.5 w-3.5" /> Branch</Label>
-              <Input size='md' id="bank_branch" placeholder="Branch name" {...register("bank_branch")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="routing_no" className="flex items-center text-neutral-600 gap-1.5 px-2"><Hash className="h-3.5 w-3.5" /> Routing Number</Label>
-              <Input size='md' id="routing_no" placeholder="Routing number" {...register("routing_no")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="swift_code" className="flex items-center text-neutral-600 gap-1.5 px-2"><Key className="h-3.5 w-3.5" /> SWIFT Code</Label>
-              <Input size='md' id="swift_code" placeholder="SWIFT code" {...register("swift_code")} />
+              <Label htmlFor="account_number" className="flex items-center text-neutral-600 gap-1.5 px-2"><Hash className="h-3.5 w-3.5" /> Account Number</Label>
+              <Input size='md' id="account_number" placeholder="Account number" maxLength={17} {...register("account_number")} />
+              {watch("account_type") === "mCash" && <p className="text-xs text-muted-foreground">Must be 12 digits for mCash</p>}
+              {watch("account_type") === "Card" && <p className="text-xs text-muted-foreground">Must be 17 digits for Card</p>}
             </div>
           </div>
         </CardContent>

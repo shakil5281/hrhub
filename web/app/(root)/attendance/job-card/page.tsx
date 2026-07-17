@@ -18,9 +18,9 @@ interface JobCardRecord {
   status: string
   late_minutes: number
   employee?: {
-    employee_code: string
+    employee_id: string
     name_en: string
-    designation: string
+    designation_ref?: { name: string }
     phone: string
     joining_date: string
     company?: { company_name_en: string }
@@ -219,11 +219,11 @@ export default function JobCardPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Code: </span>
-                  <span className="font-medium">{emp.employee_code}</span>
+                  <span className="font-medium">{emp.employee_id}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Designation: </span>
-                  <span className="font-medium">{emp.designation}</span>
+                  <span className="font-medium">{emp.designation_ref?.name || "-"}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Company: </span>

@@ -27,6 +27,7 @@ import {
   UserIcon,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useSearchDialog } from "@/contexts/search-context"
 
 interface UserData {
   id: string
@@ -62,6 +63,8 @@ export function SiteHeader() {
     }
   }
 
+  const { setOpen } = useSearchDialog()
+
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U"
@@ -76,20 +79,22 @@ export function SiteHeader() {
         <div className="relative hidden sm:flex flex-1 max-w-sm">
           <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search..."
-            className="pl-9 h-9 text-sm"
+            placeholder="Search... (Ctrl+K)"
+            className="pl-9 h-9 text-sm cursor-pointer"
+            onFocus={() => setOpen(true)}
+            readOnly
           />
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
-          <Button variant="ghost" size="icon" className="relative h-9 w-9">
+          <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => router.push("/notifications")}>
             <BellIcon className="h-4 w-4" />
             <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center">
               3
             </Badge>
           </Button>
 
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.push("/settings")}>
             <SettingsIcon className="h-4 w-4" />
           </Button>
 

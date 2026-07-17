@@ -28,6 +28,9 @@ func Setup(
 	separationHandler *handlers.SeparationHandler,
 	idCardHandler *handlers.IdCardHandler,
 	leaveHandler *handlers.LeaveHandler,
+	salaryHandler *handlers.SalaryHandler,
+	employeeImportHandler *handlers.EmployeeImportHandler,
+	tempShiftHandler *handlers.TemporaryShiftHandler,
 	jwtSecret string,
 ) {
 	r.GET("/health", handlers.HealthCheck)
@@ -50,6 +53,7 @@ func Setup(
 		protectedAuth.POST("/logout-all", authHandler.LogoutAll)
 		protectedAuth.PUT("/change-password", authHandler.ChangePassword)
 		protectedAuth.GET("/me", authHandler.GetProfile)
+		protectedAuth.PUT("/profile", authHandler.UpdateProfile)
 		protectedAuth.GET("/sessions", authHandler.GetSessions)
 	}
 
@@ -73,6 +77,10 @@ func Setup(
 		employee.POST("", employeeHandler.CreateEmployee)
 		employee.PUT("/:id", employeeHandler.UpdateEmployee)
 		employee.DELETE("/:id", employeeHandler.DeleteEmployee)
+		employee.GET("/import/template", employeeImportHandler.DownloadTemplate)
+		employee.POST("/import", employeeImportHandler.ImportExcel)
+		employee.GET("/export/excel", employeeHandler.ExportExcel)
+		employee.GET("/export/pdf", employeeHandler.ExportPDF)
 	}
 
 	// Protected group routes
@@ -190,11 +198,23 @@ func Setup(
 		shift.DELETE("/:id", shiftHandler.Delete)
 	}
 
+	// Protected temporary-shift routes
+	tempShift := api.Group("/temporary-shifts")
+	tempShift.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		tempShift.GET("", tempShiftHandler.List)
+		tempShift.GET("/:id", tempShiftHandler.GetByID)
+		tempShift.POST("", tempShiftHandler.Create)
+		tempShift.PUT("/:id", tempShiftHandler.Update)
+		tempShift.DELETE("/:id", tempShiftHandler.Delete)
+	}
+
 	// Protected attendance routes
 	attendance := api.Group("/attendance")
 	attendance.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		attendance.GET("", attendanceHandler.List)
+		attendance.GET("/monthly-report", attendanceHandler.MonthlyReport)
 		attendance.GET("/:id", attendanceHandler.GetByID)
 		attendance.GET("/summary", attendanceHandler.Summary)
 		attendance.GET("/overtime", attendanceHandler.Overtime)
@@ -291,6 +311,17 @@ func Setup(
 	leaveReport.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		leaveReport.GET("/monthly", leaveHandler.MonthlyLeaveReport)
+	}
+
+	// Protected salary routes
+	salary := api.Group("/salary")
+	salary.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		salary.POST("/process", salaryHandler.Process)
+		salary.GET("/sheet", salaryHandler.Sheet)
+		salary.GET("/payslip", salaryHandler.Payslip)
+		salary.GET("/list", salaryHandler.List)
+		salary.GET("/summary", salaryHandler.Summary)
 	}
 
 	// Protected upload routes

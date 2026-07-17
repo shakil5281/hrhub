@@ -29,13 +29,13 @@ func (r *SeparationRepository) List() ([]models.Separation, error) {
 	return seps, err
 }
 
-func (r *SeparationRepository) ListFiltered(employee, employeeCode, departmentID, sepType, status string) ([]models.Separation, error) {
+func (r *SeparationRepository) ListFiltered(employee, employeeID, departmentID, sepType, status string) ([]models.Separation, error) {
 	query := r.db.Preload("Department").Where("deleted_at IS NULL").Order("created_at DESC")
 	if employee != "" {
 		query = query.Where("employee ILIKE ?", "%"+employee+"%")
 	}
-	if employeeCode != "" {
-		query = query.Where("employee_code ILIKE ?", "%"+employeeCode+"%")
+	if employeeID != "" {
+		query = query.Where("employee_id ILIKE ?", "%"+employeeID+"%")
 	}
 	if departmentID != "" {
 		query = query.Where("department_id = ?", departmentID)

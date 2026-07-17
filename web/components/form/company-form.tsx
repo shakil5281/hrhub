@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Building2, MapPin, Phone } from "lucide-react"
+import { Loader2, Building2, MapPin, Phone, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { companySchema, CompanyFormData, statusOptions } from "../data/company-data"
 import { companyApi } from "@/lib/api"
+import { ImageUpload } from "@/components/image-upload"
 
 interface CompanyFormProps {
   initialData?: Partial<CompanyFormData>
@@ -24,16 +25,21 @@ export function CompanyForm({ initialData, onSuccess, onCancel, isEditing = fals
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(companySchema),
     defaultValues: {
       company_name_en: initialData?.company_name_en || "",
       company_name_bn: initialData?.company_name_bn || "",
-      address: initialData?.address || "",
+      address_bn: initialData?.address_bn || "",
+      address_en: initialData?.address_en || "",
       phone: initialData?.phone || "",
+      email: initialData?.email || "",
+      signature: initialData?.signature || "",
       status: (initialData?.status as "active" | "inactive") || "active",
     },
   })
+
+  const signatureValue = watch("signature")
 
   const onSubmit = async (data: Record<string, unknown>) => {
     setIsSubmitting(true)
@@ -92,7 +98,7 @@ export function CompanyForm({ initialData, onSuccess, onCancel, isEditing = fals
               <Label htmlFor="company_name_bn">Company Name (Bengali)</Label>
               <Input
                 id="company_name_bn"
-                placeholder="Company Name (Bengali)"
+                placeholder="‡Kv¤úvbxi bvg"
                 className="bangla-input"
                 {...register("company_name_bn")}
               />
@@ -109,16 +115,25 @@ export function CompanyForm({ initialData, onSuccess, onCancel, isEditing = fals
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="address">Address *</Label>
-            <textarea
-              id="address"
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="123 Business Avenue, Suite 400, San Francisco, CA 94105"
-              {...register("address")}
-              aria-invalid={!!errors.address}
-            />
-            {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="address_en">Address (English)</Label>
+              <textarea
+                id="address_en"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Address in English"
+                {...register("address_en")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address_bn">Address (Bengali)</Label>
+              <textarea
+                id="address_bn"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 bangla-input"
+                placeholder="wVKvbv"
+                {...register("address_bn")}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -146,6 +161,40 @@ export function CompanyForm({ initialData, onSuccess, onCancel, isEditing = fals
               </div>
               {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="company@example.com"
+                  className="pl-10"
+                  {...register("email")}
+                  aria-invalid={!!errors.email}
+                />
+              </div>
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Signature
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label>Company Signature</Label>
+            <ImageUpload
+              value={signatureValue}
+              onChange={(url) => setValue("signature", url)}
+              label="Upload Signature"
+            />
           </div>
         </CardContent>
       </Card>

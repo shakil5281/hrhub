@@ -139,7 +139,7 @@ func (r *AttendanceRepository) Summary(startDate, endDate, companyID, department
 
 func (r *AttendanceRepository) Overtime(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter string) ([]map[string]interface{}, error) {
 	query := r.db.Table("attendances").
-		Select("attendances.id, attendances.employee_id, attendances.date, attendances.check_in, attendances.check_out, attendances.total_hours, employees.name_en as employee_name, employees.employee_code").
+		Select("attendances.id, attendances.employee_id, attendances.date, attendances.check_in, attendances.check_out, attendances.total_hours, employees.name_en as employee_name, employees.employee_id as emp_id").
 		Joins("JOIN employees ON employees.id = attendances.employee_id").
 		Where("attendances.date BETWEEN ? AND ? AND attendances.deleted_at IS NULL AND attendances.check_in IS NOT NULL AND attendances.check_out IS NOT NULL", startDate, endDate)
 	if companyID != "" {
@@ -264,6 +264,50 @@ func (r *AttendanceRepository) ListJobCard(startDate, endDate, companyID, employ
 	return attendances, err
 }
 
+func (r *AttendanceRepository) MonthlyReport(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID string) ([]map[string]interface{}, error) {
+	query := r.db.Table("attendances").
+		Select(`
+			attendances.employee_id,
+			employees.employee_id as emp_id,
+			employees.name_en as employee_name,
+			employees.designation,
+			COALESCE(departments.name, '') as department_name,
+			COALESCE(SUM(CASE WHEN attendances.status = 'present' THEN 1 ELSE 0 END), 0) as present,
+			COALESCE(SUM(CASE WHEN attendances.status = 'absent' THEN 1 ELSE 0 END), 0) as absent,
+			COALESCE(SUM(CASE WHEN attendances.status = 'late' THEN 1 ELSE 0 END), 0) as late,
+			COALESCE(SUM(CASE WHEN attendances.status = 'on_leave' THEN 1 ELSE 0 END), 0) as leave,
+			COALESCE(SUM(CASE WHEN attendances.status = 'weekend' THEN 1 ELSE 0 END), 0) as weekend,
+			COALESCE(SUM(CASE WHEN attendances.status = 'half_day' THEN 1 ELSE 0 END), 0) as half_day,
+			COUNT(*) as total_days
+		`).
+		Joins("JOIN employees ON employees.id = attendances.employee_id").
+		Joins("LEFT JOIN departments ON departments.id = employees.department_id").
+		Where("attendances.date BETWEEN ? AND ? AND attendances.deleted_at IS NULL", startDate, endDate)
+	if companyID != "" {
+		query = query.Where("attendances.company_id = ?", companyID)
+	}
+	if departmentID != "" {
+		query = query.Where("employees.department_id = ?", departmentID)
+	}
+	if sectionID != "" {
+		query = query.Where("employees.section_id = ?", sectionID)
+	}
+	if designationID != "" {
+		query = query.Where("employees.designation_id = ?", designationID)
+	}
+	if lineID != "" {
+		query = query.Where("employees.line_id = ?", lineID)
+	}
+	if groupID != "" {
+		query = query.Where("employees.group_id = ?", groupID)
+	}
+	var results []map[string]interface{}
+	err := query.Group("attendances.employee_id, employees.employee_id, employees.name_en, employees.designation, departments.name").
+		Order("employees.name_en ASC").
+		Find(&results).Error
+	return results, err
+}
+
 func (r *AttendanceRepository) ListByStatus(startDate, endDate, status, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, employeeID string) ([]models.Attendance, error) {
 	var attendances []models.Attendance
 	query := r.db.Preload("Employee").Where("date BETWEEN ? AND ? AND status = ? AND deleted_at IS NULL", startDate, endDate, status)
@@ -293,4 +337,24 @@ func (r *AttendanceRepository) ListByStatus(startDate, endDate, status, companyI
 	}
 	err := query.Order("date ASC, created_at ASC").Find(&attendances).Error
 	return attendances, err
+}
+
+func (r *AttendanceRepository) GetMonthlyOvertimeHours(companyID, startDate, endDate string) (map[string]float64, error) {
+	var records []struct {
+		EmployeeID string  `gorm:"column:employee_id"`
+		OtHours    float64 `gorm:"column:overtime_hours"`
+	}
+	err := r.db.Model(&models.Attendance{}).
+		Select(`employee_id, COALESCE(SUM(GREATEST(0, EXTRACT(EPOCH FROM total_hours::interval)/3600 - 8)), 0) as overtime_hours`).
+		Where("company_id = ? AND date BETWEEN ? AND ? AND deleted_at IS NULL AND check_in IS NOT NULL AND check_out IS NOT NULL", companyID, startDate, endDate).
+		Group("employee_id").
+		Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]float64)
+	for _, r := range records {
+		result[r.EmployeeID] = r.OtHours
+	}
+	return result, nil
 }

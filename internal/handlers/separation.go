@@ -18,7 +18,7 @@ func NewSeparationHandler(repo *repository.SeparationRepository) *SeparationHand
 
 type CreateSeparationRequest struct {
 	Employee     string `json:"employee" binding:"required"`
-	EmployeeCode string `json:"employee_code"`
+	EmployeeID   string `json:"employee_id"`
 	DepartmentID string `json:"department_id" binding:"required"`
 	Type         string `json:"type" binding:"required"`
 	Date         string `json:"date"`
@@ -28,7 +28,7 @@ type CreateSeparationRequest struct {
 
 type UpdateSeparationRequest struct {
 	Employee     string `json:"employee" binding:"required"`
-	EmployeeCode string `json:"employee_code"`
+	EmployeeID   string `json:"employee_id"`
 	DepartmentID string `json:"department_id" binding:"required"`
 	Type         string `json:"type" binding:"required"`
 	Date         string `json:"date"`
@@ -38,13 +38,13 @@ type UpdateSeparationRequest struct {
 
 func (h *SeparationHandler) List(c *gin.Context) {
 	employee := c.Query("employee")
-	employeeCode := c.Query("employee_code")
+	employeeID := c.Query("employee_id")
 	departmentID := c.Query("department_id")
 	sepType := c.Query("type")
 	status := c.Query("status")
 
-	if employee != "" || employeeCode != "" || departmentID != "" || sepType != "" || status != "" {
-		items, err := h.repo.ListFiltered(employee, employeeCode, departmentID, sepType, status)
+	if employee != "" || employeeID != "" || departmentID != "" || sepType != "" || status != "" {
+		items, err := h.repo.ListFiltered(employee, employeeID, departmentID, sepType, status)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -85,7 +85,7 @@ func (h *SeparationHandler) Create(c *gin.Context) {
 
 	item := &models.Separation{
 		Employee:     req.Employee,
-		EmployeeCode: req.EmployeeCode,
+		EmployeeID:   req.EmployeeID,
 		DepartmentID: req.DepartmentID,
 		Type:         req.Type,
 		Date:         req.Date,
@@ -117,7 +117,7 @@ func (h *SeparationHandler) Update(c *gin.Context) {
 	}
 
 	item.Employee = req.Employee
-	item.EmployeeCode = req.EmployeeCode
+	item.EmployeeID = req.EmployeeID
 	item.DepartmentID = req.DepartmentID
 	item.Type = req.Type
 	item.Date = req.Date

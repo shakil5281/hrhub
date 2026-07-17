@@ -3,7 +3,7 @@ import type { Department } from "./organization-data";
 export interface Separation {
     id: string;
     employee: string;
-    employee_code: string;
+    employee_id: string;
     department_id: string;
     type: "Resignation" | "Termination" | "Retirement" | "Contract End" | "Other";
     date: string;
@@ -15,7 +15,7 @@ export interface Separation {
 }
 export declare const separationSchema: z.ZodObject<{
     employee: z.ZodString;
-    employee_code: z.ZodString;
+    employee_id: z.ZodString;
     department_id: z.ZodString;
     type: z.ZodEnum<{
         Other: "Other";

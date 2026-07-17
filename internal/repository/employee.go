@@ -45,21 +45,21 @@ func (r *EmployeeRepository) ListFiltered(f EmployeeFilter) ([]models.Employee, 
 		query = query.Where("group_id = ?", f.GroupID)
 	}
 	if f.EmployeeID != "" {
-		query = query.Where("id = ? OR employee_code = ?", f.EmployeeID, f.EmployeeID)
+		query = query.Where("id = ? OR employee_id = ?", f.EmployeeID, f.EmployeeID)
 	}
 	err := query.Find(&employees).Error
 	return employees, err
 }
 
-func (r *EmployeeRepository) FindByEmployeeCode(code string) (*models.Employee, error) {
+func (r *EmployeeRepository) FindByEmployeeID(code string) (*models.Employee, error) {
 	var emp models.Employee
-	err := r.db.Where("employee_code = ?", code).First(&emp).Error
+	err := r.db.Where("employee_id = ?", code).First(&emp).Error
 	return &emp, err
 }
 
-func (r *EmployeeRepository) FindByEmployeeCodes(codes []string) ([]models.Employee, error) {
+func (r *EmployeeRepository) FindByEmployeeIDs(codes []string) ([]models.Employee, error) {
 	var employees []models.Employee
-	err := r.db.Where("employee_code IN ?", codes).Find(&employees).Error
+	err := r.db.Where("employee_id IN ?", codes).Find(&employees).Error
 	return employees, err
 }
 
@@ -99,4 +99,55 @@ func (r *EmployeeRepository) ListActive(companyID string) ([]models.Employee, er
 	}
 	err := query.Find(&employees).Error
 	return employees, err
+}
+
+func (r *EmployeeRepository) BatchCreate(employees []models.Employee) error {
+	if len(employees) == 0 {
+		return nil
+	}
+	return r.db.CreateInBatches(employees, 100).Error
+}
+
+func (r *EmployeeRepository) BulkUpdateByID(updates []models.Employee) error {
+	if len(updates) == 0 {
+		return nil
+	}
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, emp := range updates {
+			if err := tx.Model(&models.Employee{}).
+				Where("employee_id = ? AND company_id = ?", emp.EmployeeID, emp.CompanyID).
+				Updates(map[string]interface{}{
+					"name_en": emp.NameEn, "name_bn": emp.NameBn,
+					"father_name": emp.FatherName, "mother_name": emp.MotherName,
+					"date_of_birth": emp.DateOfBirth, "gender": emp.Gender,
+					"blood_group": emp.BloodGroup, "marital_status": emp.MaritalStatus,
+					"nationality": emp.Nationality, "nid": emp.NID,
+					"phone": emp.Phone, "email": emp.Email,
+					"present_address": emp.PresentAddress, "permanent_address": emp.PermanentAddress,
+					"spouse_name": emp.SpouseName, "emergency_contact": emp.EmergencyContact,
+					"emergency_phone": emp.EmergencyPhone, "number_of_dependents": emp.NumberOfDependents,
+					"punch_number": emp.PunchNumber, "grade": emp.Grade,
+					"joining_date": emp.JoiningDate, "status": emp.Status,
+					"gross_salary": emp.GrossSalary, "transport_allowance": emp.TransportAllowance,
+					"food_allowance": emp.FoodAllowance, "other_allowance": emp.OtherAllowance,
+					"account_type": emp.AccountType,
+					"account_number": emp.AccountNumber,
+				}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *EmployeeRepository) MapByID(companyID string) (map[string]models.Employee, error) {
+	var employees []models.Employee
+	if err := r.db.Where("company_id = ?", companyID).Find(&employees).Error; err != nil {
+		return nil, err
+	}
+	m := make(map[string]models.Employee, len(employees))
+	for _, e := range employees {
+		m[e.EmployeeID] = e
+	}
+	return m, nil
 }

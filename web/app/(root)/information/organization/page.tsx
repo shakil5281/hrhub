@@ -55,21 +55,25 @@ const bnCell = ({ getValue }: { getValue: () => unknown }) => (
 )
 
 const deptColumns: ColumnDef<Department>[] = [
+  { id: "sl", header: "SL", cell: ({ row }) => row.index + 1 },
   { accessorKey: "name", header: "Name (EN)" },
   { accessorKey: "name_bn", header: "Name (BN)", cell: bnCell },
 ]
 
 const sectionColumns: ColumnDef<Section>[] = [
+  { id: "sl", header: "SL", cell: ({ row }) => row.index + 1 },
   { accessorKey: "name", header: "Name (EN)" },
   { accessorKey: "name_bn", header: "Name (BN)", cell: bnCell },
 ]
 
 const designationColumns: ColumnDef<Designation>[] = [
+  { id: "sl", header: "SL", cell: ({ row }) => row.index + 1 },
   { accessorKey: "name", header: "Name (EN)" },
   { accessorKey: "name_bn", header: "Name (BN)", cell: bnCell },
 ]
 
 const lineColumns: ColumnDef<Line>[] = [
+  { id: "sl", header: "SL", cell: ({ row }) => row.index + 1 },
   { accessorKey: "name", header: "Name (EN)" },
   { accessorKey: "name_bn", header: "Name (BN)", cell: bnCell },
 ]
@@ -218,6 +222,7 @@ export default function OrganizationPage() {
               <DataTable
                 data={departments}
                 columns={deptColumns}
+                enableDnd
                 onEdit={(row) => openForm("department", row)}
                 onDelete={(row) => handleDelete("department", row)}
               />
@@ -242,6 +247,7 @@ export default function OrganizationPage() {
               <DataTable
                 data={selectedDept ? sections : []}
                 columns={sectionColumns}
+                enableDnd
                 onEdit={(row) => openForm("section", row)}
                 onDelete={(row) => handleDelete("section", row)}
               />
@@ -266,6 +272,7 @@ export default function OrganizationPage() {
               <DataTable
                 data={selectedSection ? designations : []}
                 columns={designationColumns}
+                enableDnd
                 onEdit={(row) => openForm("designation", row)}
                 onDelete={(row) => handleDelete("designation", row)}
               />
@@ -290,6 +297,7 @@ export default function OrganizationPage() {
               <DataTable
                 data={selectedSection ? lines : []}
                 columns={lineColumns}
+                enableDnd
                 onEdit={(row) => openForm("line", row)}
                 onDelete={(row) => handleDelete("line", row)}
               />

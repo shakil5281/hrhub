@@ -26,13 +26,9 @@ export interface Employee {
   number_of_dependents: number
   // Office
   company_id: string
-  employee_code: string
+  employee_id: string
   punch_number: string
-  designation: string
-  section: string
   grade: string
-  line: string
-  group_name: string
   joining_date: string
   shift_id: string | null
   department_id: string | null
@@ -43,6 +39,15 @@ export interface Employee {
   line_id: string | null
   group_id: string | null
   floor_id: string | null
+  // Relations (returned by API via Preload)
+  department?: { id: string; name: string }
+  section_ref?: { id: string; name: string }
+  designation_ref?: { id: string; name: string }
+  line_ref?: { id: string; name: string }
+  group_ref?: { id: string; name: string }
+  floor_ref?: { id: string; name: string }
+  branch?: { id: string; name: string }
+  shift?: { id: string; name: string }
   // Address (present)
   present_division_id: string | null
   present_district_id: string | null
@@ -54,21 +59,16 @@ export interface Employee {
   permanent_upazila_id: string | null
   permanent_union_id: string | null
   // Salary
+  gross_salary: number
   basic_salary: number
   house_rent: number
-  medical_allowance: number
   transport_allowance: number
   food_allowance: number
+  medical_allowance: number
   other_allowance: number
-  provident_fund: number
-  tax: number
-  total_salary: number
-  // Bank
-  bank_name: string
-  bank_account: string
-  bank_branch: string
-  routing_no: string
-  swift_code: string
+  // Account
+  account_type: string
+  account_number: string
   // Status & Files
   status: "active" | "inactive"
   signature_url: string
@@ -98,13 +98,9 @@ export const employeeSchema = z.object({
   number_of_dependents: z.number().optional(),
   // Office
   company_id: z.string().min(1, "Company is required"),
-  employee_code: z.string().min(1, "Employee code is required"),
+  employee_id: z.string().min(1, "Employee ID is required"),
   punch_number: z.string().optional(),
-  designation: z.string().optional(),
-  section: z.string().optional(),
   grade: z.string().optional(),
-  line: z.string().optional(),
-  group_name: z.string().optional(),
   joining_date: z.string().min(1, "Joining date is required"),
   shift_id: z.string().optional().nullable(),
   department_id: z.string().optional().nullable(),
@@ -126,21 +122,16 @@ export const employeeSchema = z.object({
   permanent_upazila_id: z.string().optional().nullable(),
   permanent_union_id: z.string().optional().nullable(),
   // Salary
+  gross_salary: z.number().optional(),
   basic_salary: z.number().optional(),
   house_rent: z.number().optional(),
-  medical_allowance: z.number().optional(),
   transport_allowance: z.number().optional(),
   food_allowance: z.number().optional(),
+  medical_allowance: z.number().optional(),
   other_allowance: z.number().optional(),
-  provident_fund: z.number().optional(),
-  tax: z.number().optional(),
-  total_salary: z.number().optional(),
-  // Bank
-  bank_name: z.string().optional(),
-  bank_account: z.string().optional(),
-  bank_branch: z.string().optional(),
-  routing_no: z.string().optional(),
-  swift_code: z.string().optional(),
+  // Account
+  account_type: z.string().optional(),
+  account_number: z.string().optional(),
   // Status & Files
   status: z.enum(["active", "inactive"]).optional(),
   image_url: z.string().optional(),

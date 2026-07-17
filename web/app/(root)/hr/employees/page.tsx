@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UsersIcon, PlusIcon, Loader2 } from "lucide-react"
+import { UsersIcon, PlusIcon, Loader2, UploadIcon, DownloadIcon, FileTextIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -54,16 +54,20 @@ interface Floor {
 }
 
 const columns: ColumnDef<Employee>[] = [
-  { accessorKey: "employee_code", header: "Code" },
+  { accessorKey: "employee_id", header: "Emp. ID" },
   { accessorKey: "name_en", header: "Name" },
-  { accessorKey: "designation", header: "Designation" },
+  {
+    accessorKey: "designation_ref",
+    header: "Designation",
+    accessorFn: (r: any) => r.designation_ref?.name || "-",
+  },
   { accessorKey: "punch_number", header: "Punch No" },
   { accessorKey: "phone", header: "Phone" },
   { accessorKey: "joining_date", header: "Joining Date" },
   {
-    accessorKey: "total_salary",
+    accessorKey: "gross_salary",
     header: "Salary",
-    cell: ({ row }) => row.original.total_salary?.toLocaleString() || "-",
+    cell: ({ row }) => row.original.gross_salary?.toLocaleString() || "-",
   },
   {
     accessorKey: "status",
@@ -222,10 +226,16 @@ export default function EmployeesPage() {
             <p className="text-muted-foreground mt-1">Manage employee records</p>
           </div>
         </div>
-        <Button onClick={() => router.push("/hr/employees/create")}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Add Employee
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push("/hr/employees/import")}>
+            <UploadIcon className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button onClick={() => router.push("/hr/employees/create")}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Employee
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -388,8 +398,8 @@ export default function EmployeesPage() {
               <label className="text-xs font-medium text-muted-foreground">Employee ID</label>
               <input
                 type="text"
-                value={filters.employee_code || ""}
-                onChange={(e) => setFilter("employee_code", e.target.value)}
+                value={filters.employee_id || ""}
+                onChange={(e) => setFilter("employee_id", e.target.value)}
                 placeholder="Search by code..."
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />

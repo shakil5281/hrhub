@@ -281,22 +281,92 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 
 	// Check password history
 	history, _ := s.userRepo.GetPasswordHistory(userID, 5)
-	newHash, _ := auth.HashPassword(newPassword)
+	newHash, err := auth.HashPassword(newPassword)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
 	for _, h := range history {
 		if auth.CheckPassword(newPassword, h.PasswordHash) {
 			return errors.New("password cannot match last 5 passwords")
 		}
 	}
 
-	_ = s.userRepo.UpdatePassword(userID, newHash)
-	_ = s.userRepo.AddPasswordHistory(userID, newHash)
-	_ = s.authRepo.RevokeAllUserTokens(userID)
+	if err := s.userRepo.UpdatePassword(userID, newHash); err != nil {
+		return errors.New("failed to update password")
+	}
+	if err := s.userRepo.AddPasswordHistory(userID, newHash); err != nil {
+		return errors.New("failed to save password history")
+	}
+	if err := s.authRepo.RevokeAllUserTokens(userID); err != nil {
+		return err
+	}
 
 	return nil
 }
 
+type ProfileResponse struct {
+	ID        string        `json:"id"`
+	Email     string        `json:"email"`
+	Name      string        `json:"name"`
+	Status    string        `json:"status"`
+	Roles     []RoleInfo    `json:"roles,omitempty"`
+	CreatedAt string        `json:"created_at"`
+}
+
+type RoleInfo struct {
+	Name string `json:"name"`
+}
+
+func toProfileResponse(user *models.User, roles []models.Role) ProfileResponse {
+	roleInfos := make([]RoleInfo, len(roles))
+	for i, r := range roles {
+		roleInfos[i] = RoleInfo{Name: r.Name}
+	}
+	return ProfileResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		Status:    user.Status,
+		Roles:     roleInfos,
+		CreatedAt: user.CreatedAt.Format(time.RFC3339),
+	}
+}
+
 func (s *AuthService) GetUser(userID string) (*models.User, error) {
 	return s.userRepo.FindByID(userID)
+}
+
+func (s *AuthService) GetProfile(userID string) (*ProfileResponse, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	roles, _ := s.userRepo.GetUserRoles(user.ID)
+	resp := toProfileResponse(user, roles)
+	return &resp, nil
+}
+
+type UpdateProfileRequest struct {
+	Name  string `json:"name"`
+}
+
+func (s *AuthService) UpdateProfile(userID string, req UpdateProfileRequest) (*ProfileResponse, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, err
+	}
+
+	roles, _ := s.userRepo.GetUserRoles(user.ID)
+	resp := toProfileResponse(user, roles)
+	return &resp, nil
 }
 
 func (s *AuthService) GetSessions(userID string) ([]models.Session, error) {

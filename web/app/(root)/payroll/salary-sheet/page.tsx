@@ -1,44 +1,171 @@
 "use client"
 
-import { FileSpreadsheetIcon } from "lucide-react"
+import * as React from "react"
+import { FileSpreadsheetIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { salaryApi, companyApi } from "@/lib/api"
 
-const salarySheets = [
-  { id: 1, employee: "Rafiqul Islam", code: "EMP001", basic: 25000, houseRent: 12500, medical: 2500, transport: 1500, gross: 41500, deductions: 4150, net: 37350 },
-  { id: 2, employee: "Shamima Akter", code: "EMP002", basic: 30000, houseRent: 15000, medical: 3000, transport: 2000, gross: 50000, deductions: 5000, net: 45000 },
-  { id: 3, employee: "Kamal Hossain", code: "EMP003", basic: 45000, houseRent: 22500, medical: 4500, transport: 3000, gross: 75000, deductions: 7500, net: 67500 },
-  { id: 4, employee: "Nasrin Sultana", code: "EMP004", basic: 35000, houseRent: 17500, medical: 3500, transport: 2000, gross: 58000, deductions: 5800, net: 52200 },
-  { id: 5, employee: "Jahangir Alam", code: "EMP005", basic: 22000, houseRent: 11000, medical: 2200, transport: 1500, gross: 36700, deductions: 3670, net: 33030 },
-  { id: 6, employee: "Abdur Rahman", code: "EMP007", basic: 18000, houseRent: 9000, medical: 1800, transport: 1000, gross: 29800, deductions: 2980, net: 26820 },
-  { id: 7, employee: "Maksuda Khatun", code: "EMP008", basic: 28000, houseRent: 14000, medical: 2800, transport: 2000, gross: 46800, deductions: 4680, net: 42120 },
-  { id: 8, employee: "Shahidul Islam", code: "EMP009", basic: 20000, houseRent: 10000, medical: 2000, transport: 1500, gross: 33500, deductions: 3350, net: 30150 },
-]
+interface Company { id: string; company_name_en: string }
 
-type SalarySheet = (typeof salarySheets)[number]
+interface EmployeeInfo {
+  employee_id: string
+  name_en: string
+  designation_ref?: { name: string }
+  joining_date: string
+  department?: { name: string }
+}
 
-const columns: ColumnDef<SalarySheet>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "code", header: "Code" },
-  { accessorKey: "basic", header: "Basic" },
-  { accessorKey: "houseRent", header: "House Rent" },
-  { accessorKey: "medical", header: "Medical" },
-  { accessorKey: "gross", header: "Gross" },
-  { accessorKey: "deductions", header: "Deductions" },
-  { accessorKey: "net", header: "Net Salary" },
-]
+interface SalaryRecord {
+  id: string
+  employee: EmployeeInfo
+  basic_salary: number
+  house_rent: number
+  medical_allowance: number
+  transport_allowance: number
+  food_allowance: number
+  other_allowance: number
+  gross_salary: number
+  provident_fund: number
+  tax: number
+  absent_deduction: number
+  total_deductions: number
+  overtime_hours: number
+  overtime_rate: number
+  overtime_amount: number
+  attendance_bonus: number
+  net_salary: number
+  present_days: number
+  absent_days: number
+  late_days: number
+  leave_days: number
+  weekend_days: number
+  total_days: number
+  status: string
+}
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+const currentYear = new Date().getFullYear()
+const currentMonth = new Date().getMonth()
+const YEARS = Array.from({length:10},(_,i)=>currentYear-5+i)
 
 export default function SalarySheetPage() {
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [companyId, setCompanyId] = React.useState("")
+  const [month, setMonth] = React.useState(currentMonth)
+  const [year, setYear] = React.useState(currentYear)
+  const [data, setData] = React.useState<SalaryRecord[]>([])
+  const [totals, setTotals] = React.useState<Record<string,number> | null>(null)
+  const [loading, setLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    companyApi.list().then(({data})=>{
+      if (Array.isArray(data) && data.length>0) {
+        setCompanies(data)
+        setCompanyId(data[0].id)
+      }
+    })
+  }, [])
+
+  const fetchData = React.useCallback(async () => {
+    if (!companyId) return
+    setLoading(true)
+    try {
+      const { data: res } = await salaryApi.sheet({ company_id: companyId, month: String(month+1), year: String(year) })
+      setData((res.salaries||[]).map((s:any,i:number)=>({...s,id:s.id||`s-${i}`})))
+      setTotals(res.totals||null)
+    } catch { setData([]); setTotals(null) }
+    finally { setLoading(false) }
+  }, [companyId, month, year])
+
+  React.useEffect(() => { fetchData() }, [fetchData])
+
+  const cols: ColumnDef<SalaryRecord>[] = [
+    {id:"sl",header:"Sl",cell:({row}:any)=>row.index+1},
+    {id:"emp_code",header:"Employee ID",accessorFn:(r:any)=>r.employee?.employee_id},
+    {id:"emp_name",header:"Name",accessorFn:(r:any)=>r.employee?.name_en},
+    {id:"designation",header:"Designation",accessorFn:(r:any)=>r.employee?.designation_ref?.name||"-"},
+    {id:"joining_date",header:"Joining Date",accessorFn:(r:any)=>r.employee?.joining_date?.split("T")[0]},
+    {accessorKey:"total_days",header:"Working Days"},
+    {accessorKey:"absent_days",header:"Absent"},
+    {accessorKey:"weekend_days",header:"Weekend"},
+    {accessorKey:"leave_days",header:"Leave"},
+    {accessorKey:"transport_allowance",header:"Transport",cell:({row}:any)=>row.original.transport_allowance.toLocaleString()},
+    {accessorKey:"food_allowance",header:"Food",cell:({row}:any)=>row.original.food_allowance.toLocaleString()},
+    {accessorKey:"other_allowance",header:"Other",cell:({row}:any)=>row.original.other_allowance.toLocaleString()},
+    {accessorKey:"gross_salary",header:"Gross",cell:({row}:any)=>row.original.gross_salary.toLocaleString()},
+    {accessorKey:"absent_deduction",header:"Absent Ded.",cell:({row}:any)=>row.original.absent_deduction.toLocaleString()},
+    {accessorKey:"overtime_hours",header:"OT Hours",cell:({row}:any)=>row.original.overtime_hours.toFixed(2)},
+    {accessorKey:"overtime_rate",header:"OT Rate",cell:({row}:any)=>row.original.overtime_rate.toFixed(2)},
+    {accessorKey:"overtime_amount",header:"OT Amount",cell:({row}:any)=>row.original.overtime_amount.toLocaleString()},
+    {accessorKey:"attendance_bonus",header:"Att. Bonus",cell:({row}:any)=>row.original.attendance_bonus.toLocaleString()},
+    {accessorKey:"net_salary",header:"Net Salary",cell:({row}:any)=>row.original.net_salary.toLocaleString()},
+    {accessorKey:"status",header:"Status"},
+  ]
+  const columns = cols
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <FileSpreadsheetIcon className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-3xl font-bold tracking-tight">Salary Sheet</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Salary Sheet</h1>
+            <p className="text-muted-foreground mt-1">Employee attendance breakdown</p>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-1">Employee salary sheet details</p>
       </div>
-      <DataTable data={salarySheets} columns={columns} />
+
+      <div className="px-4 lg:px-6">
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Company</label>
+              <select value={companyId} onChange={e=>setCompanyId(e.target.value)} className="flex h-9 w-60 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                <option value="">Select</option>
+                {companies.map(c=><option key={c.id} value={c.id}>{c.company_name_en}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Month</label>
+              <select value={month} onChange={e=>setMonth(Number(e.target.value))} className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                {MONTHS.map((n,i)=><option key={n} value={i}>{n}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Year</label>
+              <select value={year} onChange={e=>setYear(Number(e.target.value))} className="flex h-9 w-28 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 lg:px-6">
+        <h2 className="text-lg font-semibold mb-2">{MONTHS[month]} {year} - Salary Sheet</h2>
+      </div>
+
+      {loading ? (
+        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <>
+          {totals && (
+            <div className="px-4 lg:px-6">
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground mb-2 p-3 rounded-lg border bg-card">
+                <span>Gross: <strong className="text-foreground">{totals.gross_salary?.toLocaleString()}</strong></span>
+                <span>Absent Ded.: <strong className="text-foreground">{totals.absent_deduction?.toLocaleString()}</strong></span>
+                <span>OT Hrs: <strong className="text-foreground">{totals.overtime_hours?.toFixed(2)}</strong></span>
+                <span>OT Amt: <strong className="text-foreground">{totals.overtime_amount?.toLocaleString()}</strong></span>
+                <span>Att. Bonus: <strong className="text-foreground">{totals.attendance_bonus?.toLocaleString()}</strong></span>
+                <span>Deductions: <strong className="text-foreground">{totals.total_deductions?.toLocaleString()}</strong></span>
+                <span>Net: <strong className="text-foreground">{totals.net_salary?.toLocaleString()}</strong></span>
+              </div>
+            </div>
+          )}
+          <DataTable data={data} columns={columns} />
+        </>
+      )}
     </div>
   )
 }

@@ -59,8 +59,11 @@ export default function EditCompanyPage() {
         initialData={{
           company_name_en: company.company_name_en,
           company_name_bn: company.company_name_bn,
-          address: company.address,
+          address_bn: company.address_bn,
+          address_en: company.address_en,
           phone: company.phone,
+          email: company.email,
+          signature: company.signature,
           status: company.status,
         }}
         onSuccess={() => router.push("/information/company")}

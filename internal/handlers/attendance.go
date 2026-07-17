@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
 )
@@ -298,7 +299,7 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 	status := c.Query("status")
 
 	if employeeID != "" {
-		emp, err := h.employeeRepo.FindByEmployeeCode(employeeID)
+		emp, err := h.employeeRepo.FindByEmployeeID(employeeID)
 		if err != nil {
 			emp, err = h.employeeRepo.FindByPunchNumber(employeeID)
 		}
@@ -631,11 +632,12 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 	var missing []map[string]interface{}
 	for badge, name := range badgeMap {
 		if !attendedBadges[badge] {
-			emp, err := h.employeeRepo.FindByEmployeeCode(badge)
+			emp, err := h.employeeRepo.FindByEmployeeID(badge)
 			if err != nil {
 				emp, err = h.employeeRepo.FindByPunchNumber(badge)
 			}
 			if err == nil {
+				database.DB.Preload("DesignationRef").Preload("SectionRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Department").Preload("Shift").First(emp, "id = ?", emp.ID)
 				if companyID != "" && emp.CompanyID != companyID {
 					continue
 				}
@@ -660,10 +662,12 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 				"employee_name": name,
 			}
 			if emp != nil {
-				entry["employee_id"] = emp.ID
-				entry["employee_code"] = emp.EmployeeCode
+				entry["id"] = emp.ID
+				entry["employee_id"] = emp.EmployeeID
 				entry["name_en"] = emp.NameEn
-				entry["designation"] = emp.Designation
+				if emp.DesignationRef != nil {
+					entry["designation"] = emp.DesignationRef.Name
+				}
 			}
 			missing = append(missing, entry)
 		}
@@ -673,6 +677,85 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 		"date":    date,
 		"missing": missing,
 		"total":   len(missing),
+	})
+}
+
+// MonthlyReport godoc
+//
+// @Summary      Monthly attendance report
+// @Description  Get per-employee monthly attendance summary (present, absent, leave, weekend, late, half_day)
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Produce      json
+// @Param        year           query int    true  "Year"
+// @Param        month          query int    true  "Month (1-12)"
+// @Param        company_id     query string true  "Company ID"
+// @Param        department_id  query string false "Filter by department"
+// @Param        section_id     query string false "Filter by section"
+// @Param        designation_id query string false "Filter by designation"
+// @Param        line_id        query string false "Filter by line"
+// @Param        group_id       query string false "Filter by group"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/monthly-report [get]
+func (h *AttendanceHandler) MonthlyReport(c *gin.Context) {
+	year := c.Query("year")
+	month := c.Query("month")
+	companyID := c.Query("company_id")
+
+	if year == "" || month == "" || companyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "year, month, and company_id are required"})
+		return
+	}
+
+	y, err := time.Parse("2006", year)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid year"})
+		return
+	}
+	m, err := time.Parse("1", month)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid month"})
+		return
+	}
+
+	startDate := time.Date(y.Year(), m.Month(), 1, 0, 0, 0, 0, time.UTC)
+	endDate := startDate.AddDate(0, 1, -1)
+
+	startStr := startDate.Format("2006-01-02")
+	endStr := endDate.Format("2006-01-02")
+
+	results, err := h.attendanceRepo.MonthlyReport(
+		startStr, endStr, companyID,
+		c.Query("department_id"),
+		c.Query("section_id"),
+		c.Query("designation_id"),
+		c.Query("line_id"),
+		c.Query("group_id"),
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	totals := map[string]int{"present": 0, "absent": 0, "late": 0, "leave": 0, "weekend": 0, "half_day": 0}
+	for _, r := range results {
+		for k := range totals {
+			if v, ok := r[k].(int64); ok {
+				totals[k] += int(v)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"records":     results,
+		"total":       len(results),
+		"start_date":  startStr,
+		"end_date":    endStr,
+		"year":        year,
+		"month":       month,
+		"totals":      totals,
 	})
 }
 

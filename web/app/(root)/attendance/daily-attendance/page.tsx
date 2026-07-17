@@ -28,7 +28,7 @@ interface AttendanceRecord {
   total_hours: string | null
   status: string
   late_minutes: number
-  employee?: { employee_code: string; name_en: string; designation: string }
+  employee?: { employee_id: string; name_en: string; designation_ref?: { name: string } }
 }
 
 const columns: ColumnDef<AttendanceRecord>[] = [
@@ -36,7 +36,7 @@ const columns: ColumnDef<AttendanceRecord>[] = [
   {
     accessorKey: "employee_id",
     header: "Employee ID",
-    cell: ({ row }) => row.original.employee?.employee_code || row.original.employee_id.slice(0, 8),
+    cell: ({ row }) => row.original.employee?.employee_id || row.original.employee_id.slice(0, 8),
   },
   {
     accessorKey: "employee.name_en",

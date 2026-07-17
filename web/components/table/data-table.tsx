@@ -116,7 +116,7 @@ export function DataTable<TData extends { id: number | string }>({
   onDelete,
 }: DataTableProps<TData>) {
   const [data, setData] = React.useState(() => initialData)
-  if (data !== initialData) setData(initialData)
+  React.useEffect(() => { setData(initialData) }, [initialData])
   const [rowSelection, setRowSelection] = React.useState({})
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [pagination, setPagination] = React.useState({

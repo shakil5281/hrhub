@@ -17,22 +17,26 @@ func NewCompanyHandler(companyRepo *repository.CompanyRepository) *CompanyHandle
 	return &CompanyHandler{companyRepo: companyRepo}
 }
 
-// CreateCompanyRequest represents the request body for creating a company
 type CreateCompanyRequest struct {
 	CompanyNameBn string `json:"company_name_bn"`
 	CompanyNameEn string `json:"company_name_en" binding:"required"`
-	Address      string `json:"address"`
-	Phone        string `json:"phone"`
-	Status       string `json:"status"`
+	AddressBn     string `json:"address_bn"`
+	AddressEn     string `json:"address_en"`
+	Phone         string `json:"phone"`
+	Email         string `json:"email"`
+	Signature     string `json:"signature"`
+	Status        string `json:"status"`
 }
 
-// UpdateCompanyRequest represents the request body for updating a company
 type UpdateCompanyRequest struct {
 	CompanyNameBn string `json:"company_name_bn"`
 	CompanyNameEn string `json:"company_name_en" binding:"required"`
-	Address      string `json:"address"`
-	Phone        string `json:"phone"`
-	Status       string `json:"status"`
+	AddressBn     string `json:"address_bn"`
+	AddressEn     string `json:"address_en"`
+	Phone         string `json:"phone"`
+	Email         string `json:"email"`
+	Signature     string `json:"signature"`
+	Status        string `json:"status"`
 }
 
 // ListCompanies godoc
@@ -115,8 +119,11 @@ func (h *CompanyHandler) Create(c *gin.Context) {
 		CompanyNameBn: req.CompanyNameBn,
 		CompanyNameEn: req.CompanyNameEn,
 		Slug:          slug,
-		Address:       req.Address,
+		AddressBn:     req.AddressBn,
+		AddressEn:     req.AddressEn,
 		Phone:         req.Phone,
+		Email:         req.Email,
+		Signature:     req.Signature,
 		OwnerID:       &userID,
 		Status:        status,
 		CreatedBy:     &userID,
@@ -171,8 +178,11 @@ func (h *CompanyHandler) Update(c *gin.Context) {
 	company.CompanyNameBn = req.CompanyNameBn
 	company.CompanyNameEn = req.CompanyNameEn
 	company.Slug = slug
-	company.Address = req.Address
+	company.AddressBn = req.AddressBn
+	company.AddressEn = req.AddressEn
 	company.Phone = req.Phone
+	company.Email = req.Email
+	company.Signature = req.Signature
 	if req.Status != "" {
 		company.Status = req.Status
 	}

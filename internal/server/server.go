@@ -70,8 +70,13 @@ func New(cfg *config.Config) *gin.Engine {
 
 	mdbReader := service.NewMDBReader()
 	leaveRepo := repository.NewLeaveRepository(database.DB)
-	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, leaveRepo, mdbReader)
+	tempShiftRepo := repository.NewTemporaryShiftRepository(database.DB)
+	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, leaveRepo, tempShiftRepo, mdbReader)
 	leaveHandler := handlers.NewLeaveHandler(leaveRepo, employeeRepo, attendanceRepo)
+	salaryRepo := repository.NewSalaryRepository(database.DB)
+	salaryHandler := handlers.NewSalaryHandler(salaryRepo, employeeRepo, attendanceRepo)
+	employeeImportHandler := handlers.NewEmployeeImportHandler(employeeRepo)
+	tempShiftHandler := handlers.NewTemporaryShiftHandler(tempShiftRepo, employeeRepo)
 
 	r := gin.Default()
 
@@ -84,7 +89,7 @@ func New(cfg *config.Config) *gin.Engine {
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, requirementHandler, separationHandler, idCardHandler, leaveHandler, cfg.JWTSecret)
+	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, requirementHandler, separationHandler, idCardHandler, leaveHandler, salaryHandler, employeeImportHandler, tempShiftHandler, cfg.JWTSecret)
 
 	return r
 }

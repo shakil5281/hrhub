@@ -14,11 +14,13 @@ export const navSecondary = [
   },
   {
     title: "Search",
-    url: "/search",
+    url: "#search",
     icon: SearchIcon,
+    isSearch: true,
   },
 ] as const satisfies {
   title: string
   url: string
   icon: LucideIcon
+  isSearch?: boolean
 }[]

@@ -26,6 +26,10 @@ export const authApi = {
   register: (data: RegisterRequest) => api.post<AuthResponse>("/auth/register", data),
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
+  updateProfile: (data: Record<string, unknown>) => api.put("/auth/profile", data),
+  changePassword: (data: { current_password: string; new_password: string }) => api.put("/auth/change-password", data),
+  sessions: () => api.get("/auth/sessions"),
+  logoutAll: () => api.post("/auth/logout-all"),
 }
 
 export const companyApi = {
@@ -42,6 +46,16 @@ export const employeeApi = {
   create: (data: Record<string, unknown>) => api.post("/employees", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/employees/${id}`, data),
   delete: (id: string) => api.delete(`/employees/${id}`),
+  importExcel: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return api.post("/employees/import", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
+  downloadTemplate: () => api.get("/employees/import/template", { responseType: "blob" }),
+  exportExcel: (params?: Record<string, string>) => api.get("/employees/export/excel", { params, responseType: "blob" }),
+  exportPdf: (params?: Record<string, string>) => api.get("/employees/export/pdf", { params, responseType: "blob" }),
 }
 
 export const groupApi = {
@@ -116,6 +130,7 @@ export const attendanceApi = {
   summary: (params?: Record<string, string>) => api.get("/attendance/summary", { params }),
   overtime: (params?: Record<string, string>) => api.get("/attendance/overtime", { params }),
   overtimeSummary: (params?: Record<string, string>) => api.get("/attendance/overtime-summary", { params }),
+  monthlyReport: (params?: Record<string, string>) => api.get("/attendance/monthly-report", { params }),
 }
 
 export const dataLogApi = {
@@ -206,6 +221,22 @@ export const leaveBalanceApi = {
 
 export const leaveReportApi = {
   monthly: (params?: Record<string, string>) => api.get("/leave-reports/monthly", { params }),
+}
+
+export const salaryApi = {
+  process: (data: { company_id: string; month: number; year: number }) => api.post("/salary/process", data),
+  sheet: (params?: Record<string, string>) => api.get("/salary/sheet", { params }),
+  payslip: (params?: Record<string, string>) => api.get("/salary/payslip", { params }),
+  list: (params?: Record<string, string>) => api.get("/salary/list", { params }),
+  summary: (params?: Record<string, string>) => api.get("/salary/summary", { params }),
+}
+
+export const temporaryShiftApi = {
+  list: (params?: Record<string, string>) => api.get("/temporary-shifts", { params }),
+  get: (id: string) => api.get(`/temporary-shifts/${id}`),
+  create: (data: Record<string, unknown>) => api.post("/temporary-shifts", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/temporary-shifts/${id}`, data),
+  delete: (id: string) => api.delete(`/temporary-shifts/${id}`),
 }
 
 export const uploadApi = {

@@ -19,7 +19,7 @@ interface BalanceRecord {
   remaining: number
 }
 
-interface Employee { id: string; employee_code: string; name_en: string }
+interface Employee { id: string; employee_id: string; name_en: string }
 
 const thisYear = new Date().getFullYear()
 
@@ -41,7 +41,7 @@ export default function LeaveDetailsPage() {
   const filterDefs: FilterDef[] = React.useMemo(() => [
     {
       key: "employee_id", label: "Employee", type: "select",
-      options: employees.map((e) => ({ value: e.id, label: `${e.employee_code} - ${e.name_en}` })),
+      options: employees.map((e) => ({ value: e.id, label: `${e.employee_id} - ${e.name_en}` })),
     },
   ], [employees])
 

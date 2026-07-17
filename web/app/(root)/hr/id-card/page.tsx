@@ -17,7 +17,7 @@ import type { FilterDef } from "@/components/filter-bar"
 
 const columns: ColumnDef<IdCard>[] = [
   { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employee_code", header: "Code" },
+  { accessorKey: "employee_id", header: "Emp. ID" },
   {
     accessorKey: "designation",
     header: "Designation",
@@ -102,7 +102,7 @@ export default function IdCardPage() {
 
   const filterDefs: FilterDef[] = [
     { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
-    { key: "employee_code", label: "Code", type: "text", placeholder: "Filter by code..." },
+    { key: "employee_id", label: "Code", type: "text", placeholder: "Filter by code..." },
     { key: "card_no", label: "Card No", type: "text", placeholder: "Filter by card no..." },
     { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
     { key: "designation_id", label: "Designation", type: "select", options: designations.map((d) => ({ value: d.id, label: d.name })) },

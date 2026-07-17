@@ -22,9 +22,9 @@ interface AbsentRecord {
   date: string
   status: string
   employee?: {
-    employee_code: string
+    employee_id: string
     name_en: string
-    designation: string
+    designation_ref?: { name: string }
   }
 }
 
@@ -210,9 +210,9 @@ export default function AbsentStatusPage() {
                     <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="px-3 py-2">{i + 1}</td>
                       <td className="px-3 py-2">{format(new Date(row.date), "dd MMM yyyy")}</td>
-                      <td className="px-3 py-2">{row.employee?.employee_code || "-"}</td>
+                      <td className="px-3 py-2">{row.employee?.employee_id || "-"}</td>
                       <td className="px-3 py-2">{row.employee?.name_en || "-"}</td>
-                      <td className="px-3 py-2">{row.employee?.designation || "-"}</td>
+                      <td className="px-3 py-2">{row.employee?.designation_ref?.name || "-"}</td>
                       <td className="px-3 py-2">
                         <Badge variant="secondary" className="capitalize">{row.status}</Badge>
                       </td>

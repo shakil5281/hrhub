@@ -48,12 +48,13 @@ func isWeekend(dateStr string, weekendDays string) bool {
 }
 
 type DataLogHandler struct {
-	dataLogRepo    *repository.DataLogRepository
-	attendanceRepo *repository.AttendanceRepository
-	employeeRepo   *repository.EmployeeRepository
-	shiftRepo      *repository.ShiftRepository
-	leaveRepo      *repository.LeaveRepository
-	mdbReader      *service.MDBReader
+	dataLogRepo     *repository.DataLogRepository
+	attendanceRepo  *repository.AttendanceRepository
+	employeeRepo    *repository.EmployeeRepository
+	shiftRepo       *repository.ShiftRepository
+	leaveRepo       *repository.LeaveRepository
+	tempShiftRepo   *repository.TemporaryShiftRepository
+	mdbReader       *service.MDBReader
 }
 
 func NewDataLogHandler(
@@ -62,6 +63,7 @@ func NewDataLogHandler(
 	employeeRepo *repository.EmployeeRepository,
 	shiftRepo *repository.ShiftRepository,
 	leaveRepo *repository.LeaveRepository,
+	tempShiftRepo *repository.TemporaryShiftRepository,
 	mdbReader *service.MDBReader,
 ) *DataLogHandler {
 	return &DataLogHandler{
@@ -70,6 +72,7 @@ func NewDataLogHandler(
 		employeeRepo:   employeeRepo,
 		shiftRepo:      shiftRepo,
 		leaveRepo:      leaveRepo,
+		tempShiftRepo:  tempShiftRepo,
 		mdbReader:      mdbReader,
 	}
 }
@@ -232,6 +235,16 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 		return s
 	}
 
+	// Pre-fetch all temporary shifts for the date range
+	tempShiftByKey := make(map[string]*models.TemporaryShift)
+	if req.CompanyID != "" {
+		allTempShifts, _ := h.tempShiftRepo.ListByCompanyAndDateRange(req.CompanyID, startDate, endDate)
+		for i := range allTempShifts {
+			key := allTempShifts[i].EmployeeID + "|" + allTempShifts[i].Date
+			tempShiftByKey[key] = &allTempShifts[i]
+		}
+	}
+
 	for _, date := range dates {
 		dayProcessed := 0
 		logs, _ := h.dataLogRepo.ListUnprocessedByDate(date)
@@ -250,9 +263,9 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 
 		employeeByBadge := make(map[string]*models.Employee)
 		if len(badgeNumbers) > 0 {
-			byCode, _ := h.employeeRepo.FindByEmployeeCodes(badgeNumbers)
-			for i := range byCode {
-				employeeByBadge[byCode[i].EmployeeCode] = &byCode[i]
+			byID, _ := h.employeeRepo.FindByEmployeeIDs(badgeNumbers)
+			for i := range byID {
+				employeeByBadge[byID[i].EmployeeID] = &byID[i]
 			}
 			// Try punch_number fallback for unmatched
 			unmatched := make([]string, 0)
@@ -289,7 +302,6 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 		}
 
 		// Process punch logs - group by ZK user ID
-		var logIDsToMark []string
 		if len(logs) > 0 {
 			totalLogs += len(logs)
 
@@ -310,6 +322,7 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 				grouped[log.UserID].LogIDs = append(grouped[log.UserID].LogIDs, log.ID)
 			}
 
+			var logIDsToMark []string
 			for _, gp := range grouped {
 				punches := gp.Punches
 				if len(punches) == 0 || gp.BadgeNumber == "" {
@@ -324,8 +337,6 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 					continue
 				}
 
-				logIDsToMark = append(logIDsToMark, gp.LogIDs...)
-
 				var checkIn *string
 				var checkOut *string
 				var status = "present"
@@ -333,7 +344,14 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 				var shiftID *string
 				var lateMinutes int
 				var shift *models.Shift
-				if employee.ShiftID != nil {
+				// Temporary shift overrides regular shift
+				tempKey := employee.ID + "|" + date
+				if ts, ok := tempShiftByKey[tempKey]; ok && ts.ShiftID != "" {
+					shift = getShift(ts.ShiftID)
+					if shift != nil {
+						shiftID = &shift.ID
+					}
+				} else if employee.ShiftID != nil {
 					shift = getShift(*employee.ShiftID)
 					if shift != nil {
 						shiftID = &shift.ID
@@ -408,6 +426,7 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 					status = "on_leave"
 				}
 
+				var attErr error
 				if existing, exists := existingAttByEmp[employee.ID]; exists {
 					existing.CheckIn = checkIn
 					existing.CheckOut = checkOut
@@ -415,7 +434,8 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 					existing.ShiftID = shiftID
 					existing.LateMinutes = lateMinutes
 					existing.PunchNumber = &gp.BadgeNumber
-					if h.attendanceRepo.Update(existing) == nil {
+					attErr = h.attendanceRepo.Update(existing)
+					if attErr == nil {
 						dayProcessed++
 					}
 				} else {
@@ -430,16 +450,20 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 						LateMinutes: lateMinutes,
 						PunchNumber: &gp.BadgeNumber,
 					}
-					if err := h.attendanceRepo.Create(att); err == nil {
+					attErr = h.attendanceRepo.Create(att)
+					if attErr == nil {
 						dayProcessed++
 					}
 					existingAttByEmp[employee.ID] = att
 				}
+				if attErr == nil {
+					logIDsToMark = append(logIDsToMark, gp.LogIDs...)
+				}
 			}
-		}
 
-		if len(logIDsToMark) > 0 {
-			_ = h.dataLogRepo.MarkProcessed(logIDsToMark)
+			if len(logIDsToMark) > 0 {
+				_ = h.dataLogRepo.MarkProcessed(logIDsToMark)
+			}
 		}
 
 		// Create attendance for active employees with NO existing record
@@ -449,12 +473,17 @@ func (h *DataLogHandler) Process(c *gin.Context) {
 			}
 			var shiftID *string
 			status := "absent"
-			if emp.ShiftID != nil {
+			var weekShift *models.Shift
+			tempKey := emp.ID + "|" + date
+			if ts, ok := tempShiftByKey[tempKey]; ok && ts.ShiftID != "" {
+				shiftID = &ts.ShiftID
+				weekShift = getShift(ts.ShiftID)
+			} else if emp.ShiftID != nil {
 				shiftID = emp.ShiftID
-				shift := getShift(*emp.ShiftID)
-				if shift != nil && shift.WeekendDays != "" && isWeekend(date, shift.WeekendDays) {
-					status = "weekend"
-				}
+				weekShift = getShift(*emp.ShiftID)
+			}
+			if weekShift != nil && weekShift.WeekendDays != "" && isWeekend(date, weekShift.WeekendDays) {
+				status = "weekend"
 			}
 			if onLeaveSet[emp.ID] {
 				status = "on_leave"

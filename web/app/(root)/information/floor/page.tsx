@@ -12,6 +12,11 @@ import { FloorForm } from "@/components/form/floor-form"
 import { floorApi } from "@/lib/api"
 
 const columns: ColumnDef<Floor>[] = [
+  {
+    id: "sl",
+    header: "SL",
+    cell: ({ row }) => row.index + 1,
+  },
   { accessorKey: "name", header: "Floor Name" },
 ]
 
@@ -90,6 +95,7 @@ export default function FloorPage() {
           key={floors.length}
           data={floors}
           columns={columns}
+          enableDnd
           onEdit={handleEdit}
           onDelete={handleDelete}
         />

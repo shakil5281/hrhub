@@ -9,21 +9,37 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge"
 import { TempShift, getTempShifts, createTempShift, updateTempShift, deleteTempShift, TempShiftFormData } from "@/components/data/temporary-shift-data"
 import { TempShiftForm } from "@/components/form/temporary-shift-form"
+import { companyApi } from "@/lib/api"
+
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  active: "default",
+  inactive: "secondary",
+}
 
 const columns: ColumnDef<TempShift>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employeeCode", header: "Code" },
-  { accessorKey: "shift", header: "Assigned Shift" },
-  { accessorKey: "fromDate", header: "From" },
-  { accessorKey: "toDate", header: "To" },
+  {
+    accessorKey: "employee",
+    header: "Employee",
+    cell: ({ row }) => row.original.employee?.name_en || "-",
+  },
+  {
+    accessorKey: "employee_id",
+    header: "Code",
+    cell: ({ row }) => row.original.employee?.employee_id || "-",
+  },
+  {
+    accessorKey: "shift",
+    header: "Assigned Shift",
+    cell: ({ row }) => row.original.shift?.name || "-",
+  },
+  { accessorKey: "date", header: "Date" },
   { accessorKey: "reason", header: "Reason" },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const status = row.original.status
-      const variant = status === "Approved" ? "default" : status === "Rejected" ? "destructive" : "secondary"
-      return <Badge variant={variant}>{status}</Badge>
+      const s = row.original.status
+      return <Badge variant={statusVariant[s] || "secondary"}>{s}</Badge>
     },
   },
 ]
@@ -32,16 +48,35 @@ export default function TemporaryShiftPage() {
   const [data, setData] = React.useState<TempShift[]>([])
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<TempShift | null>(null)
+  const [companyId, setCompanyId] = React.useState("")
 
-  React.useEffect(() => { setData(getTempShifts()) }, [])
+  React.useEffect(() => {
+    companyApi.list().then((res) => {
+      const list = Array.isArray(res.data) ? res.data : []
+      const cid = list[0]?.id || ""
+      setCompanyId(cid)
+      return getTempShifts(cid)
+    }).then(setData)
+  }, [])
+
+  const refreshData = async () => {
+    const d = await getTempShifts(companyId)
+    setData(d)
+  }
 
   const handleAdd = () => { setEditing(null); setDialogOpen(true) }
   const handleEdit = (item: TempShift) => { setEditing(item); setDialogOpen(true) }
-  const handleDelete = (item: TempShift) => { deleteTempShift(item.id); setData(getTempShifts()) }
-  const handleFormSuccess = (formData: TempShiftFormData) => {
-    if (editing) updateTempShift(editing.id, formData)
-    else createTempShift(formData)
-    setData(getTempShifts())
+  const handleDelete = async (item: TempShift) => {
+    await deleteTempShift(item.id)
+    refreshData()
+  }
+  const handleFormSuccess = async (formData: TempShiftFormData) => {
+    if (editing) {
+      await updateTempShift(editing.id, formData)
+    } else {
+      await createTempShift({ ...formData, company_id: companyId })
+    }
+    refreshData()
     setDialogOpen(false)
     setEditing(null)
   }
@@ -71,15 +106,7 @@ export default function TemporaryShiftPage() {
             </DialogDescription>
           </DialogHeader>
           <TempShiftForm
-            initialData={editing ? {
-              employee: editing.employee,
-              employeeCode: editing.employeeCode,
-              shift: editing.shift,
-              fromDate: editing.fromDate,
-              toDate: editing.toDate,
-              reason: editing.reason,
-              status: editing.status,
-            } : undefined}
+            initialData={editing || undefined}
             onSuccess={handleFormSuccess}
             onCancel={() => { setDialogOpen(false); setEditing(null) }}
             isEditing={!!editing}

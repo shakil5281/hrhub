@@ -12,6 +12,11 @@ import { GroupForm } from "@/components/form/group-form"
 import { groupApi } from "@/lib/api"
 
 const columns: ColumnDef<Group>[] = [
+  {
+    id: "sl",
+    header: "SL",
+    cell: ({ row }) => row.index + 1,
+  },
   { accessorKey: "name", header: "Group Name" },
 ]
 
@@ -90,6 +95,7 @@ export default function GroupPage() {
           key={groups.length}
           data={groups}
           columns={columns}
+          enableDnd
           onEdit={handleEdit}
           onDelete={handleDelete}
         />

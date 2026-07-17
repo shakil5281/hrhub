@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Edit, Trash2, Loader2, Building2, MapPin, Phone, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2, Building2, MapPin, Phone, Mail, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -132,11 +132,8 @@ export function CompanyTable() {
                   <TableHead>
                     <div className="flex items-center gap-1">Contact</div>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("address")}>
-                    <div className="flex items-center gap-1">
-                      Address
-                    </div>
-                  </TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>Signature</TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => handleSort("status")}>
                     <div className="flex items-center gap-1">
                       Status
@@ -148,14 +145,14 @@ export function CompanyTable() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
+                    <TableCell colSpan={6} className="text-center py-12">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
                       <p className="text-sm text-muted-foreground mt-2">Loading companies...</p>
                     </TableCell>
                   </TableRow>
                 ) : paginatedCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       <Building2 className="mx-auto h-12 w-12 text-muted-foreground/50 mb-2" />
                       <p className="font-medium">No companies yet</p>
                       <p className="text-sm">Click &quot;Add Company&quot; to get started</p>
@@ -183,13 +180,30 @@ export function CompanyTable() {
                             <Phone className="h-3.5 w-3.5" />
                             <span>{company.phone}</span>
                           </div>
+                          {company.email && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="h-3.5 w-3.5" />
+                              <span className="truncate max-w-[200px]">{company.email}</span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5" />
-                          <span className="truncate max-w-[250px]">{company.address}</span>
+                          <span className="truncate max-w-[250px]">{company.address_en || company.address_bn}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {company.signature ? (
+                          <img
+                            src={company.signature.startsWith("/uploads") ? `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}${company.signature}` : company.signature}
+                            alt="Signature"
+                            className="h-10 w-24 rounded border object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No signature</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge

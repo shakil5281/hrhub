@@ -284,6 +284,19 @@ definitions:
       start_date:
         type: string
     type: object
+  handlers.ProcessSalaryRequest:
+    properties:
+      company_id:
+        type: string
+      month:
+        type: integer
+      year:
+        type: integer
+    required:
+    - company_id
+    - month
+    - year
+    type: object
   handlers.RegisterRequest:
     properties:
       email:
@@ -882,6 +895,71 @@ paths:
       security:
       - BearerAuth: []
       summary: Missing attendance
+      tags:
+      - Attendance
+  /attendance/monthly-report:
+    get:
+      description: Get per-employee monthly attendance summary (present, absent, leave,
+        weekend, late, half_day)
+      parameters:
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Monthly attendance report
       tags:
       - Attendance
   /attendance/overtime:
@@ -2708,6 +2786,168 @@ paths:
       summary: Reject leave application
       tags:
       - Leaves
+  /salary/list:
+    get:
+      description: Get salary records summary (grouped by department)
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List salary records
+      tags:
+      - Salary
+  /salary/payslip:
+    get:
+      description: Get salary record for a specific employee for a given month/year
+      parameters:
+      - description: Employee ID
+        in: query
+        name: employee_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get employee payslip
+      tags:
+      - Salary
+  /salary/process:
+    post:
+      consumes:
+      - application/json
+      description: Calculate and generate salary for all active employees for a given
+        month/year
+      parameters:
+      - description: Salary process params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProcessSalaryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Process monthly salary
+      tags:
+      - Salary
+  /salary/sheet:
+    get:
+      description: Get salary records for all employees for a given month/year
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List salary sheet
+      tags:
+      - Salary
   /shifts:
     get:
       description: Get all shifts

@@ -13,7 +13,7 @@ interface OvertimeRecord {
   id: string
   employee_id: string
   employee_name: string
-  employee_code: string
+  emp_id: string
   date: string
   check_in: string
   check_out: string
@@ -31,7 +31,7 @@ interface Shift { id: string; name: string }
 const columns: ColumnDef<OvertimeRecord>[] = [
   { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
   { accessorKey: "employee_name", header: "Employee Name" },
-  { accessorKey: "employee_code", header: "Employee Code" },
+  { accessorKey: "emp_id", header: "Emp. ID" },
   { accessorKey: "date", header: "Date" },
   { accessorKey: "check_in", header: "Check In" },
   { accessorKey: "check_out", header: "Check Out" },

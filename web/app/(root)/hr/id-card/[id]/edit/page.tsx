@@ -19,7 +19,7 @@ export default function EditIdCardPage() {
     idCardApi.get(id).then(({ data }) => {
       setCard({
         employee: data.employee,
-        employee_code: data.employee_code,
+        employee_id: data.employee_id,
         designation_id: data.designation_id,
         department_id: data.department_id,
         card_no: data.card_no,

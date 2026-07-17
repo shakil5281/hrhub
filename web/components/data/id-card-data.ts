@@ -6,7 +6,7 @@ import type { Department, Designation } from "./organization-data"
 export interface IdCard {
   id: string
   employee: string
-  employee_code: string
+  employee_id: string
   designation_id: string
   department_id: string
   card_no: string
@@ -21,7 +21,7 @@ export interface IdCard {
 
 export const idCardSchema = z.object({
   employee: z.string().min(2, "Employee name is required"),
-  employee_code: z.string().min(1, "Employee code is required"),
+  employee_id: z.string().min(1, "Employee code is required"),
   designation_id: z.string().min(1, "Designation is required"),
   department_id: z.string().min(1, "Department is required"),
   card_no: z.string().min(1, "Card number is required"),

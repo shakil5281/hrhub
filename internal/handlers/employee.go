@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -47,13 +48,9 @@ type CreateEmployeeRequest struct {
 	LineID         string `json:"line_id"`
 	GroupID        string `json:"group_id"`
 	FloorID        string `json:"floor_id"`
-	Designation    string `json:"designation"`
-	EmployeeCode   string `json:"employee_code" binding:"required"`
+	EmployeeID     string `json:"employee_id" binding:"required"`
 	PunchNumber    string `json:"punch_number"`
-	Section        string `json:"section"`
 	Grade          string `json:"grade"`
-	Line           string `json:"line"`
-	Group          string `json:"group_name"`
 	JoiningDate    string `json:"joining_date" binding:"required"`
 	ShiftID        string `json:"shift_id"`
 	ReportsTo      string `json:"reports_to"`
@@ -70,22 +67,19 @@ type CreateEmployeeRequest struct {
 	PermanentUnionID    string `json:"permanent_union_id"`
 
 	// Salary
+	GrossSalary        float64 `json:"gross_salary"`
 	BasicSalary        float64 `json:"basic_salary"`
 	HouseRent          float64 `json:"house_rent"`
-	MedicalAllowance   float64 `json:"medical_allowance"`
 	TransportAllowance float64 `json:"transport_allowance"`
 	FoodAllowance      float64 `json:"food_allowance"`
+	MedicalAllowance   float64 `json:"medical_allowance"`
 	OtherAllowance     float64 `json:"other_allowance"`
 	ProvidentFund      float64 `json:"provident_fund"`
 	Tax                float64 `json:"tax"`
-	TotalSalary        float64 `json:"total_salary"`
 
-	// Bank
-	BankName    string `json:"bank_name"`
-	BankAccount string `json:"bank_account"`
-	BankBranch  string `json:"bank_branch"`
-	RoutingNo   string `json:"routing_no"`
-	SwiftCode   string `json:"swift_code"`
+	// Account
+	AccountType   string `json:"account_type"`
+	AccountNumber string `json:"account_number"`
 
 	// Status
 	Status string `json:"status"`
@@ -127,13 +121,9 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	emp.LineID = setPtr(req.LineID)
 	emp.GroupID = setPtr(req.GroupID)
 	emp.FloorID = setPtr(req.FloorID)
-	emp.Designation = req.Designation
-	emp.EmployeeCode = req.EmployeeCode
+	emp.EmployeeID = req.EmployeeID
 	emp.PunchNumber = req.PunchNumber
-	emp.Section = req.Section
 	emp.Grade = req.Grade
-	emp.Line = req.Line
-	emp.Group = req.Group
 	emp.ShiftID = setPtr(req.ShiftID)
 	emp.ReportsTo = setPtr(req.ReportsTo)
 	emp.PresentDivisionID = setPtr(req.PresentDivisionID)
@@ -146,27 +136,50 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	emp.PermanentUnionID = setPtr(req.PermanentUnionID)
 
 	// Salary
+	emp.GrossSalary = req.GrossSalary
 	emp.BasicSalary = req.BasicSalary
 	emp.HouseRent = req.HouseRent
-	emp.MedicalAllowance = req.MedicalAllowance
 	emp.TransportAllowance = req.TransportAllowance
 	emp.FoodAllowance = req.FoodAllowance
+	emp.MedicalAllowance = req.MedicalAllowance
 	emp.OtherAllowance = req.OtherAllowance
 	emp.ProvidentFund = req.ProvidentFund
 	emp.Tax = req.Tax
-	emp.TotalSalary = req.TotalSalary
 
-	// Bank
-	emp.BankName = req.BankName
-	emp.BankAccount = req.BankAccount
-	emp.BankBranch = req.BankBranch
-	emp.RoutingNo = req.RoutingNo
-	emp.SwiftCode = req.SwiftCode
+	// Account
+	emp.AccountType = req.AccountType
+	emp.AccountNumber = req.AccountNumber
 
 	// Status
 	if req.Status != "" {
 		emp.Status = req.Status
 	}
+}
+
+func validateAccount(accountType, accountNumber string) string {
+	if accountType == "" && accountNumber == "" {
+		return ""
+	}
+	if accountType == "" {
+		return "account_type is required when account_number is provided"
+	}
+	if accountNumber == "" {
+		return "account_number is required when account_type is provided"
+	}
+	if accountType != "mCash" && accountType != "Card" {
+		return "account_type must be mCash or Card"
+	}
+	digitRegex := regexp.MustCompile(`^\d+$`)
+	if !digitRegex.MatchString(accountNumber) {
+		return "account_number must contain only digits"
+	}
+	if accountType == "mCash" && len(accountNumber) != 12 {
+		return "account_number must be exactly 12 digits for mCash"
+	}
+	if accountType == "Card" && len(accountNumber) != 17 {
+		return "account_number must be exactly 17 digits for Card"
+	}
+	return ""
 }
 
 // GetEmployees godoc
@@ -185,18 +198,18 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 // @Param        group_id        query string false "Filter by group ID"
 // @Param        floor_id        query string false "Filter by floor ID"
 // @Param        status          query string false "Filter by status (active/inactive)"
-// @Param        employee_code   query string false "Filter by employee code (partial match)"
+// @Param        employee_id     query string false "Filter by employee ID (partial match)"
 // @Param        gender          query string false "Filter by gender"
 // @Param        blood_group     query string false "Filter by blood group"
-// @Param        min_salary      query string false "Minimum total salary"
-// @Param        max_salary      query string false "Maximum total salary"
+// @Param        min_salary      query string false "Minimum gross salary"
+// @Param        max_salary      query string false "Maximum gross salary"
 // @Success      200  {array}   map[string]interface{}
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /employees [get]
 func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 	var employees []models.Employee
-	query := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift")
+	query := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef")
 
 	if v := c.Query("company_id"); v != "" {
 		query = query.Where("company_id = ?", v)
@@ -225,8 +238,8 @@ func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 	if v := c.Query("status"); v != "" {
 		query = query.Where("status = ?", v)
 	}
-	if v := c.Query("employee_code"); v != "" {
-		query = query.Where("employee_code ILIKE ?", "%"+v+"%")
+	if v := c.Query("employee_id"); v != "" {
+		query = query.Where("employee_id ILIKE ?", "%"+v+"%")
 	}
 	if v := c.Query("gender"); v != "" {
 		query = query.Where("gender = ?", v)
@@ -235,10 +248,10 @@ func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 		query = query.Where("blood_group = ?", v)
 	}
 	if v := c.Query("min_salary"); v != "" {
-		query = query.Where("total_salary >= ?", v)
+		query = query.Where("gross_salary >= ?", v)
 	}
 	if v := c.Query("max_salary"); v != "" {
-		query = query.Where("total_salary <= ?", v)
+		query = query.Where("gross_salary <= ?", v)
 	}
 
 	if err := query.Find(&employees).Error; err != nil {
@@ -268,6 +281,11 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 		return
 	}
 
+	if msg := validateAccount(req.AccountType, req.AccountNumber); msg != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
 	jd, err := time.Parse("2006-01-02", req.JoiningDate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid joining_date format, use YYYY-MM-DD"})
@@ -279,13 +297,15 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 		status = "active"
 	}
 
+	userID := c.GetString("user_id")
+
 	employee := models.Employee{
-		EmployeeCode: req.EmployeeCode,
+		EmployeeID: req.EmployeeID,
 		PunchNumber:  req.PunchNumber,
 		CompanyID:    req.CompanyID,
-		Designation:  req.Designation,
 		JoiningDate:  jd,
 		Status:       status,
+		CreatedBy:    &userID,
 	}
 
 	bindEmployeeFields(&req, &employee)
@@ -295,7 +315,7 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&employee, "id = ?", employee.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&employee, "id = ?", employee.ID)
 	c.JSON(http.StatusCreated, employee)
 }
 
@@ -328,6 +348,11 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 		return
 	}
 
+	if msg := validateAccount(req.AccountType, req.AccountNumber); msg != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
 	if req.JoiningDate != "" {
 		jd, err := time.Parse("2006-01-02", req.JoiningDate)
 		if err == nil {
@@ -337,12 +362,15 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 
 	bindEmployeeFields(&req, &emp)
 
+	userID := c.GetString("user_id")
+	emp.UpdatedBy = &userID
+
 	if err := database.DB.Save(&emp).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&emp, "id = ?", emp.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", emp.ID)
 	c.JSON(http.StatusOK, emp)
 }
 
@@ -360,7 +388,7 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 func (h *EmployeeHandler) GetEmployee(c *gin.Context) {
 	id := c.Param("id")
 	var emp models.Employee
-	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").First(&emp, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
 		return
 	}

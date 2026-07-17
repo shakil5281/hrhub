@@ -1,85 +1,50 @@
 "use client"
 
 import { z } from "zod"
+import { temporaryShiftApi } from "@/lib/api"
 
 export interface TempShift {
-  id: number
-  employee: string
-  employeeCode: string
-  shift: string
-  fromDate: string
-  toDate: string
+  id: string
+  employee_id: string
+  shift_id: string
+  company_id: string
+  date: string
   reason: string
-  status: "Pending" | "Approved" | "Rejected"
+  status: string
+  employee?: { id: string; name_en: string; employee_id: string }
+  shift?: { id: string; name: string }
 }
 
 export const tempShiftSchema = z.object({
-  employee: z.string().min(2, "Employee name is required"),
-  employeeCode: z.string().min(1, "Employee code is required"),
-  shift: z.string().min(1, "Shift is required"),
-  fromDate: z.string().min(1, "From date is required"),
-  toDate: z.string().min(1, "To date is required"),
+  employee_id: z.string().min(1, "Employee is required"),
+  shift_id: z.string().min(1, "Shift is required"),
+  from_date: z.string().min(1, "From date is required"),
+  to_date: z.string().optional(),
   reason: z.string().min(1, "Reason is required"),
-  status: z.enum(["Pending", "Approved", "Rejected"]),
+  status: z.string().min(1),
+  company_id: z.string().optional(),
 })
 
 export type TempShiftFormData = z.infer<typeof tempShiftSchema>
 
-const mockTempShifts: TempShift[] = [
-  { id: 1, employee: "Rafiqul Islam", employeeCode: "EMP001", shift: "Morning Shift", fromDate: "2026-07-13", toDate: "2026-07-15", reason: "Replacement", status: "Approved" },
-  { id: 2, employee: "Shamima Akter", employeeCode: "EMP002", shift: "Evening Shift", fromDate: "2026-07-13", toDate: "2026-07-13", reason: "Overtime", status: "Pending" },
-  { id: 3, employee: "Kamal Hossain", employeeCode: "EMP003", shift: "Night Shift", fromDate: "2026-07-14", toDate: "2026-07-16", reason: "Emergency", status: "Approved" },
-  { id: 4, employee: "Nasrin Sultana", employeeCode: "EMP004", shift: "Day Shift", fromDate: "2026-07-14", toDate: "2026-07-14", reason: "Swap", status: "Pending" },
-  { id: 5, employee: "Jahangir Alam", employeeCode: "EMP005", shift: "Morning Shift", fromDate: "2026-07-15", toDate: "2026-07-17", reason: "Training", status: "Approved" },
-  { id: 6, employee: "Farida Begum", employeeCode: "EMP006", shift: "General Shift", fromDate: "2026-07-15", toDate: "2026-07-15", reason: "Replacement", status: "Rejected" },
-  { id: 7, employee: "Abdur Rahman", employeeCode: "EMP007", shift: "Evening Shift", fromDate: "2026-07-16", toDate: "2026-07-18", reason: "Overtime", status: "Pending" },
-  { id: 8, employee: "Maksuda Khatun", employeeCode: "EMP008", shift: "Night Shift", fromDate: "2026-07-16", toDate: "2026-07-16", reason: "Emergency", status: "Approved" },
-]
-
-let tempShifts = [...mockTempShifts]
-let nextId = 9
-
-export function getTempShifts(): TempShift[] {
-  return tempShifts
+export async function getTempShifts(companyId?: string): Promise<TempShift[]> {
+  const params: Record<string, string> = {}
+  if (companyId) params.company_id = companyId
+  const res = await temporaryShiftApi.list(params)
+  return res.data as TempShift[]
 }
 
-export function getTempShift(id: number): TempShift | undefined {
-  return tempShifts.find((s) => s.id === id)
+export async function createTempShift(data: Record<string, unknown>): Promise<boolean> {
+  const res = await temporaryShiftApi.create(data)
+  return res.status === 200
 }
 
-export function createTempShift(data: TempShiftFormData): TempShift {
-  const newItem: TempShift = { ...data, id: nextId++ }
-  tempShifts.push(newItem)
-  return newItem
+export async function updateTempShift(id: string, data: Record<string, unknown>): Promise<boolean> {
+  const res = await temporaryShiftApi.update(id, data)
+  return res.status === 200
 }
 
-export function updateTempShift(id: number, data: Partial<TempShiftFormData>): TempShift | null {
-  const index = tempShifts.findIndex((s) => s.id === id)
-  if (index === -1) return null
-  tempShifts[index] = { ...tempShifts[index], ...data }
-  return tempShifts[index]
+export async function deleteTempShift(id: string): Promise<boolean> {
+  const res = await temporaryShiftApi.delete(id)
+  return res.status === 200
 }
-
-export function deleteTempShift(id: number): boolean {
-  const index = tempShifts.findIndex((s) => s.id === id)
-  if (index === -1) return false
-  tempShifts.splice(index, 1)
-  return true
-}
-
-export const tempShiftStatusOptions = [
-  { value: "Pending" as const, label: "Pending" },
-  { value: "Approved" as const, label: "Approved" },
-  { value: "Rejected" as const, label: "Rejected" },
-]
-
-export const shiftOptions = [
-  { value: "Morning Shift", label: "Morning Shift" },
-  { value: "Day Shift", label: "Day Shift" },
-  { value: "Evening Shift", label: "Evening Shift" },
-  { value: "Night Shift", label: "Night Shift" },
-  { value: "General Shift", label: "General Shift" },
-  { value: "Half Day Morning", label: "Half Day Morning" },
-  { value: "Half Day Evening", label: "Half Day Evening" },
-  { value: "Flexible Shift", label: "Flexible Shift" },
-]

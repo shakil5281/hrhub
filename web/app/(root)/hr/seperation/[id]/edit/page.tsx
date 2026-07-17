@@ -19,7 +19,7 @@ export default function EditSeparationPage() {
     separationApi.get(id).then(({ data }) => {
       setSeparation({
         employee: data.employee,
-        employee_code: data.employee_code,
+        employee_id: data.employee_id,
         department_id: data.department_id,
         type: data.type,
         date: data.date,

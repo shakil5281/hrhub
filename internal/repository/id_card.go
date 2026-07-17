@@ -29,13 +29,13 @@ func (r *IdCardRepository) List() ([]models.IdCard, error) {
 	return cards, err
 }
 
-func (r *IdCardRepository) ListFiltered(employee, employeeCode, departmentID, designationID, status, cardNo string) ([]models.IdCard, error) {
+func (r *IdCardRepository) ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo string) ([]models.IdCard, error) {
 	query := r.db.Preload("Department").Preload("Designation").Where("deleted_at IS NULL").Order("created_at DESC")
 	if employee != "" {
 		query = query.Where("employee ILIKE ?", "%"+employee+"%")
 	}
-	if employeeCode != "" {
-		query = query.Where("employee_code ILIKE ?", "%"+employeeCode+"%")
+	if employeeID != "" {
+		query = query.Where("employee_id ILIKE ?", "%"+employeeID+"%")
 	}
 	if departmentID != "" {
 		query = query.Where("department_id = ?", departmentID)

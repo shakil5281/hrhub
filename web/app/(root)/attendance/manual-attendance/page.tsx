@@ -12,7 +12,7 @@ import { format } from "date-fns"
 
 interface Employee {
   id: string
-  employee_code: string
+  employee_id: string
   name_en: string
   company_id: string
 }
@@ -110,7 +110,7 @@ export default function ManualAttendancePage() {
                 <option value="">{loading ? "Loading..." : "Select employee"}</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.employee_code} - {emp.name_en}
+                    {emp.employee_id} - {emp.name_en}
                   </option>
                 ))}
               </select>
