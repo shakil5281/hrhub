@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
 	"github.com/shakil5281/hrhub-api/internal/utils"
@@ -166,4 +169,57 @@ func (h *SeparationHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "separation deleted"})
+}
+
+// ProcessSeparation godoc
+//
+//	@Summary      Process separations
+//	@Description  Check separations for today and update employee type (Resign/Lefty/Close)
+//	@Tags         Separations
+//	@Security     BearerAuth
+//	@Produce      json
+//	@Param        date query string false "Date to process (default: today)"
+//	@Success      200  {object}  map[string]interface{}
+//	@Router       /separations/process [post]
+func (h *SeparationHandler) Process(c *gin.Context) {
+	dateStr := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+
+	var separations []models.Separation
+	if err := database.DB.Where("date = ? AND status = ? AND deleted_at IS NULL", dateStr, "Pending").Find(&separations).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	processed := 0
+	for _, sep := range separations {
+		var emp models.Employee
+		if err := database.DB.Where("employee_id = ? AND deleted_at IS NULL", sep.EmployeeID).First(&emp).Error; err != nil {
+			continue
+		}
+
+		newType := ""
+		switch sep.Type {
+		case "Resignation", "Resign":
+			newType = "Resign"
+		case "Left", "Lefty":
+			newType = "Lefty"
+		case "Termination", "Close", "Contract End":
+			newType = "Close"
+		default:
+			newType = "Close"
+		}
+
+		if newType != "" {
+			database.DB.Model(&emp).Update("employee_type", newType)
+		}
+		database.DB.Model(&sep).Update("status", "Processed")
+		processed++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   fmt.Sprintf("Processed %d separations for %s", processed, dateStr),
+		"date":      dateStr,
+		"processed": processed,
+		"total":     len(separations),
+	})
 }

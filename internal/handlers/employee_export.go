@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf"
@@ -11,30 +13,104 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+func colName(n int) string {
+	name, _ := excelize.ColumnNumberToName(n)
+	return name
+}
+
 // ExportEmployeesExcel godoc
 //
-// @Summary      Export employees to Excel
-// @Description  Export filtered employee list to Excel format
-// @Tags         Employees
-// @Security     BearerAuth
-// @Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-// @Param        company_id query string false "Filter by company"
-// @Param        department_id query string false "Filter by department"
-// @Param        status query string false "Filter by status"
-// @Success      200  {file}  binary
-// @Router       /employees/export/excel [get]
+//	@Summary      Export employees to Excel
+//	@Description  Export filtered employee list to Excel with complete details
+//	@Tags         Employees
+//	@Security     BearerAuth
+//	@Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+//	@Param        company_id query string false "Filter by company"
+//	@Param        department_id query string false "Filter by department"
+//	@Param        section_id query string false "Filter by section"
+//	@Param        designation_id query string false "Filter by designation"
+//	@Param        line_id query string false "Filter by line"
+//	@Param        shift_id query string false "Filter by shift"
+//	@Param        group_id query string false "Filter by group"
+//	@Param        floor_id query string false "Filter by floor"
+//	@Param        status query string false "Filter by status"
+//	@Param        employee_id query string false "Search by employee ID"
+//	@Param        gender query string false "Filter by gender"
+//	@Param        blood_group query string false "Filter by blood group"
+//	@Param        min_salary query string false "Minimum gross salary"
+//	@Param        max_salary query string false "Maximum gross salary"
+//	@Success      200  {file}  binary
+//	@Router       /employees/export/excel [get]
 func (h *EmployeeHandler) ExportExcel(c *gin.Context) {
 	var employees []models.Employee
-	query := database.DB.Preload("Company").Preload("Department").Preload("DesignationRef").Preload("SectionRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef")
+	query := database.DB.
+		Preload("Company").
+		Preload("Department").
+		Preload("DesignationRef").
+		Preload("SectionRef").
+		Preload("LineRef").
+		Preload("GroupRef").
+		Preload("FloorRef").
+		Preload("Shift").
+		Preload("PresentDivision").
+		Preload("PresentDistrict").
+		Preload("PresentUpazila").
+		Preload("PresentUnion").
+		Preload("PermanentDivision").
+		Preload("PermanentDistrict").
+		Preload("PermanentUpazila").
+		Preload("PermanentUnion")
+
 	if v := c.Query("company_id"); v != "" {
 		query = query.Where("company_id = ?", v)
 	}
 	if v := c.Query("department_id"); v != "" {
 		query = query.Where("department_id = ?", v)
 	}
+	if v := c.Query("section_id"); v != "" {
+		query = query.Where("section_id = ?", v)
+	}
+	if v := c.Query("designation_id"); v != "" {
+		query = query.Where("designation_id = ?", v)
+	}
+	if v := c.Query("line_id"); v != "" {
+		query = query.Where("line_id = ?", v)
+	}
+	if v := c.Query("shift_id"); v != "" {
+		query = query.Where("shift_id = ?", v)
+	}
+	if v := c.Query("group_id"); v != "" {
+		query = query.Where("group_id = ?", v)
+	}
+	if v := c.Query("floor_id"); v != "" {
+		query = query.Where("floor_id = ?", v)
+	}
 	if v := c.Query("status"); v != "" {
 		query = query.Where("status = ?", v)
 	}
+	if v := c.Query("employee_id"); v != "" {
+		query = query.Where("employee_id ILIKE ?", "%"+v+"%")
+	}
+	if v := c.Query("gender"); v != "" {
+		query = query.Where("gender = ?", v)
+	}
+	if v := c.Query("blood_group"); v != "" {
+		query = query.Where("blood_group = ?", v)
+	}
+	if v := c.Query("employee_type"); v != "" {
+		query = query.Where("employee_type = ?", v)
+	}
+	if v := c.Query("min_salary"); v != "" {
+		if minVal, err := strconv.ParseFloat(v, 64); err == nil {
+			query = query.Where("gross_salary >= ?", minVal)
+		}
+	}
+	if v := c.Query("max_salary"); v != "" {
+		if maxVal, err := strconv.ParseFloat(v, 64); err == nil {
+			query = query.Where("gross_salary <= ?", maxVal)
+		}
+	}
+
 	if err := query.Order("employee_id ASC").Find(&employees).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -44,92 +120,293 @@ func (h *EmployeeHandler) ExportExcel(c *gin.Context) {
 	sheet := "Employees"
 	f.SetSheetName("Sheet1", sheet)
 
+	headerFont := &excelize.Font{Bold: true, Color: "FFFFFF", Size: 11, Family: "Calibri"}
+	headerFill := excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"4472C4"}}
+	headerAlign := &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}
+	headerBorder := []excelize.Border{
+		{Type: "left", Color: "FFFFFF", Style: 1},
+		{Type: "top", Color: "FFFFFF", Style: 1},
+		{Type: "bottom", Color: "FFFFFF", Style: 1},
+		{Type: "right", Color: "FFFFFF", Style: 1},
+	}
+
 	styleHeader, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true, Color: "FFFFFF", Size: 11},
-		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"4472C4"}},
+		Font: headerFont, Fill: headerFill, Alignment: headerAlign, Border: headerBorder,
 	})
-	styleDate, _ := f.NewStyle(&excelize.Style{NumFmt: 14})
-	styleSalary, _ := f.NewStyle(&excelize.Style{NumFmt: 4})
 
-	exportHeaders := []string{
-		"Employee ID", "Name (English)", "Name (Bangla)", "Designation", "Department",
-		"Section", "Grade", "Line", "Group", "Floor", "Punch No",
-		"Phone", "Email", "NID", "Gender", "Blood Group",
-		"Marital Status", "Religion", "Nationality", "Date of Birth", "Joining Date",
-		"Present Address", "Permanent Address", "Father's Name", "Mother's Name",
-		"Spouse Name", "Emergency Contact", "Emergency Phone",
-		"Employee Type", "Gross Salary",
-		"Account Type", "Account Number", "Status",
+	dataFont := &excelize.Font{Size: 10, Family: "Calibri"}
+	dataBorder := []excelize.Border{
+		{Type: "left", Color: "D9D9D9", Style: 1},
+		{Type: "top", Color: "D9D9D9", Style: 1},
+		{Type: "bottom", Color: "D9D9D9", Style: 1},
+		{Type: "right", Color: "D9D9D9", Style: 1},
+	}
+	dataAlign := &excelize.Alignment{Vertical: "center", WrapText: true}
+	centerAlign := &excelize.Alignment{Horizontal: "center", Vertical: "center"}
+
+	styleData, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign})
+	styleDataCenter, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: centerAlign})
+	styleSalary, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign, CustomNumFmt: &[]string{"#,##0.00"}[0]})
+	styleDate, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign, CustomNumFmt: &[]string{"yyyy-mm-dd"}[0]})
+
+	altFill := excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"F2F7FC"}}
+	styleDataAlt, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign, Fill: altFill})
+	styleDataCenterAlt, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: centerAlign, Fill: altFill})
+	styleSalaryAlt, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign, CustomNumFmt: &[]string{"#,##0.00"}[0], Fill: altFill})
+	styleDateAlt, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: dataBorder, Alignment: dataAlign, CustomNumFmt: &[]string{"yyyy-mm-dd"}[0], Fill: altFill})
+
+	type col struct {
+		header string
+		width  float64
+		center bool
+		isDate bool
+		isNum  bool
+	}
+	cols := []col{
+		{"Employee ID", 14, true, false, false},
+		{"Name (English)", 28, false, false, false},
+		{"Name (Bangla)", 28, false, false, false},
+		{"Designation", 22, false, false, false},
+		{"Department", 22, false, false, false},
+		{"Section", 18, false, false, false},
+		{"Grade", 10, true, false, false},
+		{"Line", 16, false, false, false},
+		{"Group", 10, true, false, false},
+		{"Floor", 10, true, false, false},
+		{"Shift", 14, false, false, false},
+		{"Punch No", 12, true, false, false},
+		{"Phone", 14, false, false, false},
+		{"Email", 28, false, false, false},
+		{"NID", 18, false, false, false},
+		{"Gender", 10, true, false, false},
+		{"Blood Group", 12, true, false, false},
+		{"Marital Status", 14, true, false, false},
+		{"Religion", 12, true, false, false},
+		{"Nationality", 14, true, false, false},
+		{"Date of Birth", 14, true, true, false},
+		{"Joining Date", 14, true, true, false},
+		{"Employee Type", 16, false, false, false},
+		{"Father's Name", 26, false, false, false},
+		{"Mother's Name", 26, false, false, false},
+		{"Spouse Name", 26, false, false, false},
+		{"Emergency Contact", 22, false, false, false},
+		{"Emergency Phone", 14, false, false, false},
+		{"Dependents", 12, true, false, false},
+		{"Present Address", 36, false, false, false},
+		{"Present Division", 18, false, false, false},
+		{"Present District", 18, false, false, false},
+		{"Present Upazila", 18, false, false, false},
+		{"Present Union", 18, false, false, false},
+		{"Permanent Address", 36, false, false, false},
+		{"Permanent Division", 18, false, false, false},
+		{"Permanent District", 18, false, false, false},
+		{"Permanent Upazila", 18, false, false, false},
+		{"Permanent Union", 18, false, false, false},
+		{"Gross Salary", 14, false, false, true},
+		{"Basic Salary", 14, false, false, true},
+		{"House Rent", 14, false, false, true},
+		{"Medical Allowance", 14, false, false, true},
+		{"Transport Allowance", 16, false, false, true},
+		{"Food Allowance", 14, false, false, true},
+		{"Other Allowance", 14, false, false, true},
+		{"Account Type", 14, true, false, false},
+		{"Account Number", 18, false, false, false},
+		{"Overtime Status", 14, true, false, false},
+		{"Status", 12, true, false, false},
 	}
 
-	for i, h := range exportHeaders {
-		col := string(rune('A' + i))
-		f.SetCellValue(sheet, fmt.Sprintf("%s1", col), h)
+	for i, c := range cols {
+		cell := colName(i+1) + "1"
+		f.SetCellValue(sheet, cell, c.header)
+		f.SetColWidth(sheet, colName(i+1), colName(i+1), c.width)
 	}
-	endCol := string(rune('A' + len(exportHeaders) - 1))
-	f.SetCellStyle(sheet, "A1", fmt.Sprintf("%s1", endCol), styleHeader)
+	endCell := colName(len(cols)) + "1"
+	f.SetCellStyle(sheet, "A1", endCell, styleHeader)
+	f.SetRowHeight(sheet, 1, 30)
 
+	timeNow := time.Now()
 	for rowIdx, emp := range employees {
 		row := rowIdx + 2
-		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), emp.EmployeeID)
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), emp.NameEn)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), emp.NameBn)
+		isAlt := rowIdx%2 == 1
+
+		var s, sc, sd, sn func(int) int
+		if isAlt {
+			s = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleDataAlt); return 0 }
+			sc = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleDataCenterAlt); return 0 }
+			sd = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleDateAlt); return 0 }
+			sn = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleSalaryAlt); return 0 }
+		} else {
+			s = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleData); return 0 }
+			sc = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleDataCenter); return 0 }
+			sd = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleDate); return 0 }
+			sn = func(c int) int { f.SetCellStyle(sheet, colName(c)+strconv.Itoa(row), colName(c)+strconv.Itoa(row), styleSalary); return 0 }
+		}
+		_ = s
+		_ = sc
+		_ = sd
+		_ = sn
+
+		sv := func(c int, v string) { f.SetCellValue(sheet, colName(c)+strconv.Itoa(row), v); sc(c) }
+		svl := func(c int, v string) { f.SetCellValue(sheet, colName(c)+strconv.Itoa(row), v); s(c) }
+		svi := func(c int, v int) { f.SetCellValue(sheet, colName(c)+strconv.Itoa(row), v); sc(c) }
+		svfl := func(c int, v float64) { f.SetCellValue(sheet, colName(c)+strconv.Itoa(row), v); sn(c) }
+		svd := func(c int, v string) { f.SetCellValue(sheet, colName(c)+strconv.Itoa(row), v); sd(c) }
+
+		sv(1, emp.EmployeeID)
+		svl(2, emp.NameEn)
+		svl(3, emp.NameBn)
+
 		if emp.DesignationRef != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), emp.DesignationRef.Name)
+			svl(4, emp.DesignationRef.Name)
+		} else {
+			svl(4, "")
 		}
 		if emp.Department != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), emp.Department.Name)
+			svl(5, emp.Department.Name)
+		} else {
+			svl(5, "")
 		}
 		if emp.SectionRef != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), emp.SectionRef.Name)
+			svl(6, emp.SectionRef.Name)
+		} else {
+			svl(6, "")
 		}
-		f.SetCellValue(sheet, fmt.Sprintf("G%d", row), emp.Grade)
+		sv(7, emp.Grade)
 		if emp.LineRef != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("H%d", row), emp.LineRef.Name)
+			svl(8, emp.LineRef.Name)
+		} else {
+			svl(8, "")
 		}
 		if emp.GroupRef != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("I%d", row), emp.GroupRef.Name)
+			sv(9, emp.GroupRef.Name)
+		} else {
+			sv(9, "")
 		}
 		if emp.FloorRef != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("J%d", row), emp.FloorRef.Name)
+			sv(10, emp.FloorRef.Name)
+		} else {
+			sv(10, "")
 		}
-		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), emp.PunchNumber)
-		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), emp.Phone)
-		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), emp.Email)
-		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), emp.NID)
-		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), emp.Gender)
-		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), emp.BloodGroup)
-		f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), emp.MaritalStatus)
-		f.SetCellValue(sheet, fmt.Sprintf("R%d", row), emp.Religion)
-		f.SetCellValue(sheet, fmt.Sprintf("S%d", row), emp.Nationality)
+		if emp.Shift != nil {
+			svl(11, emp.Shift.Name)
+		} else {
+			svl(11, "")
+		}
+		sv(12, emp.PunchNumber)
+		svl(13, emp.Phone)
+		svl(14, emp.Email)
+		svl(15, emp.NID)
+		sv(16, emp.Gender)
+		sv(17, emp.BloodGroup)
+		sv(18, emp.MaritalStatus)
+		sv(19, emp.Religion)
+		sv(20, emp.Nationality)
+
 		if emp.DateOfBirth != "" {
-			f.SetCellValue(sheet, fmt.Sprintf("T%d", row), emp.DateOfBirth)
+			svd(21, emp.DateOfBirth)
+		} else {
+			svd(21, "")
 		}
-		f.SetCellStyle(sheet, fmt.Sprintf("U%d", row), fmt.Sprintf("U%d", row), styleDate)
-		f.SetCellValue(sheet, fmt.Sprintf("U%d", row), emp.JoiningDate.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("V%d", row), emp.PresentAddress)
-		f.SetCellValue(sheet, fmt.Sprintf("W%d", row), emp.PermanentAddress)
-		f.SetCellValue(sheet, fmt.Sprintf("X%d", row), emp.FatherName)
-		f.SetCellValue(sheet, fmt.Sprintf("Y%d", row), emp.MotherName)
-		f.SetCellValue(sheet, fmt.Sprintf("Z%d", row), emp.SpouseName)
-		f.SetCellValue(sheet, fmt.Sprintf("AA%d", row), emp.EmergencyContact)
-		f.SetCellValue(sheet, fmt.Sprintf("AB%d", row), emp.EmergencyPhone)
-		f.SetCellValue(sheet, fmt.Sprintf("AC%d", row), emp.EmployeeType)
-		f.SetCellStyle(sheet, fmt.Sprintf("AD%d", row), fmt.Sprintf("AD%d", row), styleSalary)
-		f.SetCellValue(sheet, fmt.Sprintf("AD%d", row), emp.GrossSalary)
-		f.SetCellValue(sheet, fmt.Sprintf("AE%d", row), emp.AccountType)
-		f.SetCellValue(sheet, fmt.Sprintf("AF%d", row), emp.AccountNumber)
+		svd(22, emp.JoiningDate.Format("2006-01-02"))
+		svl(23, emp.EmployeeType)
+
+		svl(24, emp.FatherName)
+		svl(25, emp.MotherName)
+		svl(26, emp.SpouseName)
+		svl(27, emp.EmergencyContact)
+		svl(28, emp.EmergencyPhone)
+		svi(29, emp.NumberOfDependents)
+
+		svl(30, emp.PresentAddress)
+		if emp.PresentDivision != nil {
+			svl(31, emp.PresentDivision.Name)
+		} else {
+			svl(31, "")
+		}
+		if emp.PresentDistrict != nil {
+			svl(32, emp.PresentDistrict.Name)
+		} else {
+			svl(32, "")
+		}
+		if emp.PresentUpazila != nil {
+			svl(33, emp.PresentUpazila.Name)
+		} else {
+			svl(33, "")
+		}
+		if emp.PresentUnion != nil {
+			svl(34, emp.PresentUnion.Name)
+		} else {
+			svl(34, "")
+		}
+
+		svl(35, emp.PermanentAddress)
+		if emp.PermanentDivision != nil {
+			svl(36, emp.PermanentDivision.Name)
+		} else {
+			svl(36, "")
+		}
+		if emp.PermanentDistrict != nil {
+			svl(37, emp.PermanentDistrict.Name)
+		} else {
+			svl(37, "")
+		}
+		if emp.PermanentUpazila != nil {
+			svl(38, emp.PermanentUpazila.Name)
+		} else {
+			svl(38, "")
+		}
+		if emp.PermanentUnion != nil {
+			svl(39, emp.PermanentUnion.Name)
+		} else {
+			svl(39, "")
+		}
+
+		svfl(40, emp.GrossSalary)
+		svfl(41, emp.BasicSalary)
+		svfl(42, emp.HouseRent)
+		svfl(43, emp.MedicalAllowance)
+		svfl(44, emp.TransportAllowance)
+		svfl(45, emp.FoodAllowance)
+		svfl(46, emp.OtherAllowance)
+
+		sv(47, emp.AccountType)
+		svl(48, emp.AccountNumber)
+
+		otStatus := "No"
+		if emp.OverTimeStatus {
+			otStatus = "Yes"
+		}
+		sv(49, otStatus)
+
 		status := "Active"
 		if emp.Status == "inactive" {
 			status = "Inactive"
 		}
-		f.SetCellValue(sheet, fmt.Sprintf("AG%d", row), status)
+		sv(50, status)
+
+		svd(51, emp.CreatedAt.Format("2006-01-02"))
+		_ = timeNow
 	}
 
-	f.SetColWidth(sheet, "B", "B", 25)
-	f.SetColWidth(sheet, "C", "C", 20)
-	f.SetColWidth(sheet, "T", "T", 30)
-	f.SetColWidth(sheet, "U", "U", 30)
+	lastCol := colName(len(cols))
+	lastRow := len(employees) + 1
+	f.SetRowHeight(sheet, 1, 30)
+	for r := 2; r <= lastRow; r++ {
+		f.SetRowHeight(sheet, r, 20)
+	}
+	f.SetSheetView(sheet, -1, &excelize.ViewOptions{
+		ShowGridLines: func(b bool) *bool { return &b }(true),
+	})
+	f.AutoFilter(sheet, "A1:"+lastCol+strconv.Itoa(lastRow), []excelize.AutoFilterOptions{})
+
+	freezeCell := "A2"
+	f.SetPanes(sheet, &excelize.Panes{
+		Freeze:      true,
+		XSplit:      0,
+		YSplit:      1,
+		TopLeftCell: freezeCell,
+		ActivePane:  "bottomLeft",
+	})
 
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename=employees_export.xlsx")

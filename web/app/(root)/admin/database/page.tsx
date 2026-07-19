@@ -199,8 +199,8 @@ export default function DatabasePage() {
                 </p>
               </label>
             </div>
-            {isSuperAdmin() && importFile && (
-              <Button onClick={handleImport} disabled={importing} className="w-full">
+            {isSuperAdmin() && (
+              <Button onClick={handleImport} disabled={importing || !importFile} className="w-full">
                 {importing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadIcon className="mr-2 h-4 w-4" />}
                 {importing ? "Importing..." : "Import SQL"}
               </Button>

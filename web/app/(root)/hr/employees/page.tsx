@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UsersIcon, PlusIcon, UploadIcon, Loader2 } from "lucide-react"
+import { UsersIcon, PlusIcon, UploadIcon, DownloadIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -94,9 +94,10 @@ export default function EmployeesPage() {
   const [data, setData] = React.useState<Employee[]>([])
   const [loading, setLoading] = React.useState(true)
   const [submitting, setSubmitting] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  const [filters, setFilters] = React.useState<Record<string, string>>({})
+  const [filters, setFilters] = React.useState<Record<string, string>>({ employee_type: "Regular" })
 
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
@@ -235,6 +236,25 @@ export default function EmployeesPage() {
     }
   }
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const active = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ""))
+      const res = await employeeApi.exportExcel(active)
+      const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `employees_export_${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("Failed to export employees")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const setFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
@@ -250,6 +270,10 @@ export default function EmployeesPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+            Export
+          </Button>
           <Button variant="outline" onClick={() => router.push("/hr/employees/import")}>
             <UploadIcon className="mr-2 h-4 w-4" />
             Import
@@ -441,6 +465,21 @@ export default function EmployeesPage() {
                     {g.label}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Employee Type</label>
+              <select
+                value={filters.employee_type || ""}
+                onChange={(e) => setFilter("employee_type", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">— All —</option>
+                <option value="Regular">Regular</option>
+                <option value="Lefty">Lefty</option>
+                <option value="Resign">Resign</option>
+                <option value="Close">Close</option>
               </select>
             </div>
 

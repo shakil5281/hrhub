@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
 	"github.com/shakil5281/hrhub-api/internal/utils"
+	"github.com/xuri/excelize/v2"
 )
 
 type AttendanceHandler struct {
@@ -289,6 +291,7 @@ func (h *AttendanceHandler) Delete(c *gin.Context) {
 // @Param        status        query string false "Filter by status (present|late|absent|half-day)"
 // @Param        page          query int    false "Page number (default: 1)"
 // @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Param        list_mode     query string false "Set to 'true' to get employee list only"
 // @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/job-card [get]
@@ -304,6 +307,7 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 	groupID := c.Query("group_id")
 	shiftID := c.Query("shift_id")
 	status := c.Query("status")
+	listMode := c.Query("list_mode")
 
 	if employeeID != "" {
 		emp, err := h.employeeRepo.FindByEmployeeID(employeeID)
@@ -313,6 +317,41 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 		if err == nil && emp != nil {
 			employeeID = emp.EmployeeID
 		}
+	}
+
+	// List mode: return only distinct employee IDs/names for navigation
+	if listMode == "true" {
+		employees, err := h.attendanceRepo.ListJobCardEmployees(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		type EmpInfo struct {
+			EmployeeID   string `json:"employee_id"`
+			NameEn       string `json:"name_en"`
+			Designation  string `json:"designation"`
+			Department   string `json:"department"`
+			Company      string `json:"company"`
+			Phone        string `json:"phone"`
+			JoiningDate  string `json:"joining_date"`
+		}
+		var result []EmpInfo
+		for _, e := range employees {
+			d := ""
+			if e.DesignationRef != nil { d = e.DesignationRef.Name }
+			dp := ""
+			if e.Department != nil { dp = e.Department.Name }
+			cn := ""
+			jo := ""
+			if !e.JoiningDate.IsZero() { jo = e.JoiningDate.Format("2006-01-02") }
+			result = append(result, EmpInfo{
+				EmployeeID: e.EmployeeID, NameEn: e.NameEn,
+				Designation: d, Department: dp,
+				Company: cn, Phone: e.Phone, JoiningDate: jo,
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"data": result, "total": len(result)})
+		return
 	}
 
 	p := utils.ParsePagination(c)
@@ -810,4 +849,1006 @@ func (h *AttendanceHandler) AbsentAttendance(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, utils.NewPaginatedResponse(attendances, total, p))
+}
+
+func colNameAttendance(n int) string {
+	name, _ := excelize.ColumnNumberToName(n)
+	return name
+}
+
+func statusMap(s string) string {
+	switch s {
+	case "present":
+		return "P"
+	case "late":
+		return "L"
+	case "absent":
+		return "A"
+	case "on_leave":
+		return "V"
+	case "leave":
+		return "V"
+	case "weekend":
+		return "W"
+	case "half_day":
+		return "H"
+	default:
+		return s
+	}
+}
+
+func addGroupedSheet(f *excelize.File, sheetName, companyName, companyAddress, dateDisplay string, attendances []models.Attendance, groupFn func(models.Attendance) string) {
+	f.NewSheet(sheetName)
+
+	nCols := 8
+	cols := []struct {
+		header string
+		width  float64
+	}{
+		{"Employee ID", 14},
+		{"Name", 30},
+		{"Designation", 24},
+		{"In Time", 12},
+		{"Out Time", 12},
+		{"Late (Min)", 11},
+		{"OT (Hr)", 11},
+		{"Status", 10},
+	}
+
+	thinBorder := []excelize.Border{
+		{Type: "left", Color: "333333", Style: 1},
+		{Type: "top", Color: "333333", Style: 1},
+		{Type: "bottom", Color: "333333", Style: 1},
+		{Type: "right", Color: "333333", Style: 1},
+	}
+
+	companyNameStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	normalCenter, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	groupHeaderStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+	})
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+		Border:    thinBorder,
+	})
+
+	dataCenter, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Border:    thinBorder,
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	dataLeft, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Border:    thinBorder,
+		Alignment: &excelize.Alignment{Vertical: "center"},
+	})
+
+	endCol := colNameAttendance(nCols)
+
+	// Row 1-4: Header
+	f.SetCellValue(sheetName, "A1", companyName)
+	f.MergeCell(sheetName, "A1", endCol+"1")
+	f.SetCellStyle(sheetName, "A1", endCol+"1", companyNameStyle)
+	f.SetRowHeight(sheetName, 1, 32)
+
+	f.SetCellValue(sheetName, "A2", companyAddress)
+	f.MergeCell(sheetName, "A2", endCol+"2")
+	f.SetCellStyle(sheetName, "A2", endCol+"2", normalCenter)
+	f.SetRowHeight(sheetName, 2, 20)
+
+	f.SetCellValue(sheetName, "A3", sheetName+" ATTENDANCE")
+	f.MergeCell(sheetName, "A3", endCol+"3")
+	f.SetCellStyle(sheetName, "A3", endCol+"3", normalCenter)
+	f.SetRowHeight(sheetName, 3, 20)
+
+	f.SetCellValue(sheetName, "A4", "Date: "+dateDisplay)
+	f.MergeCell(sheetName, "A4", endCol+"4")
+	f.SetCellStyle(sheetName, "A4", endCol+"4", normalCenter)
+	f.SetRowHeight(sheetName, 4, 20)
+
+	// Row 5: Column Headers
+	for i, c := range cols {
+		cell := colNameAttendance(i+1) + "5"
+		f.SetCellValue(sheetName, cell, c.header)
+		f.SetCellStyle(sheetName, cell, cell, headerStyle)
+		f.SetColWidth(sheetName, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
+	}
+	f.SetRowHeight(sheetName, 5, 24)
+
+	// Group attendances
+	grouped := make(map[string][]models.Attendance)
+	var groupOrder []string
+	for _, a := range attendances {
+		name := groupFn(a)
+		if name == "" {
+			name = "-"
+		}
+		if _, ok := grouped[name]; !ok {
+			groupOrder = append(groupOrder, name)
+		}
+		grouped[name] = append(grouped[name], a)
+	}
+
+	row := 6
+	sl := 0
+	totalPres := 0
+	totalAbs := 0
+	totalLate := 0
+	totalLeave := 0
+
+	for _, groupName := range groupOrder {
+		list := grouped[groupName]
+
+		// Group header row
+		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), groupName+" ("+fmt.Sprintf("%d", len(list))+")")
+		f.MergeCell(sheetName, "A"+strconv.Itoa(row), endCol+strconv.Itoa(row))
+		f.SetCellStyle(sheetName, "A"+strconv.Itoa(row), endCol+strconv.Itoa(row), groupHeaderStyle)
+		f.SetRowHeight(sheetName, row, 22)
+		row++
+
+		// Attendance rows
+		for _, a := range list {
+			sl++
+			svc := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataCenter) }
+			svl := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataLeft) }
+
+			svc(1, a.EmployeeID)
+			svl(2, a.Employee.NameEn)
+
+			designation := ""
+			if a.Employee.DesignationRef != nil {
+				designation = a.Employee.DesignationRef.Name
+			}
+			svl(3, designation)
+
+			checkIn := ""
+			if a.CheckIn != nil {
+				checkIn = *a.CheckIn
+			}
+			svc(4, checkIn)
+
+			checkOut := ""
+			if a.CheckOut != nil {
+				checkOut = *a.CheckOut
+			}
+			svc(5, checkOut)
+
+			svc(6, fmt.Sprintf("%d", a.LateMinutes))
+
+			overTime := ""
+			if a.OverTime != nil {
+				overTime = *a.OverTime
+			}
+			svc(7, overTime)
+
+			status := a.Status
+			if status == "" {
+				status = "present"
+			}
+			statusCode := statusMap(status)
+			if status == "absent" {
+				redStyle, _ := f.NewStyle(&excelize.Style{
+					Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"},
+					Border:    thinBorder,
+					Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+				})
+				f.SetCellValue(sheetName, colNameAttendance(8)+strconv.Itoa(row), statusCode)
+				f.SetCellStyle(sheetName, colNameAttendance(8)+strconv.Itoa(row), colNameAttendance(8)+strconv.Itoa(row), redStyle)
+			} else {
+				svc(8, statusCode)
+			}
+
+			switch status {
+			case "present":
+				totalPres++
+			case "absent":
+				totalAbs++
+			case "late":
+				totalLate++
+			case "on_leave", "leave":
+				totalLeave++
+			}
+
+			f.SetRowHeight(sheetName, row, 20)
+			row++
+		}
+		_ = sl
+	}
+
+	// Footer
+	footerRow := row + 1
+	footerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+	})
+
+	f.SetCellValue(sheetName, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total: %d Employees | Present: %d | Absent: %d | Late: %d | Leave: %d", len(attendances), totalPres, totalAbs, totalLate, totalLeave))
+	f.MergeCell(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow))
+	f.SetCellStyle(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow), footerStyle)
+	f.SetRowHeight(sheetName, footerRow, 22)
+}
+
+// ExportAttendanceExcel godoc
+//
+//	@Summary      Export attendances to Excel
+//	@Description  Export attendance data to Excel with company header, report info, and summary footer
+//	@Tags         Attendance
+//	@Security     BearerAuth
+//	@Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+//	@Param        date query string true "Date (YYYY-MM-DD)"
+//	@Success      200  {file}  binary
+//	@Router       /attendance/export/excel [get]
+func (h *AttendanceHandler) ExportExcel(c *gin.Context) {
+	date := c.Query("date")
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
+
+	var company models.Company
+	database.DB.First(&company)
+
+	var attendances []models.Attendance
+	if err := database.DB.
+		Preload("Employee.DesignationRef").
+		Preload("Employee.Department").
+		Preload("Employee.SectionRef").
+		Preload("Employee.LineRef").
+		Preload("Employee").
+		Where("date = ? AND deleted_at IS NULL", date).
+		Order("created_at ASC").
+		Find(&attendances).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	f := excelize.NewFile()
+	sheet := "Daily Attendance"
+	index, _ := f.GetSheetIndex("Sheet1")
+	f.SetActiveSheet(index)
+	f.SetSheetName("Sheet1", sheet)
+
+	companyName := company.CompanyNameEn
+	if companyName == "" {
+		companyName = "Company Name"
+	}
+	companyAddress := company.AddressEn
+	if companyAddress == "" {
+		companyAddress = "Company Address"
+	}
+
+	// -- Styles --
+	borderColor := "333333"
+
+	thinBorder := []excelize.Border{
+		{Type: "left", Color: borderColor, Style: 1},
+		{Type: "top", Color: borderColor, Style: 1},
+		{Type: "bottom", Color: borderColor, Style: 1},
+		{Type: "right", Color: borderColor, Style: 1},
+	}
+
+	headerCellStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+		Border:    thinBorder,
+	})
+
+	dataFont := &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}
+	styleData, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: thinBorder, Alignment: &excelize.Alignment{Vertical: "center", WrapText: true}})
+	styleDataCenter, _ := f.NewStyle(&excelize.Style{Font: dataFont, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+
+	cols := []struct {
+		header string
+		width  float64
+		center bool
+	}{
+		{"Employee ID", 14, true},
+		{"Name", 32, false},
+		{"Designation", 26, false},
+		{"In Time", 12, true},
+		{"Out Time", 12, true},
+		{"Late (Min)", 11, true},
+		{"OT (Hr)", 11, true},
+		{"Status", 12, true},
+	}
+
+	nCols := len(cols)
+	headerRow := 5
+	dataStartRow := headerRow + 1
+
+	// --- Header Rows 1-4: separate rows with individual styling ---
+	parsedDate, _ := time.Parse("2006-01-02", date)
+	dateDisplay := parsedDate.Format("02 January, 2006")
+
+	normalCenter, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	companyNameStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	// Row 1: Company Name (Bold, Size 20)
+	f.SetCellValue(sheet, "A1", companyName)
+	f.MergeCell(sheet, "A1", colNameAttendance(nCols)+"1")
+	f.SetCellStyle(sheet, "A1", colNameAttendance(nCols)+"1", companyNameStyle)
+	f.SetRowHeight(sheet, 1, 32)
+
+	// Row 2: Address
+	f.SetCellValue(sheet, "A2", companyAddress)
+	f.MergeCell(sheet, "A2", colNameAttendance(nCols)+"2")
+	f.SetCellStyle(sheet, "A2", colNameAttendance(nCols)+"2", normalCenter)
+	f.SetRowHeight(sheet, 2, 20)
+
+	// Row 3: Report Name
+	f.SetCellValue(sheet, "A3", "DAILY ATTENDANCE REPORT")
+	f.MergeCell(sheet, "A3", colNameAttendance(nCols)+"3")
+	f.SetCellStyle(sheet, "A3", colNameAttendance(nCols)+"3", normalCenter)
+	f.SetRowHeight(sheet, 3, 20)
+
+	// Row 4: Date
+	f.SetCellValue(sheet, "A4", "Date: "+dateDisplay)
+	f.MergeCell(sheet, "A4", colNameAttendance(nCols)+"4")
+	f.SetCellStyle(sheet, "A4", colNameAttendance(nCols)+"4", normalCenter)
+	f.SetRowHeight(sheet, 4, 20)
+
+	// --- Row 5: Column Headers (no border) ---
+	for i, c := range cols {
+		cell := colNameAttendance(i+1) + strconv.Itoa(headerRow)
+		f.SetCellValue(sheet, cell, c.header)
+		f.SetCellStyle(sheet, cell, cell, headerCellStyle)
+		f.SetColWidth(sheet, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
+	}
+	f.SetRowHeight(sheet, headerRow, 24)
+
+	// --- Data Rows ---
+	summary := map[string]int{"present": 0, "absent": 0, "late": 0, "weekend": 0, "half_day": 0, "on_leave": 0}
+
+	for rowIdx, att := range attendances {
+		row := rowIdx + dataStartRow
+
+		svc := func(c int, v string) { f.SetCellValue(sheet, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheet, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), styleDataCenter) }
+		sv := func(c int, v string) { f.SetCellValue(sheet, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheet, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), styleData) }
+
+		svc(1, att.EmployeeID)
+		sv(2, att.Employee.NameEn)
+
+		designation := ""
+		if att.Employee.DesignationRef != nil {
+			designation = att.Employee.DesignationRef.Name
+		}
+		sv(3, designation)
+
+		checkIn := ""
+		if att.CheckIn != nil {
+			checkIn = *att.CheckIn
+		}
+		svc(4, checkIn)
+
+		checkOut := ""
+		if att.CheckOut != nil {
+			checkOut = *att.CheckOut
+		}
+		svc(5, checkOut)
+
+		svc(6, fmt.Sprintf("%d", att.LateMinutes))
+
+		overTime := ""
+		if att.OverTime != nil {
+			overTime = *att.OverTime
+		}
+		svc(7, overTime)
+
+		status := att.Status
+		if status == "" {
+			status = "present"
+		}
+		statusCode := statusMap(status)
+		if status == "absent" {
+			redStyle, _ := f.NewStyle(&excelize.Style{
+				Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"},
+				Border:    thinBorder,
+				Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+			})
+			f.SetCellValue(sheet, colNameAttendance(8)+strconv.Itoa(row), statusCode)
+			f.SetCellStyle(sheet, colNameAttendance(8)+strconv.Itoa(row), colNameAttendance(8)+strconv.Itoa(row), redStyle)
+		} else {
+			svc(8, statusCode)
+		}
+
+		summary[att.Status]++
+		f.SetRowHeight(sheet, row, 20)
+	}
+
+	// --- Footer: Summary (no border, full row merge) ---
+	lastDataRow := dataStartRow + len(attendances) - 1
+	footerRow := lastDataRow + 2
+
+	totalEmployees := len(attendances)
+	totalLeave := summary["on_leave"]
+
+	footerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+	})
+
+	drawFooter := func(label, value string) {
+		f.SetCellValue(sheet, "A"+strconv.Itoa(footerRow), label+" "+value)
+		f.MergeCell(sheet, "A"+strconv.Itoa(footerRow), colNameAttendance(nCols)+strconv.Itoa(footerRow))
+		f.SetCellStyle(sheet, "A"+strconv.Itoa(footerRow), colNameAttendance(nCols)+strconv.Itoa(footerRow), footerStyle)
+		f.SetRowHeight(sheet, footerRow, 20)
+		footerRow++
+	}
+
+	drawFooter("Total Employees:", fmt.Sprintf("%d", totalEmployees))
+	drawFooter("Total Present:", fmt.Sprintf("%d", summary["present"]))
+	drawFooter("Total Absent:", fmt.Sprintf("%d", summary["absent"]))
+	drawFooter("Total Late:", fmt.Sprintf("%d", summary["late"]))
+	drawFooter("Total Leave:", fmt.Sprintf("%d", totalLeave))
+
+	// --- Additional Summary Sheets ---
+	addGroupedSheet(f, "Department Wise", companyName, companyAddress, dateDisplay, attendances, func(a models.Attendance) string {
+		if a.Employee.Department != nil {
+			return a.Employee.Department.Name
+		}
+		return "-"
+	})
+
+	addGroupedSheet(f, "Section Wise", companyName, companyAddress, dateDisplay, attendances, func(a models.Attendance) string {
+		if a.Employee.SectionRef != nil {
+			return a.Employee.SectionRef.Name
+		}
+		return "-"
+	})
+
+	addGroupedSheet(f, "Designation Wise", companyName, companyAddress, dateDisplay, attendances, func(a models.Attendance) string {
+		if a.Employee.DesignationRef != nil {
+			return a.Employee.DesignationRef.Name
+		}
+		return "-"
+	})
+
+	addGroupedSheet(f, "Line Wise", companyName, companyAddress, dateDisplay, attendances, func(a models.Attendance) string {
+		if a.Employee.LineRef != nil {
+			return a.Employee.LineRef.Name
+		}
+		return "-"
+	})
+
+	// --- Page Setup: A4 Portrait + No Gridlines for all sheets ---
+	for _, s := range f.GetSheetList() {
+		orientation := "portrait"
+		paperSize := 9
+		fitWidth := 1
+		fitHeight := 0
+		f.SetPageLayout(s, &excelize.PageLayoutOptions{
+			Orientation: &orientation,
+			Size:        &paperSize,
+			FitToWidth:  &fitWidth,
+			FitToHeight: &fitHeight,
+		})
+
+		f.SetPageMargins(s, &excelize.PageLayoutMarginsOptions{
+			Left:   func(f float64) *float64 { return &f }(0.3),
+			Right:  func(f float64) *float64 { return &f }(0.3),
+			Top:    func(f float64) *float64 { return &f }(0.4),
+			Bottom: func(f float64) *float64 { return &f }(0.4),
+			Header: func(f float64) *float64 { return &f }(0),
+			Footer: func(f float64) *float64 { return &f }(0),
+		})
+
+		f.SetSheetView(s, -1, &excelize.ViewOptions{ShowGridLines: func(b bool) *bool { return &b }(false)})
+	}
+
+	// Freeze panes for daily attendance sheet
+	f.SetPanes(sheet, &excelize.Panes{
+		Freeze:      true,
+		XSplit:      0,
+		YSplit:      headerRow,
+		TopLeftCell: "A" + strconv.Itoa(dataStartRow),
+		ActivePane:  "bottomLeft",
+	})
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=attendance_%s.xlsx", date))
+	f.Write(c.Writer)
+}
+
+// ExportAbsentExcel godoc
+//
+//	@Summary      Export absent attendance to Excel
+//	@Description  Export absent employee attendance data to Excel with company header, report info, and summary footer
+//	@Tags         Attendance
+//	@Security     BearerAuth
+//	@Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+//	@Param        start_date query string true "Start date (YYYY-MM-DD)"
+//	@Param        end_date query string true "End date (YYYY-MM-DD)"
+//	@Success      200  {file}  binary
+//	@Router       /attendance/absent/export/excel [get]
+func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	if startDate == "" {
+		startDate = time.Now().Format("2006-01-02")
+	}
+	if endDate == "" {
+		endDate = startDate
+	}
+
+	var company models.Company
+	database.DB.First(&company)
+
+	var attendances []models.Attendance
+	if err := database.DB.
+		Preload("Employee.DesignationRef").
+		Preload("Employee.Department").
+		Preload("Employee.SectionRef").
+		Preload("Employee.LineRef").
+		Preload("Employee").
+		Where("date BETWEEN ? AND ? AND status = ? AND deleted_at IS NULL", startDate, endDate, "absent").
+		Order("date ASC, created_at ASC").
+		Find(&attendances).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	type absentCount struct {
+		EmployeeID string
+		Count      int
+	}
+	var totalAbsentCounts []absentCount
+	database.DB.Model(&models.Attendance{}).
+		Select("employee_id, count(*) as count").
+		Where("status = ? AND deleted_at IS NULL", "absent").
+		Group("employee_id").
+		Find(&totalAbsentCounts)
+
+	totalAbsentMap := make(map[string]int)
+	for _, ac := range totalAbsentCounts {
+		totalAbsentMap[ac.EmployeeID] = ac.Count
+	}
+
+	f := excelize.NewFile()
+	sheet := "Absent Report"
+	index, _ := f.GetSheetIndex("Sheet1")
+	f.SetActiveSheet(index)
+	f.SetSheetName("Sheet1", sheet)
+
+	nCols := 5
+	cols := []struct {
+		header string
+		width  float64
+	}{
+		{"Employee ID", 16},
+		{"Name", 32},
+		{"Designation", 20},
+		{"Total Absent", 14},
+		{"Status", 12},
+	}
+
+	borderColor := "333333"
+	thinBorder := []excelize.Border{
+		{Type: "left", Color: borderColor, Style: 1},
+		{Type: "top", Color: borderColor, Style: 1},
+		{Type: "bottom", Color: borderColor, Style: 1},
+		{Type: "right", Color: borderColor, Style: 1},
+	}
+
+	companyNameStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	normalCenter, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+		Border:    thinBorder,
+	})
+	dataCenter, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Border:    thinBorder,
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	dataLeft, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Border:    thinBorder,
+		Alignment: &excelize.Alignment{Vertical: "center"},
+	})
+	redStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"},
+		Border:    thinBorder,
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+
+	companyName := company.CompanyNameEn
+	if companyName == "" {
+		companyName = "Company Name"
+	}
+	companyAddress := company.AddressEn
+	if companyAddress == "" {
+		companyAddress = "Company Address"
+	}
+
+	parsedStart, _ := time.Parse("2006-01-02", startDate)
+	parsedEnd, _ := time.Parse("2006-01-02", endDate)
+	dateRange := parsedStart.Format("02 Jan 2006") + " to " + parsedEnd.Format("02 Jan 2006")
+
+	endCol := colNameAttendance(nCols)
+
+	// Row 1: Company Name
+	f.SetCellValue(sheet, "A1", companyName)
+	f.MergeCell(sheet, "A1", endCol+"1")
+	f.SetCellStyle(sheet, "A1", endCol+"1", companyNameStyle)
+	f.SetRowHeight(sheet, 1, 32)
+
+	// Row 2: Address
+	f.SetCellValue(sheet, "A2", companyAddress)
+	f.MergeCell(sheet, "A2", endCol+"2")
+	f.SetCellStyle(sheet, "A2", endCol+"2", normalCenter)
+	f.SetRowHeight(sheet, 2, 20)
+
+	// Row 3: Report Name
+	f.SetCellValue(sheet, "A3", "ABSENT ATTENDANCE REPORT")
+	f.MergeCell(sheet, "A3", endCol+"3")
+	f.SetCellStyle(sheet, "A3", endCol+"3", normalCenter)
+	f.SetRowHeight(sheet, 3, 20)
+
+	// Row 4: Date Range
+	f.SetCellValue(sheet, "A4", "Date: "+dateRange)
+	f.MergeCell(sheet, "A4", endCol+"4")
+	f.SetCellStyle(sheet, "A4", endCol+"4", normalCenter)
+	f.SetRowHeight(sheet, 4, 20)
+
+	// Row 5: Column Headers
+	for i, c := range cols {
+		cell := colNameAttendance(i+1) + "5"
+		f.SetCellValue(sheet, cell, c.header)
+		f.SetCellStyle(sheet, cell, cell, headerStyle)
+		f.SetColWidth(sheet, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
+	}
+	f.SetRowHeight(sheet, 5, 24)
+
+	// Data rows
+	for rowIdx, a := range attendances {
+		row := rowIdx + 6
+		svc := func(c int, v string) { f.SetCellValue(sheet, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheet, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataCenter) }
+		svl := func(c int, v string) { f.SetCellValue(sheet, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheet, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataLeft) }
+
+		svc(1, a.EmployeeID)
+		svl(2, a.Employee.NameEn)
+
+		designation := ""
+		if a.Employee.DesignationRef != nil {
+			designation = a.Employee.DesignationRef.Name
+		}
+		svl(3, designation)
+
+		svc(4, fmt.Sprintf("%d", totalAbsentMap[a.EmployeeID]))
+
+		f.SetCellValue(sheet, colNameAttendance(5)+strconv.Itoa(row), "A")
+		f.SetCellStyle(sheet, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyle)
+
+		f.SetRowHeight(sheet, row, 20)
+	}
+
+	// Footer
+	lastRow := len(attendances) + 5
+	footerRow := lastRow + 2
+	footerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
+		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
+	})
+	f.SetCellValue(sheet, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total Absent: %d Employees", len(attendances)))
+	f.MergeCell(sheet, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow))
+	f.SetCellStyle(sheet, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow), footerStyle)
+	f.SetRowHeight(sheet, footerRow, 22)
+
+	// --- Grouped Sheets ---
+	addGroupedAbsentSheet(f, "Department Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+		if a.Employee.Department != nil { return a.Employee.Department.Name }
+		return "-"
+	})
+	addGroupedAbsentSheet(f, "Section Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+		if a.Employee.SectionRef != nil { return a.Employee.SectionRef.Name }
+		return "-"
+	})
+	addGroupedAbsentSheet(f, "Designation Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+		if a.Employee.DesignationRef != nil { return a.Employee.DesignationRef.Name }
+		return "-"
+	})
+	addGroupedAbsentSheet(f, "Line Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+		if a.Employee.LineRef != nil { return a.Employee.LineRef.Name }
+		return "-"
+	})
+
+	// --- Page Setup: A4 Portrait + No Gridlines for all sheets ---
+	for _, s := range f.GetSheetList() {
+		orientation := "portrait"
+		paperSize := 9
+		fitWidth := 1
+		fitHeight := 0
+		f.SetPageLayout(s, &excelize.PageLayoutOptions{
+			Orientation: &orientation,
+			Size:        &paperSize,
+			FitToWidth:  &fitWidth,
+			FitToHeight: &fitHeight,
+		})
+		f.SetPageMargins(s, &excelize.PageLayoutMarginsOptions{
+			Left:   func(f float64) *float64 { return &f }(0.3),
+			Right:  func(f float64) *float64 { return &f }(0.3),
+			Top:    func(f float64) *float64 { return &f }(0.4),
+			Bottom: func(f float64) *float64 { return &f }(0.4),
+			Header: func(f float64) *float64 { return &f }(0),
+			Footer: func(f float64) *float64 { return &f }(0),
+		})
+		f.SetSheetView(s, -1, &excelize.ViewOptions{ShowGridLines: func(b bool) *bool { return &b }(false)})
+	}
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=absent_report_%s_%s.xlsx", startDate, endDate))
+	f.Write(c.Writer)
+}
+
+func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddress, dateRange string, attendances []models.Attendance, totalAbsentMap map[string]int, groupFn func(models.Attendance) string) {
+	f.NewSheet(sheetName)
+
+	nCols := 5
+	cols := []struct {
+		header string
+		width  float64
+	}{
+		{"Employee ID", 16},
+		{"Name", 32},
+		{"Designation", 20},
+		{"Total Absent", 14},
+		{"Status", 12},
+	}
+
+	thinBorder := []excelize.Border{
+		{Type: "left", Color: "333333", Style: 1},
+		{Type: "top", Color: "333333", Style: 1},
+		{Type: "bottom", Color: "333333", Style: 1},
+		{Type: "right", Color: "333333", Style: 1},
+	}
+
+	companyNameStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	normalCenter, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	headerStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}, Border: thinBorder})
+	dataCenter, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	dataLeft, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Vertical: "center"}})
+	redStyleG, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	groupHeaderStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
+
+	endCol := colNameAttendance(nCols)
+
+	// Header rows
+	f.SetCellValue(sheetName, "A1", companyName)
+	f.MergeCell(sheetName, "A1", endCol+"1")
+	f.SetCellStyle(sheetName, "A1", endCol+"1", companyNameStyle)
+	f.SetRowHeight(sheetName, 1, 32)
+
+	f.SetCellValue(sheetName, "A2", companyAddress)
+	f.MergeCell(sheetName, "A2", endCol+"2")
+	f.SetCellStyle(sheetName, "A2", endCol+"2", normalCenter)
+	f.SetRowHeight(sheetName, 2, 20)
+
+	f.SetCellValue(sheetName, "A3", sheetName+" ABSENT REPORT")
+	f.MergeCell(sheetName, "A3", endCol+"3")
+	f.SetCellStyle(sheetName, "A3", endCol+"3", normalCenter)
+	f.SetRowHeight(sheetName, 3, 20)
+
+	f.SetCellValue(sheetName, "A4", "Date: "+dateRange)
+	f.MergeCell(sheetName, "A4", endCol+"4")
+	f.SetCellStyle(sheetName, "A4", endCol+"4", normalCenter)
+	f.SetRowHeight(sheetName, 4, 20)
+
+	// Column headers
+	for i, c := range cols {
+		cell := colNameAttendance(i+1) + "5"
+		f.SetCellValue(sheetName, cell, c.header)
+		f.SetCellStyle(sheetName, cell, cell, headerStyle)
+		f.SetColWidth(sheetName, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
+	}
+	f.SetRowHeight(sheetName, 5, 24)
+
+	// Group data
+	grouped := make(map[string][]models.Attendance)
+	var groupOrder []string
+	for _, a := range attendances {
+		name := groupFn(a)
+		if name == "" { name = "-" }
+		if _, ok := grouped[name]; !ok { groupOrder = append(groupOrder, name) }
+		grouped[name] = append(grouped[name], a)
+	}
+
+	row := 6
+	totalAbsent := 0
+	for _, groupName := range groupOrder {
+		list := grouped[groupName]
+
+		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), groupName+" ("+fmt.Sprintf("%d", len(list))+")")
+		f.MergeCell(sheetName, "A"+strconv.Itoa(row), endCol+strconv.Itoa(row))
+		f.SetCellStyle(sheetName, "A"+strconv.Itoa(row), endCol+strconv.Itoa(row), groupHeaderStyle)
+		f.SetRowHeight(sheetName, row, 22)
+		row++
+
+		for _, a := range list {
+			svc := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataCenter) }
+			svl := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(row), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(row), colNameAttendance(c)+strconv.Itoa(row), dataLeft) }
+
+			svc(1, a.EmployeeID)
+			svl(2, a.Employee.NameEn)
+			d := ""
+			if a.Employee.DesignationRef != nil { d = a.Employee.DesignationRef.Name }
+			svl(3, d)
+			svc(4, fmt.Sprintf("%d", totalAbsentMap[a.EmployeeID]))
+			f.SetCellValue(sheetName, colNameAttendance(5)+strconv.Itoa(row), "A")
+			f.SetCellStyle(sheetName, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyleG)
+
+			totalAbsent++
+			f.SetRowHeight(sheetName, row, 20)
+			row++
+		}
+	}
+
+	footerRow := row + 1
+	footerStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
+	f.SetCellValue(sheetName, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total Absent: %d", totalAbsent))
+	f.MergeCell(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow))
+	f.SetCellStyle(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow), footerStyle)
+	f.SetRowHeight(sheetName, footerRow, 22)
+}
+
+// ExportSummaryExcel godoc
+//
+//	@Summary      Export daily summary to Excel
+//	@Description  Export attendance summary grouped by Department, Section, Designation, and Line
+//	@Tags         Attendance
+//	@Security     BearerAuth
+//	@Produce      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+//	@Param        start_date query string true "Start date (YYYY-MM-DD)"
+//	@Param        end_date query string true "End date (YYYY-MM-DD)"
+//	@Success      200  {file}  binary
+//	@Router       /attendance/summary/export/excel [get]
+func (h *AttendanceHandler) ExportSummaryExcel(c *gin.Context) {
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	if startDate == "" {
+		startDate = time.Now().Format("2006-01-02")
+	}
+	if endDate == "" {
+		endDate = startDate
+	}
+
+	var company models.Company
+	database.DB.First(&company)
+
+	companyName := company.CompanyNameEn
+	if companyName == "" { companyName = "Company Name" }
+	companyAddress := company.AddressEn
+	if companyAddress == "" { companyAddress = "Company Address" }
+
+	parsedStart, _ := time.Parse("2006-01-02", startDate)
+	parsedEnd, _ := time.Parse("2006-01-02", endDate)
+	dateRange := parsedStart.Format("02 Jan 2006") + " to " + parsedEnd.Format("02 Jan 2006")
+
+	f := excelize.NewFile()
+	f.SetSheetName("Sheet1", "Department Wise")
+
+	groups := []struct{ key, label string }{
+		{"department", "Department Wise"},
+		{"section", "Section Wise"},
+		{"designation", "Designation Wise"},
+		{"line", "Line Wise"},
+	}
+
+	for idx, g := range groups {
+		if idx > 0 { f.NewSheet(g.label) }
+		result, err := h.attendanceRepo.SummaryByGroup(startDate, endDate, g.key, "", "", "", "", "", "", "", "")
+		if err != nil { continue }
+		addDailySummarySheet(f, g.label, companyName, companyAddress, dateRange, result)
+	}
+
+	for _, s := range f.GetSheetList() {
+		o := "portrait"; ps := 9; fw := 1; fh := 0
+		f.SetPageLayout(s, &excelize.PageLayoutOptions{Orientation: &o, Size: &ps, FitToWidth: &fw, FitToHeight: &fh})
+		f.SetPageMargins(s, &excelize.PageLayoutMarginsOptions{Left: ptr(0.3), Right: ptr(0.3), Top: ptr(0.4), Bottom: ptr(0.4)})
+		f.SetSheetView(s, -1, &excelize.ViewOptions{ShowGridLines: ptrBool(false)})
+	}
+
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=daily_summary_%s_%s.xlsx", startDate, endDate))
+	f.Write(c.Writer)
+}
+
+func ptr(v float64) *float64     { return &v }
+func ptrBool(v bool) *bool        { return &v }
+
+func addDailySummarySheet(f *excelize.File, sheetName, companyName, companyAddress, dateRange string, data []map[string]interface{}) {
+	nCols := 9
+	cols := []struct {
+		header string
+		width  float64
+	}{
+		{"SL", 5}, {"Name", 30}, {"Present", 12}, {"Late", 12}, {"Absent", 12},
+		{"Half Day", 12}, {"On Leave", 12}, {"Weekend", 12}, {"Total", 12},
+	}
+
+	thinBorder := []excelize.Border{
+		{Type: "left", Color: "333333", Style: 1}, {Type: "top", Color: "333333", Style: 1},
+		{Type: "bottom", Color: "333333", Style: 1}, {Type: "right", Color: "333333", Style: 1},
+	}
+
+	cnStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	ncStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	hdStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}, Border: thinBorder})
+	dcStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
+	dlStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Vertical: "center"}})
+	ftStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
+
+	endCol := colNameAttendance(nCols)
+
+	f.SetCellValue(sheetName, "A1", companyName)
+	f.MergeCell(sheetName, "A1", endCol+"1"); f.SetCellStyle(sheetName, "A1", endCol+"1", cnStyle); f.SetRowHeight(sheetName, 1, 32)
+	f.SetCellValue(sheetName, "A2", companyAddress)
+	f.MergeCell(sheetName, "A2", endCol+"2"); f.SetCellStyle(sheetName, "A2", endCol+"2", ncStyle); f.SetRowHeight(sheetName, 2, 20)
+	f.SetCellValue(sheetName, "A3", sheetName+" SUMMARY")
+	f.MergeCell(sheetName, "A3", endCol+"3"); f.SetCellStyle(sheetName, "A3", endCol+"3", ncStyle); f.SetRowHeight(sheetName, 3, 20)
+	f.SetCellValue(sheetName, "A4", "Date: "+dateRange)
+	f.MergeCell(sheetName, "A4", endCol+"4"); f.SetCellStyle(sheetName, "A4", endCol+"4", ncStyle); f.SetRowHeight(sheetName, 4, 20)
+
+	for i, c := range cols {
+		cell := colNameAttendance(i+1) + "5"
+		f.SetCellValue(sheetName, cell, c.header); f.SetCellStyle(sheetName, cell, cell, hdStyle)
+		f.SetColWidth(sheetName, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
+	}
+	f.SetRowHeight(sheetName, 5, 24)
+
+	var gp, gl, ga, ghd, gol, gw, gt int64
+	for i, row := range data {
+		r := i + 6
+		svc := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(r), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(r), colNameAttendance(c)+strconv.Itoa(r), dcStyle) }
+		svl := func(c int, v string) { f.SetCellValue(sheetName, colNameAttendance(c)+strconv.Itoa(r), v); f.SetCellStyle(sheetName, colNameAttendance(c)+strconv.Itoa(r), colNameAttendance(c)+strconv.Itoa(r), dlStyle) }
+
+		svc(1, fmt.Sprintf("%d", i+1))
+		n := ""; if v, ok := row["name"]; ok && v != nil { n = fmt.Sprintf("%v", v) }
+		svl(2, n)
+
+		gv := func(k string) int64 {
+			if v, ok := row[k]; ok && v != nil {
+				switch x := v.(type) { case int64: return x; case float64: return int64(x) }
+			}
+			return 0
+		}
+		p := gv("present"); l := gv("late"); a := gv("absent"); hd := gv("half_day")
+		ol := gv("on_leave"); we := gv("weekend"); t := gv("total")
+
+		svc(3, fmt.Sprintf("%d", p)); svc(4, fmt.Sprintf("%d", l)); svc(5, fmt.Sprintf("%d", a))
+		svc(6, fmt.Sprintf("%d", hd)); svc(7, fmt.Sprintf("%d", ol)); svc(8, fmt.Sprintf("%d", we)); svc(9, fmt.Sprintf("%d", t))
+
+		gp += p; gl += l; ga += a; ghd += hd; gol += ol; gw += we; gt += t
+		f.SetRowHeight(sheetName, r, 20)
+	}
+
+	fr := len(data) + 7
+	f.SetCellValue(sheetName, "A"+strconv.Itoa(fr), fmt.Sprintf("Grand Total | Present: %d | Late: %d | Absent: %d | Half Day: %d | On Leave: %d | Weekend: %d | Total: %d", gp, gl, ga, ghd, gol, gw, gt))
+	f.MergeCell(sheetName, "A"+strconv.Itoa(fr), endCol+strconv.Itoa(fr))
+	f.SetCellStyle(sheetName, "A"+strconv.Itoa(fr), endCol+strconv.Itoa(fr), ftStyle)
+	f.SetRowHeight(sheetName, fr, 22)
 }

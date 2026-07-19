@@ -363,8 +363,46 @@ func (r *AttendanceRepository) ListJobCard(startDate, endDate, companyID, employ
 		return nil, 0, err
 	}
 	var attendances []models.Attendance
-	err := base.Preload("Employee.User").Preload("Employee.Department").Preload("Shift").Order("date ASC, created_at ASC").Offset((page - 1) * limit).Limit(limit).Find(&attendances).Error
+	err := base.Preload("Employee.DesignationRef").Preload("Employee.Department").Preload("Employee.Company").Preload("Shift").Order("date ASC, created_at ASC").Offset((page - 1) * limit).Limit(limit).Find(&attendances).Error
 	return attendances, total, err
+}
+
+func (r *AttendanceRepository) ListJobCardEmployees(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status string) ([]models.Employee, error) {
+	subQuery := r.db.Table("attendances a").
+		Select("DISTINCT a.employee_id").
+		Where("a.date BETWEEN ? AND ? AND a.deleted_at IS NULL", startDate, endDate)
+
+	if companyID != "" {
+		subQuery = subQuery.Where("a.company_id = ?", companyID)
+	}
+	if departmentID != "" {
+		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE department_id = ?)", departmentID)
+	}
+	if sectionID != "" {
+		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE section_id = ?)", sectionID)
+	}
+	if designationID != "" {
+		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE designation_id = ?)", designationID)
+	}
+	if lineID != "" {
+		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE line_id = ?)", lineID)
+	}
+	if groupID != "" {
+		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE group_id = ?)", groupID)
+	}
+	if shiftID != "" {
+		subQuery = subQuery.Where("a.shift_id = ?", shiftID)
+	}
+	if status != "" {
+		subQuery = subQuery.Where("a.status = ?", status)
+	}
+
+	var employees []models.Employee
+	err := r.db.Where("employee_id IN (?)", subQuery).
+		Preload("DesignationRef").Preload("Department").
+		Order("employee_id ASC").
+		Find(&employees).Error
+	return employees, err
 }
 
 func (r *AttendanceRepository) MonthlyReport(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID string) ([]map[string]interface{}, error) {

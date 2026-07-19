@@ -15,6 +15,16 @@ func NewSettingsHandler(repo *repository.SettingsRepository) *SettingsHandler {
 	return &SettingsHandler{repo: repo}
 }
 
+// ListSettings godoc
+//
+//	@Summary      List all system settings
+//	@Description  Get all system settings as key-value pairs
+//	@Tags         Settings
+//	@Security     BearerAuth
+//	@Produce      json
+//	@Success      200  {object}  map[string]interface{}
+//	@Failure      500  {object}  map[string]string
+//	@Router       /settings [get]
 func (h *SettingsHandler) List(c *gin.Context) {
 	settings, err := h.repo.GetAll()
 	if err != nil {
@@ -32,6 +42,19 @@ type UpdateSettingsRequest struct {
 	Settings map[string]string `json:"settings" binding:"required"`
 }
 
+// UpdateSettings godoc
+//
+//	@Summary      Update system settings
+//	@Description  Bulk update system settings (key-value pairs)
+//	@Tags         Settings
+//	@Security     BearerAuth
+//	@Accept       json
+//	@Produce      json
+//	@Param        request body UpdateSettingsRequest true "Settings map"
+//	@Success      200  {object}  map[string]string
+//	@Failure      400  {object}  map[string]string
+//	@Failure      500  {object}  map[string]string
+//	@Router       /settings [put]
 func (h *SettingsHandler) Update(c *gin.Context) {
 	var req UpdateSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

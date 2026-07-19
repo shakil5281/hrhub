@@ -13,5 +13,5 @@ export function hasRole(role: string): boolean {
 }
 
 export function isSuperAdmin(): boolean {
-  return hasRole("super_admin")
+  return hasRole("superadmin")
 }

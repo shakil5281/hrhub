@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { FileTextIcon, Loader2 } from "lucide-react"
+import { FileTextIcon, DownloadIcon, Loader2 } from "lucide-react"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
@@ -40,12 +41,12 @@ const groupTabs = [
 ]
 
 const statusLabels = [
-  { key: "present", label: "Present", color: "text-green-600 bg-green-50" },
-  { key: "late", label: "Late", color: "text-orange-600 bg-orange-50" },
-  { key: "absent", label: "Absent", color: "text-red-600 bg-red-50" },
-  { key: "half_day", label: "Half Day", color: "text-yellow-600 bg-yellow-50" },
-  { key: "on_leave", label: "On Leave", color: "text-indigo-600 bg-indigo-50" },
-  { key: "weekend", label: "Weekend", color: "text-purple-600 bg-purple-50" },
+  { key: "present", label: "Present", color: "text-green-600" },
+  { key: "late", label: "Late", color: "text-orange-600" },
+  { key: "absent", label: "Absent", color: "text-red-600" },
+  { key: "half_day", label: "Half Day", color: "text-yellow-600" },
+  { key: "on_leave", label: "On Leave", color: "text-indigo-600" },
+  { key: "weekend", label: "Weekend", color: "text-purple-600" },
 ]
 
 function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boolean }) {
@@ -80,7 +81,7 @@ function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boole
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b bg-muted/50">
+          <tr className="border-b">
             <th className="text-left py-3 px-4 font-semibold text-muted-foreground w-12">#</th>
             <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Name</th>
             {statusLabels.map((s) => (
@@ -91,7 +92,7 @@ function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boole
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={row.id} className={cn("border-b last:border-0 hover:bg-muted/30 transition-colors", i % 2 === 0 && "bg-background")}>
+            <tr key={row.id} className="border-b last:border-0">
               <td className="py-2.5 px-4 text-muted-foreground">{i + 1}</td>
               <td className="py-2.5 px-4 font-medium">{row.name}</td>
               {statusLabels.map((s) => (
@@ -106,7 +107,7 @@ function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boole
           ))}
         </tbody>
         <tfoot>
-          <tr className="border-t-2 border-muted bg-muted/20 font-semibold">
+          <tr className="border-t-2 border-muted font-semibold">
             <td className="py-3 px-4 text-muted-foreground" colSpan={1}></td>
             <td className="py-3 px-4">Grand Total</td>
             {statusLabels.map((s) => (
@@ -128,6 +129,7 @@ export default function DailySummaryPage() {
   const [data, setData] = React.useState<SummaryRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
+  const [exporting, setExporting] = React.useState(false)
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
   const [sections, setSections] = React.useState<Section[]>([])
@@ -186,7 +188,7 @@ export default function DailySummaryPage() {
       if (Array.isArray(sRes.data?.data)) setShifts(sRes.data.data)
     }
     init()
-    fetchData({ date: today }, "")
+    fetchData({ date: today }, "department")
   }, [])
 
   const handleTabChange = (value: string) => { setGroupBy(value); fetchData(filters, value) }
@@ -204,17 +206,43 @@ export default function DailySummaryPage() {
     fetchData(rf, groupBy)
   }
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const active: Record<string, string> = {}
+      for (const [k, v] of Object.entries(filters)) { if (v) active[k] = v }
+      const res = await attendanceApi.exportSummaryExcel(active)
+      const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `daily_summary_${filters.date || today}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("Failed to export summary")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const tabLabel = groupTabs.find((t) => t.value === groupBy)?.label || ""
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
-        <div className="flex items-center gap-2">
-          <FileTextIcon className="h-6 w-6 text-muted-foreground" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Daily Summary</h1>
-            <p className="text-muted-foreground mt-1">Daily attendance summary reports</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileTextIcon className="h-6 w-6 text-muted-foreground" />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Daily Summary</h1>
+              <p className="text-muted-foreground mt-1">Daily attendance summary reports</p>
+            </div>
           </div>
+          <Button onClick={handleExport} disabled={exporting} variant="outline">
+            {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+            {exporting ? "Exporting..." : "Export Excel"}
+          </Button>
         </div>
       </div>
 

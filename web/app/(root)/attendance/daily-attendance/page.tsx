@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardCheckIcon } from "lucide-react"
+import { ClipboardCheckIcon, DownloadIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
@@ -68,6 +69,8 @@ const today = new Date().toISOString().split("T")[0]
 export default function DailyAttendancePage() {
   const [data, setData] = React.useState<AttendanceRecord[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [exporting, setExporting] = React.useState(false)
+  const [exportingAbsent, setExportingAbsent] = React.useState(false)
   const [error, setError] = React.useState("")
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
@@ -194,14 +197,62 @@ export default function DailyAttendancePage() {
     fetchData({ date: today }, 1, 20)
   }
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await attendanceApi.exportExcel({ date: filters.date || today })
+      const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `attendance_${filters.date || today}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("Failed to export attendance")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportAbsent = async () => {
+    setExportingAbsent(true)
+    try {
+      const res = await attendanceApi.exportAbsentExcel({ start_date: filters.date || today, end_date: filters.date || today })
+      const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `absent_report_${filters.date || today}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError("Failed to export absent report")
+    } finally {
+      setExportingAbsent(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
-        <div className="flex items-center gap-2">
-          <ClipboardCheckIcon className="h-6 w-6 text-muted-foreground" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Daily Attendance</h1>
-            <p className="text-muted-foreground mt-1">View and manage daily attendance records</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ClipboardCheckIcon className="h-6 w-6 text-muted-foreground" />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Daily Attendance</h1>
+              <p className="text-muted-foreground mt-1">View and manage daily attendance records</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleExport} disabled={exporting} variant="outline">
+              {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+              {exporting ? "Exporting..." : "Export Excel"}
+            </Button>
+            <Button onClick={handleExportAbsent} disabled={exportingAbsent} variant="outline">
+              {exportingAbsent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+              {exportingAbsent ? "Exporting..." : "Export Absent"}
+            </Button>
           </div>
         </div>
       </div>

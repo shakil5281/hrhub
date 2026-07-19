@@ -201,10 +201,13 @@ export const attendanceApi = {
   deleteAll: () => api.delete("/attendance/delete-all"),
   missing: (params: Record<string, string>) => api.get("/attendance/missing", { params }),
   absent: (params: Record<string, string>) => api.get("/attendance/absent", { params }),
+  exportAbsentExcel: (params?: Record<string, string>) => api.get("/attendance/absent/export/excel", { params, responseType: "blob" }),
   summary: (params?: Record<string, string>) => api.get("/attendance/summary", { params }),
+  exportSummaryExcel: (params?: Record<string, string>) => api.get("/attendance/summary/export/excel", { params, responseType: "blob" }),
   overtime: (params?: Record<string, string>) => api.get("/attendance/overtime", { params }),
   overtimeSummary: (params?: Record<string, string>) => api.get("/attendance/overtime-summary", { params }),
   monthlyReport: (params?: Record<string, string>) => api.get("/attendance/monthly-report", { params }),
+  exportExcel: (params?: Record<string, string>) => api.get("/attendance/export/excel", { params, responseType: "blob" }),
 }
 
 export const dataLogApi = {
@@ -261,6 +264,7 @@ export const separationApi = {
   create: (data: Record<string, unknown>) => api.post("/separations", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/separations/${id}`, data),
   delete: (id: string) => api.delete(`/separations/${id}`),
+  process: (date: string) => api.post(`/separations/process?date=${date}`),
 }
 
 export const idCardApi = {
@@ -269,6 +273,7 @@ export const idCardApi = {
   create: (data: Record<string, unknown>) => api.post("/id-cards", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/id-cards/${id}`, data),
   delete: (id: string) => api.delete(`/id-cards/${id}`),
+  generate: (employeeIds: string[]) => api.post("/id-cards/generate", { employee_ids: employeeIds }, { responseType: "blob" }),
 }
 
 export const leaveTypeApi = {

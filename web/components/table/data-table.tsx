@@ -107,6 +107,7 @@ interface DataTableProps<TData extends { id: number | string }> {
   columns: ColumnDef<TData>[]
   enableDnd?: boolean
   enableSelection?: boolean
+  onSelectionChange?: (rows: TData[]) => void
   onEdit?: (row: TData) => void
   onDelete?: (row: TData) => void
   // Server-side pagination props
@@ -126,6 +127,7 @@ export function DataTable<TData extends { id: number | string }>({
   columns,
   enableDnd = false,
   enableSelection = true,
+  onSelectionChange,
   onEdit,
   onDelete,
   serverSide = false,
@@ -213,7 +215,7 @@ export function DataTable<TData extends { id: number | string }>({
 
     if (onEdit || onDelete) {
       cols.push({
-        id: "actions",
+        id: "_table_actions",
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -260,7 +262,7 @@ export function DataTable<TData extends { id: number | string }>({
       rowSelection,
       pagination,
     },
-    getRowId: (row) => row.id.toString(),
+    getRowId: (row) => (row.id ?? "").toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -280,6 +282,14 @@ export function DataTable<TData extends { id: number | string }>({
     pageCount: serverSide ? externalPageCount : undefined,
     getSortedRowModel: getSortedRowModel(),
   })
+
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selected = table.getSelectedRowModel().rows.map((r) => r.original)
+      onSelectionChange(selected)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSelection])
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
