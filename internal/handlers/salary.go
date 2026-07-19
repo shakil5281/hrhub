@@ -4,28 +4,24 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/service"
 )
 
 type SalaryHandler struct {
+	salaryService *service.SalaryService
 	salaryRepo    *repository.SalaryRepository
-	employeeRepo  *repository.EmployeeRepository
-	attendanceRepo *repository.AttendanceRepository
 }
 
 func NewSalaryHandler(
+	salaryService *service.SalaryService,
 	salaryRepo *repository.SalaryRepository,
-	employeeRepo *repository.EmployeeRepository,
-	attendanceRepo *repository.AttendanceRepository,
 ) *SalaryHandler {
 	return &SalaryHandler{
+		salaryService: salaryService,
 		salaryRepo:    salaryRepo,
-		employeeRepo:  employeeRepo,
-		attendanceRepo: attendanceRepo,
 	}
 }
 
@@ -55,136 +51,18 @@ func (h *SalaryHandler) Process(c *gin.Context) {
 		return
 	}
 
-	startDate := time.Date(req.Year, time.Month(req.Month), 1, 0, 0, 0, 0, time.UTC)
-	endDate := startDate.AddDate(0, 1, -1)
-	startStr := startDate.Format("2006-01-02")
-	endStr := endDate.Format("2006-01-02")
-
-	employees, err := h.employeeRepo.ListActive(req.CompanyID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch employees"})
-		return
-	}
-
-	if len(employees) == 0 {
-		c.JSON(http.StatusOK, gin.H{"message": "No active employees found", "processed": 0})
-		return
-	}
-
-	attendanceReport, err := h.attendanceRepo.MonthlyReport(startStr, endStr, req.CompanyID, "", "", "", "", "")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch attendance data"})
-		return
-	}
-
-	attMap := make(map[string]map[string]interface{})
-	for _, r := range attendanceReport {
-		if empID, ok := r["employee_id"].(string); ok {
-			attMap[empID] = r
-		}
-	}
-
-	otHoursMap, err := h.attendanceRepo.GetMonthlyOvertimeHours(req.CompanyID, startStr, endStr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch overtime data"})
-		return
-	}
-
-	processed := 0
 	userID := c.GetString("user_id")
 
-	for _, emp := range employees {
-		gross := emp.GrossSalary
-		basic := gross * 0.5
-		houseRent := gross * 0.25
-		medical := gross * 0.1
-		transport := emp.TransportAllowance
-		food := emp.FoodAllowance
-		other := emp.OtherAllowance
-		pf := emp.ProvidentFund
-		tax := emp.Tax
-
-		presentDays := 0
-		absentDays := 0
-		lateDays := 0
-		leaveDays := 0
-		weekendDays := 0
-		totalDays := 0
-
-		if att, ok := attMap[emp.ID]; ok {
-			presentDays = toInt(att["present"])
-			absentDays = toInt(att["absent"])
-			lateDays = toInt(att["late"])
-			leaveDays = toInt(att["leave"])
-			weekendDays = toInt(att["weekend"])
-			totalDays = toInt(att["total_days"])
-		}
-
-		absentDeduction := float64(0)
-		if totalDays > 0 {
-			perDaySalary := gross / float64(totalDays)
-			absentDeduction = perDaySalary * float64(absentDays)
-		}
-
-		otHours := otHoursMap[emp.ID]
-		otRate := float64(0)
-		if totalDays > 0 {
-			otRate = basic / float64(totalDays) / 8
-		}
-		otAmount := otHours * otRate
-
-		attBonus := float64(0)
-		if absentDays == 0 && presentDays > 0 {
-			attBonus = 500
-		}
-
-		totalDeductions := pf + tax + absentDeduction
-		netSalary := gross - totalDeductions + otAmount + attBonus
-		if netSalary < 0 {
-			netSalary = 0
-		}
-
-		salary := &models.Salary{
-			CompanyID:          req.CompanyID,
-			EmployeeID:         emp.ID,
-			Month:              req.Month,
-			Year:               req.Year,
-			BasicSalary:        basic,
-			HouseRent:          houseRent,
-			MedicalAllowance:   medical,
-			TransportAllowance: transport,
-			FoodAllowance:      food,
-			OtherAllowance:     other,
-			GrossSalary:        gross,
-			ProvidentFund:      pf,
-			Tax:                tax,
-			AbsentDeduction:    absentDeduction,
-			TotalDeductions:    totalDeductions,
-			OvertimeHours:      otHours,
-			OvertimeRate:       otRate,
-			OvertimeAmount:     otAmount,
-			AttendanceBonus:    attBonus,
-			NetSalary:          netSalary,
-			PresentDays:        presentDays,
-			AbsentDays:         absentDays,
-			LateDays:           lateDays,
-			LeaveDays:          leaveDays,
-			WeekendDays:        weekendDays,
-			TotalDays:          totalDays,
-			Status:             "processed",
-			CreatedBy:          &userID,
-		}
-
-		if err := h.salaryRepo.Upsert(salary); err != nil {
-			continue
-		}
-		processed++
+	result, err := h.salaryService.ProcessMonth(req.CompanyID, req.Month, req.Year, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   fmt.Sprintf("Salary processed for %d employees", processed),
-		"processed": processed,
-		"total":     len(employees),
+		"message":   fmt.Sprintf("Salary processed for %d employees", result.Processed),
+		"processed": result.Processed,
+		"total":     result.Total,
 		"month":     req.Month,
 		"year":      req.Year,
 	})
@@ -217,7 +95,7 @@ func (h *SalaryHandler) Sheet(c *gin.Context) {
 		return
 	}
 
-	salaries, err := h.salaryRepo.ListByMonth(companyID, month, year, c.Query("department_id"))
+	salaries, err := h.salaryRepo.ListAllByMonth(companyID, month, year, c.Query("department_id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -326,7 +204,7 @@ func (h *SalaryHandler) List(c *gin.Context) {
 		return
 	}
 
-	salaries, err := h.salaryRepo.ListByMonth(companyID, month, year, "")
+	salaries, err := h.salaryRepo.ListAllByMonth(companyID, month, year, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -402,7 +280,7 @@ func (h *SalaryHandler) Summary(c *gin.Context) {
 		return
 	}
 
-	salaries, err := h.salaryRepo.ListByMonth(companyID, month, year, "")
+	salaries, err := h.salaryRepo.ListAllByMonth(companyID, month, year, "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -484,15 +362,4 @@ func (h *SalaryHandler) Summary(c *gin.Context) {
 	})
 }
 
-func toInt(v interface{}) int {
-	switch val := v.(type) {
-	case int64:
-		return int(val)
-	case float64:
-		return int(val)
-	case int:
-		return val
-	default:
-		return 0
-	}
-}
+

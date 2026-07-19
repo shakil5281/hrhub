@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ImageUpload } from "@/components/image-upload"
 import { DatePicker } from "@/components/ui/date-picker"
-import { employeeSchema, EmployeeFormData, genderOptions, bloodGroupOptions, maritalStatusOptions, statusOptionsEmployee } from "../data/employee-data"
+import { employeeSchema, EmployeeFormData, genderOptions, bloodGroupOptions, maritalStatusOptions, statusOptionsEmployee, religionOptions, employeeTypeOptions } from "../data/employee-data"
 import { employeeApi, companyApi, shiftApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, floorApi, divisionApi, districtApi, upazilaApi, unionApi } from "@/lib/api"
 import type { Company } from "@/components/data/company-data"
 import type { Shift } from "@/components/data/shift-data"
@@ -68,13 +68,14 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       shift_id: null,
       status: "active",
       name_en: "", name_bn: "", father_name: "", mother_name: "", date_of_birth: "",
-      gender: "", blood_group: "", marital_status: "", nationality: "", nid: "",
+      gender: "", blood_group: "", marital_status: "", religion: "", nationality: "Bangladeshi",
+      nid: "",
       phone: "", email: "", present_address: "", permanent_address: "",
       spouse_name: "", emergency_contact: "", emergency_phone: "", number_of_dependents: 0,
       grade: "",
       department_id: null, section_id: null, designation_id: null, line_id: null,
       group_id: null, floor_id: null,
-      branch_id: null, reports_to: null,
+      reports_to: null,
       present_division_id: null, present_district_id: null, present_upazila_id: null, present_union_id: null,
       permanent_division_id: null, permanent_district_id: null, permanent_upazila_id: null, permanent_union_id: null,
       gross_salary: 0, basic_salary: 0, house_rent: 0,
@@ -102,12 +103,12 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
 
   // Fetch static lists
   React.useEffect(() => {
-    companyApi.list().then(({ data }) => setCompanies(Array.isArray(data) ? data : [])).catch(() => {})
-    shiftApi.list().then(({ data }) => setShifts(Array.isArray(data) ? data : [])).catch(() => {})
-    departmentApi.list().then(({ data }) => setDepartments(Array.isArray(data) ? data : [])).catch(() => {})
-    groupApi.list().then(({ data }) => setGroups(Array.isArray(data) ? data : [])).catch(() => {})
-    floorApi.list().then(({ data }) => setFloors(Array.isArray(data) ? data : [])).catch(() => {})
-    divisionApi.list().then(({ data }) => { const d = Array.isArray(data) ? data : []; setPresentDivisions(d); setPermDivisions(d) }).catch(() => {})
+    companyApi.list().then(({ data }) => setCompanies(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+    shiftApi.list().then(({ data }) => setShifts(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+    departmentApi.list().then(({ data }) => setDepartments(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+    groupApi.list().then(({ data }) => setGroups(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+    floorApi.list().then(({ data }) => setFloors(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+    divisionApi.list().then(({ data }) => { const d = Array.isArray(data.data) ? data.data : []; setPresentDivisions(d); setPermDivisions(d) }).catch((err) => console.error("Failed to fetch reference data", err))
   }, [])
 
   // Track previous values to avoid clearing on initial mount
@@ -125,7 +126,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchDept !== prevDept.current
     prevDept.current = watchDept
     if (watchDept) {
-      sectionApi.list(watchDept).then(({ data }) => setSections(Array.isArray(data) ? data : [])).catch(() => {})
+      sectionApi.list(watchDept).then(({ data }) => setSections(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("section_id", null)
         setValue("designation_id", null)
@@ -140,8 +141,8 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchSection !== prevSection.current
     prevSection.current = watchSection
     if (watchSection) {
-      designationApi.list(watchSection).then(({ data }) => setDesignations(Array.isArray(data) ? data : [])).catch(() => {})
-      lineApi.list(watchSection).then(({ data }) => setLines(Array.isArray(data) ? data : [])).catch(() => {})
+      designationApi.list(watchSection).then(({ data }) => setDesignations(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
+      lineApi.list(watchSection).then(({ data }) => setLines(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("designation_id", null)
         setValue("line_id", null)
@@ -156,7 +157,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPresentDiv !== prevPresentDiv.current
     prevPresentDiv.current = watchPresentDiv
     if (watchPresentDiv) {
-      districtApi.list(watchPresentDiv).then(({ data }) => setPresentDistricts(Array.isArray(data) ? data : [])).catch(() => {})
+      districtApi.list(watchPresentDiv).then(({ data }) => setPresentDistricts(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("present_district_id", null); setValue("present_upazila_id", null); setValue("present_union_id", null)
       }
@@ -166,7 +167,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPresentDist !== prevPresentDist.current
     prevPresentDist.current = watchPresentDist
     if (watchPresentDist) {
-      upazilaApi.list(watchPresentDist).then(({ data }) => setUpPresentUpazilas(Array.isArray(data) ? data : [])).catch(() => {})
+      upazilaApi.list(watchPresentDist).then(({ data }) => setUpPresentUpazilas(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("present_upazila_id", null); setValue("present_union_id", null)
       }
@@ -176,7 +177,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPresentUpa !== prevPresentUpa.current
     prevPresentUpa.current = watchPresentUpa
     if (watchPresentUpa) {
-      unionApi.list(watchPresentUpa).then(({ data }) => setPresentUnions(Array.isArray(data) ? data : [])).catch(() => {})
+      unionApi.list(watchPresentUpa).then(({ data }) => setPresentUnions(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("present_union_id", null)
       }
@@ -188,7 +189,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPermDiv !== prevPermDiv.current
     prevPermDiv.current = watchPermDiv
     if (watchPermDiv) {
-      districtApi.list(watchPermDiv).then(({ data }) => setPermDistricts(Array.isArray(data) ? data : [])).catch(() => {})
+      districtApi.list(watchPermDiv).then(({ data }) => setPermDistricts(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("permanent_district_id", null); setValue("permanent_upazila_id", null); setValue("permanent_union_id", null)
       }
@@ -198,7 +199,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPermDist !== prevPermDist.current
     prevPermDist.current = watchPermDist
     if (watchPermDist) {
-      upazilaApi.list(watchPermDist).then(({ data }) => setPermUpazilas(Array.isArray(data) ? data : [])).catch(() => {})
+      upazilaApi.list(watchPermDist).then(({ data }) => setPermUpazilas(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("permanent_upazila_id", null); setValue("permanent_union_id", null)
       }
@@ -208,7 +209,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
     const changed = watchPermUpa !== prevPermUpa.current
     prevPermUpa.current = watchPermUpa
     if (watchPermUpa) {
-      unionApi.list(watchPermUpa).then(({ data }) => setPermUnions(Array.isArray(data) ? data : [])).catch(() => {})
+      unionApi.list(watchPermUpa).then(({ data }) => setPermUnions(Array.isArray(data.data) ? data.data : [])).catch((err) => console.error("Failed to fetch reference data", err))
       if (changed) {
         setValue("permanent_union_id", null)
       }
@@ -216,6 +217,10 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
   }, [watchPermUpa])
 
   // Auto-calculate salary from gross
+  // Backend formula:
+  //   core       = Gross - 450(Transport) - 1250(Food) - 750(Medical)
+  //   Basic      = core / 1.5
+  //   House Rent = core - Basic
   const prevGross = React.useRef(watchGrossSalary)
   React.useEffect(() => {
     const changed = watchGrossSalary !== prevGross.current
@@ -225,13 +230,12 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       const transport = 450
       const food = 1250
       const medical = 750
-      const others = 0
-      const basic = Math.round((gross - transport - food - medical - others) / 1.5)
-      const houseRent = gross - basic - transport - food - medical - others
+      const core = gross - transport - food - medical
+      const basic = Math.round(core / 1.5)
+      const houseRent = Math.round(core - basic)
       setValue("transport_allowance", transport)
       setValue("food_allowance", food)
       setValue("medical_allowance", medical)
-      setValue("other_allowance", others)
       setValue("basic_salary", basic)
       setValue("house_rent", houseRent)
     }
@@ -250,7 +254,6 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
         line_id: data.line_id || null,
         group_id: data.group_id || null,
         floor_id: data.floor_id || null,
-        branch_id: data.branch_id || null,
         reports_to: data.reports_to || null,
         present_division_id: data.present_division_id || null,
         present_district_id: data.present_district_id || null,
@@ -334,12 +337,19 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
               </select>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="marital_status" className="flex items-center text-neutral-600 gap-1.5 px-2"><Heart className="h-3.5 w-3.5" /> Marital Status</Label>
               <select id="marital_status" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("marital_status")}>
                 <option value="">Select</option>
                 {maritalStatusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="religion" className="flex items-center text-neutral-600 gap-1.5 px-2"><Globe className="h-3.5 w-3.5" /> Religion</Label>
+              <select id="religion" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("religion")}>
+                <option value="">Select</option>
+                {religionOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div className="space-y-2">
@@ -478,7 +488,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="company_id" className="flex items-center text-red-500 gap-1.5 px-2"><Building2 className="h-3.5 w-3.5" /> Company *</Label>
-              <select id="company_id" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("company_id")}>
+              <select id="company_id" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={watch("company_id") || ""} onChange={(e) => setValue("company_id", e.target.value)}>
                 <option value="">Select company</option>
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.company_name_en}</option>)}
               </select>
@@ -492,8 +502,16 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="punch_number" className="flex items-center text-neutral-600 gap-1.5 px-2"><Fingerprint className="h-3.5 w-3.5" /> Punch Number</Label>
-              <Input size='md' id="punch_number" placeholder="Badge number" {...register("punch_number")} />
+              <Label htmlFor="punch_number" className="flex items-center text-red-500 gap-1.5 px-2"><Fingerprint className="h-3.5 w-3.5" /> Punch Number *</Label>
+              <Input size='md' id="punch_number" placeholder="Badge number" {...register("punch_number")} aria-invalid={!!errors.punch_number} />
+              {errors.punch_number && <p className="text-sm text-destructive">{errors.punch_number.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="employee_type" className="flex items-center text-neutral-600 gap-1.5 px-2"><Badge className="h-3.5 w-3.5" /> Employee Type</Label>
+              <select id="employee_type" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("employee_type")}>
+                <option value="">Select</option>
+                {employeeTypeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -508,7 +526,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
             </div>
             <div className="space-y-2">
               <Label htmlFor="shift_id" className="flex items-center text-neutral-600 gap-1.5 px-2"><Clock className="h-3.5 w-3.5" /> Shift</Label>
-              <select id="shift_id" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("shift_id")}>
+              <select id="shift_id" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={watch("shift_id") || ""} onChange={(e) => setValue("shift_id", e.target.value || null)}>
                 <option value="">No shift</option>
                 {shifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -567,7 +585,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
               <Input size='md' id="grade" placeholder="Grade" {...register("grade")} />
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="reports_to" className="flex items-center text-neutral-600 gap-1.5 px-2"><UserCog className="h-3.5 w-3.5" /> Reports To</Label>
               <Input size='md' id="reports_to" placeholder="Manager ID" {...register("reports_to")} />
@@ -576,6 +594,13 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
               <Label htmlFor="status" className="flex items-center text-neutral-600 gap-1.5 px-2"><ToggleLeft className="h-3.5 w-3.5" /> Status</Label>
               <select id="status" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...register("status")}>
                 {statusOptionsEmployee.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="over_time_status" className="flex items-center text-neutral-600 gap-1.5 px-2"><Clock className="h-3.5 w-3.5" /> OverTime Status</Label>
+              <select id="over_time_status" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={watch("over_time_status") ? "true" : "false"} onChange={(e) => setValue("over_time_status", e.target.value === "true")}>
+                <option value="false">Disable</option>
+                <option value="true">Enable</option>
               </select>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { BarChart3Icon, Loader2 } from "lucide-react"
+import { BarChart3Icon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { attendanceApi, companyApi, departmentApi } from "@/lib/api"
@@ -16,7 +16,7 @@ interface MonthlyRecord {
   employee_id: string
   emp_id: string
   employee_name: string
-  designation_ref?: { name: string }
+  designation_name: string
   department_name: string
   present: number
   absent: number
@@ -48,11 +48,7 @@ const columns: ColumnDef<MonthlyRecord>[] = [
   { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
   { accessorKey: "emp_id", header: "Emp. ID" },
   { accessorKey: "employee_name", header: "Name" },
-  {
-    accessorKey: "designation_ref",
-    header: "Designation",
-    accessorFn: (r: MonthlyRecord) => r.designation_ref?.name || "-",
-  },
+  { accessorKey: "designation_name", header: "Designation" },
   { accessorKey: "department_name", header: "Department" },
   { accessorKey: "present", header: "Present" },
   { accessorKey: "absent", header: "Absent" },
@@ -112,15 +108,15 @@ export default function MonthlyAttendancePage() {
   React.useEffect(() => {
     const init = async () => {
       const [cRes, dRes] = await Promise.all([
-        companyApi.list(),
-        departmentApi.list(),
+        companyApi.list({ limit: "100" }),
+        departmentApi.list({ limit: "100" }),
       ])
       let companyId = ""
-      if (Array.isArray(cRes.data) && cRes.data.length > 0) {
-        setCompanies(cRes.data)
-        companyId = cRes.data[0].id
+      if (Array.isArray(cRes.data?.data) && cRes.data.data.length > 0) {
+        setCompanies(cRes.data.data)
+        companyId = cRes.data.data[0].id
       }
-      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
+      if (Array.isArray(dRes.data?.data)) setDepartments(dRes.data.data)
       setFilters({ company_id: companyId })
       if (companyId) fetchData({ company_id: companyId })
       else setLoading(false)
@@ -221,13 +217,7 @@ export default function MonthlyAttendancePage() {
         )}
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable data={data} columns={columns} loading={loading} />
     </div>
   )
 }

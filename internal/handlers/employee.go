@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type EmployeeHandler struct{}
@@ -25,9 +26,10 @@ type CreateEmployeeRequest struct {
 	DateOfBirth      string `json:"date_of_birth"`
 	Gender           string `json:"gender"`
 	BloodGroup       string `json:"blood_group"`
-	MaritalStatus    string `json:"marital_status"`
-	Nationality      string `json:"nationality"`
-	NID              string `json:"nid"`
+	MaritalStatus    string  `json:"marital_status"`
+	Religion         string  `json:"religion"`
+	Nationality      string  `json:"nationality"`
+	NID              string  `json:"nid"`
 	Phone            string `json:"phone"`
 	Email            string `json:"email"`
 	PresentAddress   string `json:"present_address"`
@@ -41,7 +43,6 @@ type CreateEmployeeRequest struct {
 
 	// Office
 	CompanyID      string `json:"company_id" binding:"required"`
-	BranchID       string `json:"branch_id"`
 	DepartmentID   string `json:"department_id"`
 	SectionID      string `json:"section_id"`
 	DesignationID  string `json:"designation_id"`
@@ -49,7 +50,8 @@ type CreateEmployeeRequest struct {
 	GroupID        string `json:"group_id"`
 	FloorID        string `json:"floor_id"`
 	EmployeeID     string `json:"employee_id" binding:"required"`
-	PunchNumber    string `json:"punch_number"`
+	PunchNumber    string `json:"punch_number" binding:"required"`
+	EmployeeType   string `json:"employee_type"`
 	Grade          string `json:"grade"`
 	JoiningDate    string `json:"joining_date" binding:"required"`
 	ShiftID        string `json:"shift_id"`
@@ -74,15 +76,13 @@ type CreateEmployeeRequest struct {
 	FoodAllowance      float64 `json:"food_allowance"`
 	MedicalAllowance   float64 `json:"medical_allowance"`
 	OtherAllowance     float64 `json:"other_allowance"`
-	ProvidentFund      float64 `json:"provident_fund"`
-	Tax                float64 `json:"tax"`
-
 	// Account
 	AccountType   string `json:"account_type"`
 	AccountNumber string `json:"account_number"`
 
 	// Status
-	Status string `json:"status"`
+	Status          string `json:"status"`
+	OverTimeStatus  bool   `json:"over_time_status"`
 }
 
 func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
@@ -95,7 +95,12 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	emp.Gender = req.Gender
 	emp.BloodGroup = req.BloodGroup
 	emp.MaritalStatus = req.MaritalStatus
-	emp.Nationality = req.Nationality
+	emp.Religion = req.Religion
+	if req.Nationality != "" {
+		emp.Nationality = req.Nationality
+	} else {
+		emp.Nationality = "Bangladeshi"
+	}
 	emp.NID = req.NID
 	emp.Phone = req.Phone
 	emp.Email = req.Email
@@ -114,7 +119,6 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 		if val == "" { return nil }
 		return &val
 	}
-	emp.BranchID = setPtr(req.BranchID)
 	emp.DepartmentID = setPtr(req.DepartmentID)
 	emp.SectionID = setPtr(req.SectionID)
 	emp.DesignationID = setPtr(req.DesignationID)
@@ -123,6 +127,7 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	emp.FloorID = setPtr(req.FloorID)
 	emp.EmployeeID = req.EmployeeID
 	emp.PunchNumber = req.PunchNumber
+	emp.EmployeeType = req.EmployeeType
 	emp.Grade = req.Grade
 	emp.ShiftID = setPtr(req.ShiftID)
 	emp.ReportsTo = setPtr(req.ReportsTo)
@@ -143,8 +148,6 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	emp.FoodAllowance = req.FoodAllowance
 	emp.MedicalAllowance = req.MedicalAllowance
 	emp.OtherAllowance = req.OtherAllowance
-	emp.ProvidentFund = req.ProvidentFund
-	emp.Tax = req.Tax
 
 	// Account
 	emp.AccountType = req.AccountType
@@ -154,6 +157,7 @@ func bindEmployeeFields(req *CreateEmployeeRequest, emp *models.Employee) {
 	if req.Status != "" {
 		emp.Status = req.Status
 	}
+	emp.OverTimeStatus = req.OverTimeStatus
 }
 
 func validateAccount(accountType, accountNumber string) string {
@@ -203,13 +207,15 @@ func validateAccount(accountType, accountNumber string) string {
 // @Param        blood_group     query string false "Filter by blood group"
 // @Param        min_salary      query string false "Minimum gross salary"
 // @Param        max_salary      query string false "Maximum gross salary"
-// @Success      200  {array}   map[string]interface{}
+// @Param        page            query int    false "Page number (default 1)"
+// @Param        limit           query int    false "Page size (default 20, max 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /employees [get]
 func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 	var employees []models.Employee
-	query := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef")
+	query := database.DB.Preload("User").Preload("Company").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef")
 
 	if v := c.Query("company_id"); v != "" {
 		query = query.Where("company_id = ?", v)
@@ -254,11 +260,19 @@ func (h *EmployeeHandler) GetEmployees(c *gin.Context) {
 		query = query.Where("gross_salary <= ?", v)
 	}
 
-	if err := query.Find(&employees).Error; err != nil {
+	var total int64
+	if err := query.Model(&models.Employee{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, employees)
+
+	p := utils.ParsePagination(c)
+	offset := (p.Page - 1) * p.Limit
+	if err := query.Offset(offset).Limit(p.Limit).Find(&employees).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(employees, total, p))
 }
 
 // CreateEmployee godoc
@@ -299,9 +313,19 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 
 	userID := c.GetString("user_id")
 
+	var existing models.Employee
+	if err := database.DB.Where("(employee_id = ? OR punch_number = ?) AND company_id = ?", req.EmployeeID, req.PunchNumber, req.CompanyID).First(&existing).Error; err == nil {
+		if existing.EmployeeID == req.EmployeeID {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "employee_id already exists"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "punch_number already exists"})
+		}
+		return
+	}
+
 	employee := models.Employee{
-		EmployeeID: req.EmployeeID,
-		PunchNumber:  req.PunchNumber,
+		EmployeeID:  req.EmployeeID,
+		PunchNumber:   req.PunchNumber,
 		CompanyID:    req.CompanyID,
 		JoiningDate:  jd,
 		Status:       status,
@@ -315,7 +339,7 @@ func (h *EmployeeHandler) CreateEmployee(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&employee, "id = ?", employee.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&employee, "id = ?", employee.ID)
 	c.JSON(http.StatusCreated, employee)
 }
 
@@ -370,7 +394,7 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 		return
 	}
 
-	database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", emp.ID)
+	database.DB.Preload("User").Preload("Company").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", emp.ID)
 	c.JSON(http.StatusOK, emp)
 }
 
@@ -388,7 +412,28 @@ func (h *EmployeeHandler) UpdateEmployee(c *gin.Context) {
 func (h *EmployeeHandler) GetEmployee(c *gin.Context) {
 	id := c.Param("id")
 	var emp models.Employee
-	if err := database.DB.Preload("User").Preload("Company").Preload("Branch").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", id).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("Company").Preload("Department").Preload("Shift").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").First(&emp, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
+		return
+	}
+	c.JSON(http.StatusOK, emp)
+}
+
+// GetEmployeeByCode godoc
+//
+// @Summary      Get employee by employee code
+// @Description  Get a single employee by their business employee_id (e.g. "2857")
+// @Tags         Employees
+// @Security     BearerAuth
+// @Produce      json
+// @Param        code   path     string true "Employee business code"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]string
+// @Router       /employees/by-code/{code} [get]
+func (h *EmployeeHandler) GetEmployeeByCode(c *gin.Context) {
+	code := c.Param("code")
+	var emp models.Employee
+	if err := database.DB.Preload("Department").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Shift").Preload("Company").Where("employee_id = ?", code).First(&emp).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
 		return
 	}

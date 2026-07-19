@@ -2,7 +2,7 @@ import { z } from "zod";
 export interface DailyAttendance {
     id: number;
     employee: string;
-    employeeCode: string;
+    employeeId: string;
     company: string;
     department: string;
     designation: string;
@@ -18,7 +18,7 @@ export interface DailyAttendance {
 }
 export declare const dailyAttendanceSchema: z.ZodObject<{
     employee: z.ZodString;
-    employeeCode: z.ZodString;
+    employeeId: z.ZodString;
     company: z.ZodString;
     department: z.ZodString;
     designation: z.ZodString;

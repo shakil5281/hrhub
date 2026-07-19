@@ -23,10 +23,15 @@ func (r *FloorRepository) FindByID(id string) (*models.Floor, error) {
 	return &floor, err
 }
 
-func (r *FloorRepository) List() ([]models.Floor, error) {
+func (r *FloorRepository) List(page, limit int) ([]models.Floor, int64, error) {
+	base := r.db.Model(&models.Floor{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var floors []models.Floor
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&floors).Error
-	return floors, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&floors).Error
+	return floors, total, err
 }
 
 func (r *FloorRepository) Update(floor *models.Floor) error {

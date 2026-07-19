@@ -9,6 +9,7 @@ import (
 	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type AttendanceHandler struct {
@@ -57,7 +58,9 @@ type ClockOutRequest struct {
 // @Param        shift_id       query string false "Filter by shift"
 // @Param        status         query string false "Filter by status"
 // @Param        employee_id    query string false "Filter by employee"
-// @Success      200  {array}   map[string]interface{}
+// @Param        page           query int    false "Page number (default: 1)"
+// @Param        limit          query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance [get]
@@ -73,23 +76,25 @@ func (h *AttendanceHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	employeeID := c.Query("employee_id")
 
+	p := utils.ParsePagination(c)
+
 	hasFilters := companyID != "" || departmentID != "" || sectionID != "" || designationID != "" || lineID != "" || groupID != "" || shiftID != "" || status != "" || employeeID != ""
 	if hasFilters {
-		attendances, err := h.attendanceRepo.ListByDateFiltered(date, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status, employeeID)
+		attendances, total, err := h.attendanceRepo.ListByDateFiltered(date, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status, employeeID, p.Page, p.Limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, attendances)
+		c.JSON(http.StatusOK, utils.NewPaginatedResponse(attendances, total, p))
 		return
 	}
 
-	attendances, err := h.attendanceRepo.ListByDate(date)
+	attendances, total, err := h.attendanceRepo.ListByDate(date, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, attendances)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(attendances, total, p))
 }
 
 // GetAttendance godoc
@@ -282,7 +287,9 @@ func (h *AttendanceHandler) Delete(c *gin.Context) {
 // @Param        employee_id   query string false "Filter by employee"
 // @Param        department_id query string false "Filter by department"
 // @Param        status        query string false "Filter by status (present|late|absent|half-day)"
-// @Success      200  {object}  map[string]interface{}
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/job-card [get]
 func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
@@ -304,22 +311,18 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 			emp, err = h.employeeRepo.FindByPunchNumber(employeeID)
 		}
 		if err == nil && emp != nil {
-			employeeID = emp.ID
+			employeeID = emp.EmployeeID
 		}
 	}
 
-	attendances, err := h.attendanceRepo.ListJobCard(startDate, endDate, companyID, employeeID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status)
+	p := utils.ParsePagination(c)
+	attendances, total, err := h.attendanceRepo.ListJobCard(startDate, endDate, companyID, employeeID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"attendances": attendances,
-		"total":       len(attendances),
-		"start_date":  startDate,
-		"end_date":    endDate,
-	})
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(attendances, total, p))
 }
 
 // ClockIn godoc
@@ -492,18 +495,28 @@ func (h *AttendanceHandler) Summary(c *gin.Context) {
 	groupID := c.Query("group_id")
 	shiftID := c.Query("shift_id")
 	statusFilter := c.Query("status")
+	groupBy := c.Query("group_by")
 
-	result, err := h.attendanceRepo.Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	var result []map[string]interface{}
+	var err error
+
+	if groupBy != "" {
+		result, err = h.attendanceRepo.SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	} else {
+		result, err = h.attendanceRepo.Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"summaries": result,
-		"total":     len(result),
+		"summaries":  result,
+		"total":      len(result),
+		"group_by":   groupBy,
 		"start_date": startDate,
-		"end_date":  endDate,
+		"end_date":   endDate,
 	})
 }
 
@@ -596,7 +609,9 @@ func (h *AttendanceHandler) OvertimeSummary(c *gin.Context) {
 // @Param        date   query string true  "Date (YYYY-MM-DD)"
 // @Param        company_id    query string false "Filter by company"
 // @Param        department_id query string false "Filter by department"
-// @Success      200  {object}  map[string]interface{}
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/missing [get]
 func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
@@ -621,7 +636,7 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 		}
 	}
 
-	attendances, _ := h.attendanceRepo.ListByDate(date)
+	attendances, _ := h.attendanceRepo.ListAllByDate(date)
 	attendedBadges := make(map[string]bool)
 	for _, a := range attendances {
 		if a.PunchNumber != nil {
@@ -632,9 +647,9 @@ func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
 	var missing []map[string]interface{}
 	for badge, name := range badgeMap {
 		if !attendedBadges[badge] {
-			emp, err := h.employeeRepo.FindByEmployeeID(badge)
+			emp, err := h.employeeRepo.FindByPunchNumber(badge)
 			if err != nil {
-				emp, err = h.employeeRepo.FindByPunchNumber(badge)
+				emp, err = h.employeeRepo.FindByEmployeeID(badge)
 			}
 			if err == nil {
 				database.DB.Preload("DesignationRef").Preload("SectionRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Department").Preload("Shift").First(emp, "id = ?", emp.ID)
@@ -770,7 +785,9 @@ func (h *AttendanceHandler) MonthlyReport(c *gin.Context) {
 // @Param        end_date      query string false "End date (YYYY-MM-DD)"
 // @Param        company_id    query string false "Filter by company"
 // @Param        department_id query string false "Filter by department"
-// @Success      200  {object}  map[string]interface{}
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/absent [get]
 func (h *AttendanceHandler) AbsentAttendance(c *gin.Context) {
@@ -785,16 +802,12 @@ func (h *AttendanceHandler) AbsentAttendance(c *gin.Context) {
 	shiftID := c.Query("shift_id")
 	employeeID := c.Query("employee_id")
 
-	attendances, err := h.attendanceRepo.ListByStatus(startDate, endDate, "absent", companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, employeeID)
+	p := utils.ParsePagination(c)
+	attendances, total, err := h.attendanceRepo.ListByStatus(startDate, endDate, "absent", companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, employeeID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"attendances": attendances,
-		"total":       len(attendances),
-		"start_date":  startDate,
-		"end_date":    endDate,
-	})
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(attendances, total, p))
 }

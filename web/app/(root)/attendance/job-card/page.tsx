@@ -78,21 +78,21 @@ export default function JobCardPage() {
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      departmentApi.list(),
-      sectionApi.list(),
-      designationApi.list(),
-      lineApi.list(),
-      groupApi.list(),
-      shiftApi.list(),
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(undefined, { limit: "100" }),
+      designationApi.list(undefined, { limit: "100" }),
+      lineApi.list(undefined, { limit: "100" }),
+      groupApi.list({ limit: "100" }),
+      shiftApi.list({ limit: "100" }),
     ]).then(([cRes, dRes, secRes, desRes, lRes, gRes, sRes]) => {
-      setCompanies(cRes.data || [])
-      setDepartments(dRes.data || [])
-      setSections(secRes.data || [])
-      setDesignations(desRes.data || [])
-      setLines(lRes.data || [])
-      setGroups(gRes.data || [])
-      setShifts(sRes.data || [])
+      setCompanies(cRes.data?.data || [])
+      setDepartments(dRes.data?.data || [])
+      setSections(secRes.data?.data || [])
+      setDesignations(desRes.data?.data || [])
+      setLines(lRes.data?.data || [])
+      setGroups(gRes.data?.data || [])
+      setShifts(sRes.data?.data || [])
     }).catch(() => {})
   }, [])
 
@@ -155,7 +155,7 @@ export default function JobCardPage() {
       if (params.employee_id) active.employee_id = params.employee_id
       if (params.status) active.status = params.status
       const { data: res } = await attendanceApi.jobCard(active)
-      setData(res.attendances || [])
+      setData(res.data || [])
     } catch {
       setError("Failed to load job card data")
     } finally {

@@ -18,7 +18,6 @@ func main() {
 	db := database.DB
 
 	company := seedCompany(db)
-	seedBranches(db, company)
 	seedDepartments(db, company)
 	seedGroups(db)
 	seedFloors(db)
@@ -47,7 +46,7 @@ func seedCompany(db *gorm.DB) *models.Company {
 		CompanyNameBn: "এইচআরহাব টেকনোলজিস লিমিটেড",
 		CompanyNameEn: "HRHub Technologies Ltd.",
 		Slug:          slug,
-		Address:       "House 12, Road 5, Sector 3, Uttara, Dhaka 1230",
+		AddressEn:     "House 12, Road 5, Sector 3, Uttara, Dhaka 1230",
 		Phone:         "+880-2-9876543",
 		Status:        "active",
 		Settings:      datatypes.JSON(settingsJSON),
@@ -59,70 +58,38 @@ func seedCompany(db *gorm.DB) *models.Company {
 	return &company
 }
 
-func seedBranches(db *gorm.DB, company *models.Company) {
-	branches := []models.Branch{
-		{CompanyID: company.ID, Name: "Dhaka HQ", Address: "House 12, Road 5, Sector 3, Uttara, Dhaka", Phone: "+880-2-9876543", Status: "active"},
-		{CompanyID: company.ID, Name: "Chittagong Office", Address: "27, Agrabad C/A, Chattogram", Phone: "+880-31-251234", Status: "active"},
-		{CompanyID: company.ID, Name: "Factory 1 - Gazipur", Address: "Mouchak, Kaliakoir, Gazipur", Phone: "+880-2-9812345", Status: "active"},
-		{CompanyID: company.ID, Name: "Factory 2 - Narayanganj", Address: "Adamjee Nagar, Siddhirganj, Narayanganj", Phone: "+880-2-7612345", Status: "active"},
-	}
-
-	for _, b := range branches {
-		var existing models.Branch
-		err := db.Where("company_id = ? AND name = ?", company.ID, b.Name).First(&existing).Error
-		if err == nil {
-			continue
-		}
-		if err := db.Create(&b).Error; err != nil {
-			log.Printf("Failed to create branch %s: %v", b.Name, err)
-		} else {
-			fmt.Printf("  Branch: %s\n", b.Name)
-		}
-	}
-}
-
 func seedDepartments(db *gorm.DB, company *models.Company) {
 	type deptDef struct {
 		Name   string
 		NameBn string
 	}
 
-	branches := []models.Branch{}
-	db.Where("company_id = ?", company.ID).Find(&branches)
-	branchMap := map[string]string{}
-	for _, b := range branches {
-		branchMap[b.Name] = b.ID
-	}
-
 	depts := []struct {
 		Name   string
 		NameBn string
-		Branch string
 	}{
-		{"Human Resources", "মানব সম্পদ", "Dhaka HQ"},
-		{"Administration", "প্রশাসন", "Dhaka HQ"},
-		{"Information Technology", "তথ্য প্রযুক্তি", "Dhaka HQ"},
-		{"Finance & Accounts", "অর্থ ও হিসাব", "Dhaka HQ"},
-		{"Marketing", "বিপণন", "Dhaka HQ"},
-		{"Sales", "বিক্রয়", "Chittagong Office"},
-		{"Production", "উৎপাদন", "Factory 1 - Gazipur"},
-		{"Quality Control", "গুণগত মান নিয়ন্ত্রণ", "Factory 1 - Gazipur"},
-		{"Store & Inventory", "স্টোর ও ইনভেন্টরি", "Factory 1 - Gazipur"},
-		{"Maintenance", "রক্ষণাবেক্ষণ", "Factory 1 - Gazipur"},
-		{"Production 2", "উৎপাদন ২", "Factory 2 - Narayanganj"},
-		{"Quality Control 2", "গুণগত মান নিয়ন্ত্রণ ২", "Factory 2 - Narayanganj"},
+		{"Human Resources", "মানব সম্পদ"},
+		{"Administration", "প্রশাসন"},
+		{"Information Technology", "তথ্য প্রযুক্তি"},
+		{"Finance & Accounts", "অর্থ ও হিসাব"},
+		{"Marketing", "বিপণন"},
+		{"Sales", "বিক্রয়"},
+		{"Production", "উৎপাদন"},
+		{"Quality Control", "গুণগত মান নিয়ন্ত্রণ"},
+		{"Store & Inventory", "স্টোর ও ইনভেন্টরি"},
+		{"Maintenance", "রক্ষণাবেক্ষণ"},
+		{"Production 2", "উৎপাদন ২"},
+		{"Quality Control 2", "গুণগত মান নিয়ন্ত্রণ ২"},
 	}
 
 	for _, d := range depts {
-		branchID := branchMap[d.Branch]
 		var existing models.Department
-		err := db.Where("company_id = ? AND branch_id = ? AND name = ?", company.ID, branchID, d.Name).First(&existing).Error
+		err := db.Where("company_id = ? AND name = ?", company.ID, d.Name).First(&existing).Error
 		if err == nil {
 			continue
 		}
 		dept := models.Department{
 			CompanyID: &company.ID,
-			BranchID:  &branchID,
 			Name:      d.Name,
 			NameBn:    d.NameBn,
 			Status:    "active",
@@ -130,7 +97,7 @@ func seedDepartments(db *gorm.DB, company *models.Company) {
 		if err := db.Create(&dept).Error; err != nil {
 			log.Printf("Failed to create department %s: %v", d.Name, err)
 		} else {
-			fmt.Printf("    Department: %s (%s)\n", d.Name, d.Branch)
+			fmt.Printf("    Department: %s\n", d.Name)
 		}
 	}
 

@@ -9,7 +9,7 @@ import (
 type Salary struct {
 	ID        string         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	CompanyID string         `json:"company_id" gorm:"type:uuid;not null;uniqueIndex:idx_salary_emp_month"`
-	EmployeeID string        `json:"employee_id" gorm:"type:uuid;not null;uniqueIndex:idx_salary_emp_month"`
+	EmployeeID string        `json:"employee_id" gorm:"type:varchar(50);not null;uniqueIndex:idx_salary_emp_month"`
 	Month     int            `json:"month" gorm:"not null;uniqueIndex:idx_salary_emp_month"`
 	Year      int            `json:"year" gorm:"not null;uniqueIndex:idx_salary_emp_month"`
 

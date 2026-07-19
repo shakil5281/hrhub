@@ -91,49 +91,84 @@ export default function AddressPage() {
   const [form, setForm] = React.useState<{ open: boolean; edit?: FormItem | null; type: string }>({ open: false, type: "" })
   const [tab, setTab] = React.useState("division")
 
-  const fetchDivisions = async () => {
-    setLoading(p => ({ ...p, div: true }))
-    try { const { data } = await divisionApi.list(); setDivisions(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load divisions") }
-    finally { setLoading(p => ({ ...p, div: false })) }
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
+  const fetchDivisions = async (p?: number, l?: number) => {
+    setLoading(prev => ({ ...prev, div: true }))
+    try { 
+      const { data } = await divisionApi.list({ page: String(p ?? page), limit: String(l ?? limit) })
+      setDivisions(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load divisions") }
+    finally { setLoading(prev => ({ ...prev, div: false })) }
   }
-  const fetchDistricts = async (divId: string) => {
+  const fetchDistricts = async (divId: string, p?: number, l?: number) => {
     if (!divId) return setDistricts([])
-    setLoading(p => ({ ...p, dist: true }))
-    try { const { data } = await districtApi.list(divId); setDistricts(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load districts") }
-    finally { setLoading(p => ({ ...p, dist: false })) }
+    setLoading(prev => ({ ...prev, dist: true }))
+    try { 
+      const { data } = await districtApi.list(divId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setDistricts(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load districts") }
+    finally { setLoading(prev => ({ ...prev, dist: false })) }
   }
-  const fetchUpazilas = async (distId: string) => {
+  const fetchUpazilas = async (distId: string, p?: number, l?: number) => {
     if (!distId) return setUpazilas([])
-    setLoading(p => ({ ...p, upa: true }))
-    try { const { data } = await upazilaApi.list(distId); setUpazilas(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load upazilas") }
-    finally { setLoading(p => ({ ...p, upa: false })) }
+    setLoading(prev => ({ ...prev, upa: true }))
+    try { 
+      const { data } = await upazilaApi.list(distId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setUpazilas(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load upazilas") }
+    finally { setLoading(prev => ({ ...prev, upa: false })) }
   }
-  const fetchUnions = async (upaId: string) => {
+  const fetchUnions = async (upaId: string, p?: number, l?: number) => {
     if (!upaId) return setUnions([])
-    setLoading(p => ({ ...p, uni: true }))
-    try { const { data } = await unionApi.list(upaId); setUnions(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load unions") }
-    finally { setLoading(p => ({ ...p, uni: false })) }
+    setLoading(prev => ({ ...prev, uni: true }))
+    try { 
+      const { data } = await unionApi.list(upaId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setUnions(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load unions") }
+    finally { setLoading(prev => ({ ...prev, uni: false })) }
   }
 
-  React.useEffect(() => { fetchDivisions() }, [])
+  React.useEffect(() => { fetchDivisions(1, 20) }, [])
 
   React.useEffect(() => {
     setSelectedDistrict("")
     setSelectedUpazila("")
     setUpazilas([])
     setUnions([])
-    fetchDistricts(selectedDivision)
+    setPage(1)
+    fetchDistricts(selectedDivision, 1, limit)
   }, [selectedDivision])
 
   React.useEffect(() => {
     setSelectedUpazila("")
     setUnions([])
-    fetchUpazilas(selectedDistrict)
+    setPage(1)
+    fetchUpazilas(selectedDistrict, 1, limit)
   }, [selectedDistrict])
 
   React.useEffect(() => {
-    fetchUnions(selectedUpazila)
+    setPage(1)
+    fetchUnions(selectedUpazila, 1, limit)
   }, [selectedUpazila])
+
+  React.useEffect(() => {
+    if (tab === "division") fetchDivisions()
+    else if (tab === "district" && selectedDivision) fetchDistricts(selectedDivision)
+    else if (tab === "upazila" && selectedDistrict) fetchUpazilas(selectedDistrict)
+    else if (tab === "union" && selectedUpazila) fetchUnions(selectedUpazila)
+  }, [page, limit])
 
   const openForm = (type: string, edit?: FormItem | null) => setForm({ open: true, edit, type })
   const closeForm = () => setForm({ open: false, edit: null, type: "" })
@@ -145,25 +180,25 @@ export default function AddressPage() {
         if (edit) await divisionApi.update(edit.id, { name, name_bn: nameBn })
         else await divisionApi.create({ name, name_bn: nameBn })
         toast.success(edit ? "Updated" : "Created")
-        fetchDivisions()
+        fetchDivisions(1, limit)
       } else if (type === "district") {
         const payload = { name, name_bn: nameBn, division_id: selectedDivision }
         if (edit) await districtApi.update(edit.id, payload)
         else await districtApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchDistricts(selectedDivision)
+        fetchDistricts(selectedDivision, 1, limit)
       } else if (type === "upazila") {
         const payload = { name, name_bn: nameBn, district_id: selectedDistrict }
         if (edit) await upazilaApi.update(edit.id, payload)
         else await upazilaApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchUpazilas(selectedDistrict)
+        fetchUpazilas(selectedDistrict, 1, limit)
       } else if (type === "union") {
         const payload = { name, name_bn: nameBn, upazila_id: selectedUpazila }
         if (edit) await unionApi.update(edit.id, payload)
         else await unionApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchUnions(selectedUpazila)
+        fetchUnions(selectedUpazila, 1, limit)
       }
     } catch { }
   }
@@ -173,26 +208,36 @@ export default function AddressPage() {
       if (type === "division") {
         await divisionApi.delete(item.id)
         toast.success("Deleted")
-        fetchDivisions()
+        fetchDivisions(1, limit)
         if (selectedDivision === item.id) setSelectedDivision("")
       } else if (type === "district") {
         await districtApi.delete(item.id)
         toast.success("Deleted")
-        fetchDistricts(selectedDivision)
+        fetchDistricts(selectedDivision, 1, limit)
         if (selectedDistrict === item.id) setSelectedDistrict("")
       } else if (type === "upazila") {
         await upazilaApi.delete(item.id)
         toast.success("Deleted")
-        fetchUpazilas(selectedDistrict)
+        fetchUpazilas(selectedDistrict, 1, limit)
       } else {
         await unionApi.delete(item.id)
         toast.success("Deleted")
-        fetchUnions(selectedUpazila)
+        fetchUnions(selectedUpazila, 1, limit)
       }
     } catch { }
   }
 
   const formTitle = form.edit ? `Edit ${form.type.charAt(0).toUpperCase() + form.type.slice(1)}` : `Add ${form.type.charAt(0).toUpperCase() + form.type.slice(1)}`
+
+  const tableProps = {
+    serverSide: true as const,
+    page,
+    pageSize: limit,
+    pageCount: totalPages,
+    total,
+    onPageChange: (p: number) => setPage(p),
+    onPageSizeChange: (size: number) => { setLimit(size); setPage(1); },
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -218,16 +263,14 @@ export default function AddressPage() {
               <div />
               <Button onClick={() => openForm("division")}><PlusIcon className="mr-2 h-4 w-4" /> Add Division</Button>
             </div>
-            {loading.div ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={divisions}
-                columns={divisionColumns}
-                onEdit={(row) => openForm("division", row)}
-                onDelete={(row) => handleDelete("division", row)}
-              />
-            )}
+            <DataTable
+              data={divisions}
+              columns={divisionColumns}
+              onEdit={(row) => openForm("division", row)}
+              onDelete={(row) => handleDelete("division", row)}
+              {...tableProps}
+              loading={loading.div}
+            />
           </TabsContent>
 
           <TabsContent value="district" className="mt-4">
@@ -242,16 +285,14 @@ export default function AddressPage() {
               </select>
               <Button disabled={!selectedDivision} onClick={() => openForm("district")}><PlusIcon className="mr-2 h-4 w-4" /> Add District</Button>
             </div>
-            {loading.dist ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedDivision ? districts : []}
-                columns={districtColumns}
-                onEdit={(row) => openForm("district", row)}
-                onDelete={(row) => handleDelete("district", row)}
-              />
-            )}
+            <DataTable
+              data={selectedDivision ? districts : []}
+              columns={districtColumns}
+              onEdit={(row) => openForm("district", row)}
+              onDelete={(row) => handleDelete("district", row)}
+              {...tableProps}
+              loading={loading.dist}
+            />
           </TabsContent>
 
           <TabsContent value="upazila" className="mt-4">
@@ -266,16 +307,14 @@ export default function AddressPage() {
               </select>
               <Button disabled={!selectedDistrict} onClick={() => openForm("upazila")}><PlusIcon className="mr-2 h-4 w-4" /> Add Upazila</Button>
             </div>
-            {loading.upa ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedDistrict ? upazilas : []}
-                columns={upazilaColumns}
-                onEdit={(row) => openForm("upazila", row)}
-                onDelete={(row) => handleDelete("upazila", row)}
-              />
-            )}
+            <DataTable
+              data={selectedDistrict ? upazilas : []}
+              columns={upazilaColumns}
+              onEdit={(row) => openForm("upazila", row)}
+              onDelete={(row) => handleDelete("upazila", row)}
+              {...tableProps}
+              loading={loading.upa}
+            />
           </TabsContent>
 
           <TabsContent value="union" className="mt-4">
@@ -290,16 +329,14 @@ export default function AddressPage() {
               </select>
               <Button disabled={!selectedUpazila} onClick={() => openForm("union")}><PlusIcon className="mr-2 h-4 w-4" /> Add Union</Button>
             </div>
-            {loading.uni ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedUpazila ? unions : []}
-                columns={unionColumns}
-                onEdit={(row) => openForm("union", row)}
-                onDelete={(row) => handleDelete("union", row)}
-              />
-            )}
+            <DataTable
+              data={selectedUpazila ? unions : []}
+              columns={unionColumns}
+              onEdit={(row) => openForm("union", row)}
+              onDelete={(row) => handleDelete("union", row)}
+              {...tableProps}
+              loading={loading.uni}
+            />
           </TabsContent>
         </Tabs>
       </div>

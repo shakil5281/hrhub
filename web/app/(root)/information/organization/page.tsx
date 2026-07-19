@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { BuildingIcon, PlusIcon, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { BuildingIcon, PlusIcon, UploadIcon, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -92,44 +93,79 @@ export default function OrganizationPage() {
   type FormItem = Department | Section | Designation | Line
   const [form, setForm] = React.useState<{ open: boolean; edit?: FormItem | null; type: string }>({ open: false, type: "" })
   const [tab, setTab] = React.useState("department")
+  const router = useRouter()
 
-  const fetchDepartments = async () => {
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
+  const fetchDepartments = async (p?: number, l?: number) => {
     setLoading(p => ({ ...p, dept: true }))
-    try { const { data } = await departmentApi.list(); setDepartments(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load departments") }
+    try { 
+      const { data } = await departmentApi.list({ page: String(p ?? page), limit: String(l ?? limit) })
+      setDepartments(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load departments") }
     finally { setLoading(p => ({ ...p, dept: false })) }
   }
-  const fetchSections = async (deptId: string) => {
+  const fetchSections = async (deptId: string, p?: number, l?: number) => {
     if (!deptId) return setSections([])
     setLoading(p => ({ ...p, sec: true }))
-    try { const { data } = await sectionApi.list(deptId); setSections(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load sections") }
+    try { 
+      const { data } = await sectionApi.list(deptId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setSections(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load sections") }
     finally { setLoading(p => ({ ...p, sec: false })) }
   }
-  const fetchDesignations = async (secId: string) => {
+  const fetchDesignations = async (secId: string, p?: number, l?: number) => {
     if (!secId) return setDesignations([])
     setLoading(p => ({ ...p, desig: true }))
-    try { const { data } = await designationApi.list(secId); setDesignations(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load designations") }
+    try { 
+      const { data } = await designationApi.list(secId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setDesignations(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load designations") }
     finally { setLoading(p => ({ ...p, desig: false })) }
   }
-  const fetchLines = async (secId: string) => {
+  const fetchLines = async (secId: string, p?: number, l?: number) => {
     if (!secId) return setLines([])
     setLoading(p => ({ ...p, line: true }))
-    try { const { data } = await lineApi.list(secId); setLines(Array.isArray(data) ? data : []) } catch { toast.error("Failed to load lines") }
+    try { 
+      const { data } = await lineApi.list(secId, { page: String(p ?? page), limit: String(l ?? limit) })
+      setLines(Array.isArray(data.data) ? data.data : [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.total_pages ?? 0)
+    } catch { toast.error("Failed to load lines") }
     finally { setLoading(p => ({ ...p, line: false })) }
   }
 
-  React.useEffect(() => { fetchDepartments() }, [])
+  React.useEffect(() => { fetchDepartments(1, 20) }, [])
 
   React.useEffect(() => {
     setSelectedSection("")
     setDesignations([])
     setLines([])
-    fetchSections(selectedDept)
+    setPage(1)
+    fetchSections(selectedDept, 1, limit)
   }, [selectedDept])
 
   React.useEffect(() => {
-    fetchDesignations(selectedSection)
-    fetchLines(selectedSection)
+    setPage(1)
+    fetchDesignations(selectedSection, 1, limit)
+    fetchLines(selectedSection, 1, limit)
   }, [selectedSection])
+
+  React.useEffect(() => {
+    if (tab === "department") fetchDepartments()
+    else if (tab === "section" && selectedDept) fetchSections(selectedDept)
+    else if (tab === "designation" && selectedSection) fetchDesignations(selectedSection)
+    else if (tab === "line" && selectedSection) fetchLines(selectedSection)
+  }, [page, limit])
 
   const openForm = (type: string, edit?: FormItem | null) => setForm({ open: true, edit, type })
   const closeForm = () => setForm({ open: false, edit: null, type: "" })
@@ -141,25 +177,25 @@ export default function OrganizationPage() {
         if (edit) await departmentApi.update(edit.id, { name, name_bn: nameBn })
         else await departmentApi.create({ name, name_bn: nameBn })
         toast.success(edit ? "Updated" : "Created")
-        fetchDepartments()
+        fetchDepartments(1, limit)
       } else if (type === "section") {
         const payload = { name, name_bn: nameBn, department_id: selectedDept }
         if (edit) await sectionApi.update(edit.id, payload)
         else await sectionApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchSections(selectedDept)
+        fetchSections(selectedDept, 1, limit)
       } else if (type === "designation") {
         const payload = { name, name_bn: nameBn, section_id: selectedSection }
         if (edit) await designationApi.update(edit.id, payload)
         else await designationApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchDesignations(selectedSection)
+        fetchDesignations(selectedSection, 1, limit)
       } else if (type === "line") {
         const payload = { name, name_bn: nameBn, section_id: selectedSection }
         if (edit) await lineApi.update(edit.id, payload)
         else await lineApi.create(payload)
         toast.success(edit ? "Updated" : "Created")
-        fetchLines(selectedSection)
+        fetchLines(selectedSection, 1, limit)
       }
     } catch { }
   }
@@ -169,22 +205,22 @@ export default function OrganizationPage() {
       if (type === "department") {
         await departmentApi.delete(item.id)
         toast.success("Deleted")
-        fetchDepartments()
+        fetchDepartments(1, limit)
         if (selectedDept === item.id) setSelectedDept("")
       } else if (type === "section") {
         await sectionApi.delete(item.id)
         toast.success("Deleted")
-        fetchSections(selectedDept)
+        fetchSections(selectedDept, 1, limit)
         if (selectedSection === item.id) setSelectedSection("")
       } else {
         if (type === "designation") {
           await designationApi.delete(item.id)
           toast.success("Deleted")
-          fetchDesignations(selectedSection)
+          fetchDesignations(selectedSection, 1, limit)
         } else {
           await lineApi.delete(item.id)
           toast.success("Deleted")
-          fetchLines(selectedSection)
+          fetchLines(selectedSection, 1, limit)
         }
       }
     } catch { }
@@ -192,13 +228,31 @@ export default function OrganizationPage() {
 
   const formTitle = form.edit ? `Edit ${form.type.charAt(0).toUpperCase() + form.type.slice(1)}` : `Add ${form.type.charAt(0).toUpperCase() + form.type.slice(1)}`
 
+  const tableProps = {
+    serverSide: true as const,
+    page,
+    pageSize: limit,
+    pageCount: totalPages,
+    total,
+    onPageChange: (p: number) => setPage(p),
+    onPageSizeChange: (size: number) => { setLimit(size); setPage(1); },
+  }
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <div className="px-4 lg:px-6 flex items-center gap-2">
-        <BuildingIcon className="h-6 w-6 text-muted-foreground" />
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
-          <p className="text-muted-foreground mt-1">Manage departments, sections, designations and lines</p>
+      <div className="px-4 lg:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BuildingIcon className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
+            <p className="text-muted-foreground mt-1">Manage departments, sections, designations and lines</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push("/information/organization/import")}>
+            <UploadIcon className="mr-2 h-4 w-4" />
+            Import
+          </Button>
         </div>
       </div>
 
@@ -216,17 +270,15 @@ export default function OrganizationPage() {
               <div />
               <Button onClick={() => openForm("department")}><PlusIcon className="mr-2 h-4 w-4" /> Add Department</Button>
             </div>
-            {loading.dept ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={departments}
-                columns={deptColumns}
-                enableDnd
-                onEdit={(row) => openForm("department", row)}
-                onDelete={(row) => handleDelete("department", row)}
-              />
-            )}
+            <DataTable
+              data={departments}
+              columns={deptColumns}
+              enableDnd
+              onEdit={(row) => openForm("department", row)}
+              onDelete={(row) => handleDelete("department", row)}
+              {...tableProps}
+              loading={loading.dept}
+            />
           </TabsContent>
 
           <TabsContent value="section" className="mt-4">
@@ -241,17 +293,15 @@ export default function OrganizationPage() {
               </select>
               <Button disabled={!selectedDept} onClick={() => openForm("section")}><PlusIcon className="mr-2 h-4 w-4" /> Add Section</Button>
             </div>
-            {loading.sec ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedDept ? sections : []}
-                columns={sectionColumns}
-                enableDnd
-                onEdit={(row) => openForm("section", row)}
-                onDelete={(row) => handleDelete("section", row)}
-              />
-            )}
+            <DataTable
+              data={selectedDept ? sections : []}
+              columns={sectionColumns}
+              enableDnd
+              onEdit={(row) => openForm("section", row)}
+              onDelete={(row) => handleDelete("section", row)}
+              {...tableProps}
+              loading={loading.sec}
+            />
           </TabsContent>
 
           <TabsContent value="designation" className="mt-4">
@@ -266,17 +316,15 @@ export default function OrganizationPage() {
               </select>
               <Button disabled={!selectedSection} onClick={() => openForm("designation")}><PlusIcon className="mr-2 h-4 w-4" /> Add Designation</Button>
             </div>
-            {loading.desig ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedSection ? designations : []}
-                columns={designationColumns}
-                enableDnd
-                onEdit={(row) => openForm("designation", row)}
-                onDelete={(row) => handleDelete("designation", row)}
-              />
-            )}
+            <DataTable
+              data={selectedSection ? designations : []}
+              columns={designationColumns}
+              enableDnd
+              onEdit={(row) => openForm("designation", row)}
+              onDelete={(row) => handleDelete("designation", row)}
+              {...tableProps}
+              loading={loading.desig}
+            />
           </TabsContent>
 
           <TabsContent value="line" className="mt-4">
@@ -291,17 +339,15 @@ export default function OrganizationPage() {
               </select>
               <Button disabled={!selectedSection} onClick={() => openForm("line")}><PlusIcon className="mr-2 h-4 w-4" /> Add Line</Button>
             </div>
-            {loading.line ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-            ) : (
-              <DataTable
-                data={selectedSection ? lines : []}
-                columns={lineColumns}
-                enableDnd
-                onEdit={(row) => openForm("line", row)}
-                onDelete={(row) => handleDelete("line", row)}
-              />
-            )}
+            <DataTable
+              data={selectedSection ? lines : []}
+              columns={lineColumns}
+              enableDnd
+              onEdit={(row) => openForm("line", row)}
+              onDelete={(row) => handleDelete("line", row)}
+              {...tableProps}
+              loading={loading.line}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LayersIcon, PlusIcon, Loader2 } from "lucide-react"
+import { LayersIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -27,12 +27,19 @@ export default function FloorPage() {
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingFloor, setEditingFloor] = React.useState<Floor | null>(null)
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
   const fetchFloors = async () => {
     setLoading(true)
     setError("")
     try {
-      const { data } = await floorApi.list()
-      setFloors(Array.isArray(data) ? data : [])
+      const { data: res } = await floorApi.list({ page: String(page), limit: String(limit) })
+      setFloors(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load floors")
     } finally {
@@ -42,7 +49,7 @@ export default function FloorPage() {
 
   React.useEffect(() => {
     fetchFloors()
-  }, [])
+  }, [page, limit])
 
   const handleAdd = () => {
     setEditingFloor(null)
@@ -86,20 +93,21 @@ export default function FloorPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable
-          key={floors.length}
-          data={floors}
-          columns={columns}
-          enableDnd
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      <DataTable
+        data={floors}
+        columns={columns}
+        enableDnd
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

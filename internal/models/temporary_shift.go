@@ -8,7 +8,7 @@ import (
 
 type TemporaryShift struct {
 	ID         string         `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	EmployeeID string         `json:"employee_id" gorm:"type:uuid;not null;uniqueIndex:idx_temp_shift_emp_date"`
+	EmployeeID string         `json:"employee_id" gorm:"type:varchar(50);not null;uniqueIndex:idx_temp_shift_emp_date"`
 	ShiftID    string         `json:"shift_id" gorm:"type:uuid;not null"`
 	CompanyID  string         `json:"company_id" gorm:"type:uuid;not null"`
 	Date       string         `json:"date" gorm:"type:date;not null;uniqueIndex:idx_temp_shift_emp_date"`

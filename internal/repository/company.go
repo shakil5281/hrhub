@@ -29,10 +29,15 @@ func (r *CompanyRepository) FindBySlug(slug string) (*models.Company, error) {
 	return &company, err
 }
 
-func (r *CompanyRepository) List() ([]models.Company, error) {
+func (r *CompanyRepository) List(page, limit int) ([]models.Company, int64, error) {
+	base := r.db.Model(&models.Company{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var companies []models.Company
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&companies).Error
-	return companies, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&companies).Error
+	return companies, total, err
 }
 
 func (r *CompanyRepository) Update(company *models.Company) error {

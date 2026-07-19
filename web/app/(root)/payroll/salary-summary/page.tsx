@@ -54,12 +54,7 @@ export default function SalarySummaryPage() {
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
-    companyApi.list().then(({data})=>{
-      if (Array.isArray(data) && data.length>0) {
-        setCompanies(data)
-        setCompanyId(data[0].id)
-      }
-    })
+    companyApi.list({ limit: "100" }).then(({data})=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); if (list.length>0) { setCompanies(list); setCompanyId(list[0].id) } })
   }, [])
 
   const handleLoad = async () => {
@@ -119,12 +114,10 @@ export default function SalarySummaryPage() {
         </Card>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : data ? (
+      {data ? (
         <div className="px-4 lg:px-6">
           <h2 className="text-lg font-semibold mb-2">{MONTHS[month]} {year} - Salary Summary</h2>
-          <DataTable data={data.summaries} columns={columns} />
+          <DataTable data={data.summaries} columns={columns} loading={loading} />
           <div className="mt-4 rounded-md border bg-muted/30 p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
               <div><span className="text-muted-foreground">Total Employees</span><p className="font-semibold">{data.total_employees}</p></div>

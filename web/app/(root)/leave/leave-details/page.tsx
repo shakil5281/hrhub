@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FileTextIcon, Loader2 } from "lucide-react"
+import { FileTextIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { leaveBalanceApi, employeeApi } from "@/lib/api"
@@ -38,6 +38,11 @@ export default function LeaveDetailsPage() {
   const [employees, setEmployees] = React.useState<Employee[]>([])
   const [filters, setFilters] = React.useState<Record<string, string>>({})
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
   const filterDefs: FilterDef[] = React.useMemo(() => [
     {
       key: "employee_id", label: "Employee", type: "select",
@@ -45,39 +50,51 @@ export default function LeaveDetailsPage() {
     },
   ], [employees])
 
-  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+  const fetchData = React.useCallback(async (params: Record<string, string>, p?: number, l?: number) => {
     setLoading(true)
     try {
       const active: Record<string, string> = { year: String(thisYear) }
       if (params.employee_id) active.employee_id = params.employee_id
+      active.page = String(p ?? page)
+      active.limit = String(l ?? limit)
       const { data: res } = await leaveBalanceApi.list(active)
-      setData(Array.isArray(res) ? res.map((r: any, i: number) => ({ ...r, id: r.id || `${r.employee_id}-${r.leave_type}-${i}` })) : [])
+      const list = Array.isArray(res.data) ? res.data : []
+      setData(list.map((r: any, i: number) => ({ ...r, id: r.id || `${r.employee_id}-${r.leave_type}-${i}` })))
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setData([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, limit])
 
   React.useEffect(() => {
-    employeeApi.list().then((res) => {
-      const list = res.data?.employees || res.data || []
+    employeeApi.list({ limit: "100" }).then((res) => {
+      const list = res.data?.data?.employees || res.data?.data || []
       setEmployees(Array.isArray(list) ? list : [])
     }).catch(() => {})
     fetchData({})
   }, [])
 
+  React.useEffect(() => {
+    fetchData(filters)
+  }, [page, limit])
+
   const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const handleApply = () => {
+    setPage(1)
     const active: Record<string, string> = {}
     for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
-    fetchData(active)
+    fetchData(active, 1)
   }
 
   const handleReset = () => {
+    setPage(1)
+    setLimit(20)
     setFilters({})
-    fetchData({})
+    fetchData({}, 1, 20)
   }
 
   return (
@@ -92,11 +109,18 @@ export default function LeaveDetailsPage() {
       <div className="px-4 lg:px-6">
         <FilterBar filters={filterDefs} values={filters} onChange={handleChange} onApply={handleApply} onReset={handleReset} submitting={loading} />
       </div>
-      {loading ? (
-        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable
+        data={data}
+        columns={columns}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
     </div>
   )
 }

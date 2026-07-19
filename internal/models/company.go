@@ -27,5 +27,4 @@ type Company struct {
 	UpdatedBy    *string        `json:"updated_by" gorm:"type:uuid"`
 	DeletedBy    *string        `json:"deleted_by" gorm:"type:uuid"`
 
-	Branches []Branch `json:"branches" gorm:"foreignKey:CompanyID"`
 }

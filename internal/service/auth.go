@@ -39,10 +39,11 @@ type LoginResponse struct {
 }
 
 type UserResponse struct {
-	ID     string `json:"id"`
-	Email  string `json:"email"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID                 string `json:"id"`
+	Email              string `json:"email"`
+	Name               string `json:"name"`
+	Status             string `json:"status"`
+	ForcePasswordChange bool  `json:"force_password_change"`
 }
 
 type RegisterRequest struct {
@@ -153,10 +154,11 @@ func (s *AuthService) Login(req LoginRequest, ip, userAgent string) (*LoginRespo
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(s.jwtCfg.AccessTokenTTL.Seconds()),
 		User: UserResponse{
-			ID:     user.ID,
-			Email:  user.Email,
-			Name:   user.Name,
-			Status: user.Status,
+			ID:                  user.ID,
+			Email:               user.Email,
+			Name:                user.Name,
+			Status:              user.Status,
+			ForcePasswordChange: user.ForcePasswordChange,
 		},
 	}, nil
 }
@@ -227,10 +229,11 @@ func (s *AuthService) RefreshToken(refreshToken string) (*LoginResponse, error) 
 		RefreshToken: newRefreshToken,
 		ExpiresIn:    int64(s.jwtCfg.AccessTokenTTL.Seconds()),
 		User: UserResponse{
-			ID:     user.ID,
-			Email:  user.Email,
-			Name:   user.Name,
-			Status: user.Status,
+			ID:                  user.ID,
+			Email:               user.Email,
+			Name:                user.Name,
+			Status:              user.Status,
+			ForcePasswordChange: user.ForcePasswordChange,
 		},
 	}, nil
 }
@@ -297,6 +300,7 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 	if err := s.userRepo.AddPasswordHistory(userID, newHash); err != nil {
 		return errors.New("failed to save password history")
 	}
+	_ = s.userRepo.SetForcePasswordChange(userID, false)
 	if err := s.authRepo.RevokeAllUserTokens(userID); err != nil {
 		return err
 	}
@@ -305,12 +309,13 @@ func (s *AuthService) ChangePassword(userID, currentPassword, newPassword string
 }
 
 type ProfileResponse struct {
-	ID        string        `json:"id"`
-	Email     string        `json:"email"`
-	Name      string        `json:"name"`
-	Status    string        `json:"status"`
-	Roles     []RoleInfo    `json:"roles,omitempty"`
-	CreatedAt string        `json:"created_at"`
+	ID                 string     `json:"id"`
+	Email              string     `json:"email"`
+	Name               string     `json:"name"`
+	Status             string     `json:"status"`
+	ForcePasswordChange bool      `json:"force_password_change"`
+	Roles              []RoleInfo `json:"roles,omitempty"`
+	CreatedAt          string     `json:"created_at"`
 }
 
 type RoleInfo struct {
@@ -323,12 +328,13 @@ func toProfileResponse(user *models.User, roles []models.Role) ProfileResponse {
 		roleInfos[i] = RoleInfo{Name: r.Name}
 	}
 	return ProfileResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Name:      user.Name,
-		Status:    user.Status,
-		Roles:     roleInfos,
-		CreatedAt: user.CreatedAt.Format(time.RFC3339),
+		ID:                  user.ID,
+		Email:               user.Email,
+		Name:                user.Name,
+		Status:              user.Status,
+		ForcePasswordChange: user.ForcePasswordChange,
+		Roles:               roleInfos,
+		CreatedAt:           user.CreatedAt.Format(time.RFC3339),
 	}
 }
 

@@ -19,10 +19,15 @@ func (r *DivisionRepository) FindByID(id string) (*models.Division, error) {
 	return &m, err
 }
 
-func (r *DivisionRepository) List() ([]models.Division, error) {
+func (r *DivisionRepository) List(page, limit int) ([]models.Division, int64, error) {
+	base := r.db.Model(&models.Division{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var list []models.Division
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&list).Error
-	return list, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *DivisionRepository) Update(m *models.Division) error { return r.db.Save(m).Error }
@@ -45,14 +50,18 @@ func (r *DistrictRepository) FindByID(id string) (*models.District, error) {
 	return &m, err
 }
 
-func (r *DistrictRepository) List(divisionID string) ([]models.District, error) {
-	var list []models.District
-	q := r.db.Where("deleted_at IS NULL")
+func (r *DistrictRepository) List(divisionID string, page, limit int) ([]models.District, int64, error) {
+	base := r.db.Model(&models.District{}).Where("deleted_at IS NULL")
 	if divisionID != "" {
-		q = q.Where("division_id = ?", divisionID)
+		base = base.Where("division_id = ?", divisionID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.District
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *DistrictRepository) Update(m *models.District) error { return r.db.Save(m).Error }
@@ -75,14 +84,18 @@ func (r *UpazilaRepository) FindByID(id string) (*models.Upazila, error) {
 	return &m, err
 }
 
-func (r *UpazilaRepository) List(districtID string) ([]models.Upazila, error) {
-	var list []models.Upazila
-	q := r.db.Where("deleted_at IS NULL")
+func (r *UpazilaRepository) List(districtID string, page, limit int) ([]models.Upazila, int64, error) {
+	base := r.db.Model(&models.Upazila{}).Where("deleted_at IS NULL")
 	if districtID != "" {
-		q = q.Where("district_id = ?", districtID)
+		base = base.Where("district_id = ?", districtID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Upazila
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *UpazilaRepository) Update(m *models.Upazila) error { return r.db.Save(m).Error }
@@ -105,14 +118,18 @@ func (r *UnionRepository) FindByID(id string) (*models.Union, error) {
 	return &m, err
 }
 
-func (r *UnionRepository) List(upazilaID string) ([]models.Union, error) {
-	var list []models.Union
-	q := r.db.Where("deleted_at IS NULL")
+func (r *UnionRepository) List(upazilaID string, page, limit int) ([]models.Union, int64, error) {
+	base := r.db.Model(&models.Union{}).Where("deleted_at IS NULL")
 	if upazilaID != "" {
-		q = q.Where("upazila_id = ?", upazilaID)
+		base = base.Where("upazila_id = ?", upazilaID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Union
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *UnionRepository) Update(m *models.Union) error { return r.db.Save(m).Error }

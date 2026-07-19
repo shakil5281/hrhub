@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardCheckIcon, Loader2 } from "lucide-react"
+import { ClipboardCheckIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { format } from "date-fns"
@@ -26,6 +26,7 @@ interface AttendanceRecord {
   check_in: string | null
   check_out: string | null
   total_hours: string | null
+  over_time: string | null
   status: string
   late_minutes: number
   employee?: { employee_id: string; name_en: string; designation_ref?: { name: string } }
@@ -43,10 +44,14 @@ const columns: ColumnDef<AttendanceRecord>[] = [
     header: "Name",
     cell: ({ row }) => row.original.employee?.name_en || "-",
   },
-
-  { accessorKey: "check_in", header: "Check In" },
-  { accessorKey: "check_out", header: "Check Out" },
-  { accessorKey: "total_hours", header: "Total Hours" },
+  {
+    accessorKey: "employee.designation_ref.name",
+    header: "Designation",
+    cell: ({ row }) => row.original.employee?.designation_ref?.name || "-",
+  },
+  { accessorKey: "check_in", header: "Check In", cell: ({ row }) => row.original.check_in || "-" },
+  { accessorKey: "check_out", header: "Check Out", cell: ({ row }) => row.original.check_out || "-" },
+  { accessorKey: "over_time", header: "Over Time", cell: ({ row }) => row.original.over_time || "-" },
   { accessorKey: "late_minutes", header: "Late (min)" },
   {
     accessorKey: "status",
@@ -74,6 +79,11 @@ export default function DailyAttendancePage() {
   const [filters, setFilters] = React.useState<Record<string, string>>({
     date: today,
   })
+
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
 
   const filterDefs: FilterDef[] = React.useMemo(() => [
     { key: "date", label: "Date", type: "datepicker" },
@@ -117,57 +127,71 @@ export default function DailyAttendancePage() {
     { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Enter employee code..." },
   ], [companies, departments, sections, designations, lines, groups, shifts])
 
-  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+  const fetchData = React.useCallback(async (params: Record<string, string>, p?: number, l?: number) => {
     setLoading(true)
     setError("")
     try {
-      const { data: res } = await attendanceApi.list(params)
-      setData(Array.isArray(res) ? res : [])
+      const reqParams = { ...params, page: String(p ?? page), limit: String(l ?? limit) }
+      const { data: res } = await attendanceApi.list(reqParams)
+      setData(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load attendance")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, limit])
 
   React.useEffect(() => {
     const init = async () => {
       const [cRes, dRes, secRes, desRes, lRes, gRes, sRes] = await Promise.all([
-        companyApi.list(),
-        departmentApi.list(),
-        sectionApi.list(),
-        designationApi.list(),
-        lineApi.list(),
-        groupApi.list(),
-        shiftApi.list(),
+        companyApi.list({ limit: "100" }),
+        departmentApi.list({ limit: "100" }),
+        sectionApi.list(undefined, { limit: "100" }),
+        designationApi.list(undefined, { limit: "100" }),
+        lineApi.list(undefined, { limit: "100" }),
+        groupApi.list({ limit: "100" }),
+        shiftApi.list({ limit: "100" }),
       ])
-      if (Array.isArray(cRes.data)) setCompanies(cRes.data)
-      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
-      if (Array.isArray(secRes.data)) setSections(secRes.data)
-      if (Array.isArray(desRes.data)) setDesignations(desRes.data)
-      if (Array.isArray(lRes.data)) setLines(lRes.data)
-      if (Array.isArray(gRes.data)) setGroups(gRes.data)
-      if (Array.isArray(sRes.data)) setShifts(sRes.data)
+      setCompanies(Array.isArray(cRes.data?.data) ? cRes.data.data : [])
+      setDepartments(Array.isArray(dRes.data?.data) ? dRes.data.data : [])
+      setSections(Array.isArray(secRes.data?.data) ? secRes.data.data : [])
+      setDesignations(Array.isArray(desRes.data?.data) ? desRes.data.data : [])
+      setLines(Array.isArray(lRes.data?.data) ? lRes.data.data : [])
+      setGroups(Array.isArray(gRes.data?.data) ? gRes.data.data : [])
+      setShifts(Array.isArray(sRes.data?.data) ? sRes.data.data : [])
     }
     init()
-    fetchData({ date: today })
+    fetchData({ date: today }, 1, 20)
   }, [])
+
+  React.useEffect(() => {
+    const active: Record<string, string> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) active[key] = value
+    }
+    fetchData(active)
+  }, [page, limit])
 
   const handleChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
   const handleApply = () => {
+    setPage(1)
     const active: Record<string, string> = {}
     for (const [key, value] of Object.entries(filters)) {
       if (value) active[key] = value
     }
-    fetchData(active)
+    fetchData(active, 1)
   }
 
   const handleReset = () => {
+    setPage(1)
+    setLimit(20)
     setFilters({ date: today })
-    fetchData({ date: today })
+    fetchData({ date: today }, 1, 20)
   }
 
   return (
@@ -211,13 +235,19 @@ export default function DailyAttendancePage() {
         </h2>
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable
+        data={data}
+        columns={columns}
+        enableSelection={false}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
     </div>
   )
 }

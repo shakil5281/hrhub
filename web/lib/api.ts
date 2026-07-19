@@ -1,5 +1,13 @@
 import api from "./axios-instance"
 
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
 export interface LoginRequest {
   email: string
   password: string
@@ -14,10 +22,13 @@ export interface RegisterRequest {
 export interface AuthResponse {
   access_token: string
   refresh_token: string
+  expires_in: number
   user: {
     id: string
     email: string
     name: string
+    status: string
+    force_password_change: boolean
   }
 }
 
@@ -30,10 +41,49 @@ export const authApi = {
   changePassword: (data: { current_password: string; new_password: string }) => api.put("/auth/change-password", data),
   sessions: () => api.get("/auth/sessions"),
   logoutAll: () => api.post("/auth/logout-all"),
+  forgotPassword: (data: { email: string }) => api.post("/auth/forgot-password", data),
+  resetPassword: (data: { token: string; new_password: string }) => api.post("/auth/reset-password", data),
+}
+
+export const userApi = {
+  list: (params?: Record<string, string>) => api.get<PaginatedResponse<UserListItem>>("/users", { params }),
+  get: (id: string) => api.get<{ id: string; email: string; name: string; status: string; roles: Array<{ id: string; name: string }> }>(`/users/${id}`),
+  create: (data: { email: string; name: string; role_ids?: string[] }) => api.post("/users", data),
+  update: (id: string, data: { name?: string; status?: string }) => api.put(`/users/${id}`, data),
+  delete: (id: string) => api.delete(`/users/${id}`),
+  getRoles: (id: string) => api.get<{ data: Array<{ id: string; name: string; description: string }> }>(`/users/${id}/roles`),
+  assignRoles: (id: string, data: { role_ids: string[] }) => api.put(`/users/${id}/roles`, data),
+  resetPassword: (id: string) => api.post<{ generated_password: string; force_password_change: boolean; message: string }>(`/users/${id}/reset-password`),
+}
+
+export interface UserListItem {
+  id: string
+  email: string
+  name: string
+  status: string
+  created_at: string
+}
+
+export const roleApi = {
+  list: (companyId?: string) => api.get("/roles", { params: companyId ? { company_id: companyId } : undefined }),
+  get: (id: string) => api.get(`/roles/${id}`),
+  create: (data: { name: string; description?: string }) => api.post("/roles", data),
+  update: (id: string, data: { name?: string; description?: string }) => api.put(`/roles/${id}`, data),
+  delete: (id: string) => api.delete(`/roles/${id}`),
+  assignPermissions: (id: string, data: { permission_ids: string[] }) => api.put(`/roles/${id}/permissions`, data),
+}
+
+export const permissionApi = {
+  list: () => api.get("/permissions"),
+}
+
+export const settingsApi = {
+  list: () => api.get("/settings"),
+  update: (data: { settings: Record<string, string> }) => api.put("/settings", data),
 }
 
 export const companyApi = {
-  list: () => api.get("/companies"),
+  list: (params?: Record<string, string>) => api.get("/companies", { params }),
   get: (id: string) => api.get(`/companies/${id}`),
   create: (data: Record<string, unknown>) => api.post("/companies", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/companies/${id}`, data),
@@ -43,15 +93,14 @@ export const companyApi = {
 export const employeeApi = {
   list: (params?: Record<string, string>) => api.get("/employees", { params }),
   get: (id: string) => api.get(`/employees/${id}`),
+  getByCode: (code: string) => api.get(`/employees/by-code/${code}`),
   create: (data: Record<string, unknown>) => api.post("/employees", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/employees/${id}`, data),
   delete: (id: string) => api.delete(`/employees/${id}`),
   importExcel: (file: File) => {
     const formData = new FormData()
     formData.append("file", file)
-    return api.post("/employees/import", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    return api.post("/employees/import", formData)
   },
   downloadTemplate: () => api.get("/employees/import/template", { responseType: "blob" }),
   exportExcel: (params?: Record<string, string>) => api.get("/employees/export/excel", { params, responseType: "blob" }),
@@ -59,7 +108,7 @@ export const employeeApi = {
 }
 
 export const groupApi = {
-  list: () => api.get("/groups"),
+  list: (params?: Record<string, string>) => api.get("/groups", { params }),
   get: (id: string) => api.get(`/groups/${id}`),
   create: (data: Record<string, unknown>) => api.post("/groups", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/groups/${id}`, data),
@@ -67,7 +116,7 @@ export const groupApi = {
 }
 
 export const floorApi = {
-  list: () => api.get("/floors"),
+  list: (params?: Record<string, string>) => api.get("/floors", { params }),
   get: (id: string) => api.get(`/floors/${id}`),
   create: (data: Record<string, unknown>) => api.post("/floors", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/floors/${id}`, data),
@@ -75,7 +124,7 @@ export const floorApi = {
 }
 
 export const departmentApi = {
-  list: () => api.get("/departments"),
+  list: (params?: Record<string, string>) => api.get("/departments", { params }),
   get: (id: string) => api.get(`/departments/${id}`),
   create: (data: Record<string, unknown>) => api.post("/departments", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/departments/${id}`, data),
@@ -83,7 +132,7 @@ export const departmentApi = {
 }
 
 export const sectionApi = {
-  list: (departmentId?: string) => api.get("/sections", { params: departmentId ? { department_id: departmentId } : {} }),
+  list: (departmentId?: string, params?: Record<string, string>) => api.get("/sections", { params: departmentId ? { ...params, department_id: departmentId } : params }),
   get: (id: string) => api.get(`/sections/${id}`),
   create: (data: Record<string, unknown>) => api.post("/sections", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/sections/${id}`, data),
@@ -91,7 +140,7 @@ export const sectionApi = {
 }
 
 export const designationApi = {
-  list: (sectionId?: string) => api.get("/designations", { params: sectionId ? { section_id: sectionId } : {} }),
+  list: (sectionId?: string, params?: Record<string, string>) => api.get("/designations", { params: sectionId ? { ...params, section_id: sectionId } : params }),
   get: (id: string) => api.get(`/designations/${id}`),
   create: (data: Record<string, unknown>) => api.post("/designations", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/designations/${id}`, data),
@@ -99,15 +148,40 @@ export const designationApi = {
 }
 
 export const lineApi = {
-  list: (sectionId?: string) => api.get("/lines", { params: sectionId ? { section_id: sectionId } : {} }),
+  list: (sectionId?: string, params?: Record<string, string>) => api.get("/lines", { params: sectionId ? { ...params, section_id: sectionId } : params }),
   get: (id: string) => api.get(`/lines/${id}`),
   create: (data: Record<string, unknown>) => api.post("/lines", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/lines/${id}`, data),
   delete: (id: string) => api.delete(`/lines/${id}`),
 }
 
+export const databaseApi = {
+  backup: () => api.post("/database/backup"),
+  listBackups: () => api.get("/database/backups"),
+  export: (filename: string) => api.get("/database/export", { params: { filename }, responseType: "blob" }),
+  importSql: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return api.post("/database/import", formData)
+  },
+  reset: () => api.post("/database/reset"),
+}
+
+export const dashboardApi = {
+  stats: () => api.get("/dashboard/stats"),
+}
+
+export const organizationApi = {
+  downloadTemplate: () => api.get("/organization/template", { responseType: "blob" }),
+  importExcel: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return api.post("/organization/import", formData)
+  },
+}
+
 export const shiftApi = {
-  list: () => api.get("/shifts"),
+  list: (params?: Record<string, string>) => api.get("/shifts", { params }),
   get: (id: string) => api.get(`/shifts/${id}`),
   create: (data: Record<string, unknown>) => api.post("/shifts", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/shifts/${id}`, data),
@@ -142,7 +216,7 @@ export const dataLogApi = {
 }
 
 export const divisionApi = {
-  list: () => api.get("/divisions"),
+  list: (params?: Record<string, string>) => api.get("/divisions", { params }),
   get: (id: string) => api.get(`/divisions/${id}`),
   create: (data: Record<string, unknown>) => api.post("/divisions", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/divisions/${id}`, data),
@@ -150,7 +224,7 @@ export const divisionApi = {
 }
 
 export const districtApi = {
-  list: (divisionId?: string) => api.get("/districts", { params: divisionId ? { division_id: divisionId } : {} }),
+  list: (divisionId?: string, params?: Record<string, string>) => api.get("/districts", { params: divisionId ? { ...params, division_id: divisionId } : params }),
   get: (id: string) => api.get(`/districts/${id}`),
   create: (data: Record<string, unknown>) => api.post("/districts", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/districts/${id}`, data),
@@ -158,7 +232,7 @@ export const districtApi = {
 }
 
 export const upazilaApi = {
-  list: (districtId?: string) => api.get("/upazilas", { params: districtId ? { district_id: districtId } : {} }),
+  list: (districtId?: string, params?: Record<string, string>) => api.get("/upazilas", { params: districtId ? { ...params, district_id: districtId } : params }),
   get: (id: string) => api.get(`/upazilas/${id}`),
   create: (data: Record<string, unknown>) => api.post("/upazilas", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/upazilas/${id}`, data),
@@ -166,7 +240,7 @@ export const upazilaApi = {
 }
 
 export const unionApi = {
-  list: (upazilaId?: string) => api.get("/unions", { params: upazilaId ? { upazila_id: upazilaId } : {} }),
+  list: (upazilaId?: string, params?: Record<string, string>) => api.get("/unions", { params: upazilaId ? { ...params, upazila_id: upazilaId } : params }),
   get: (id: string) => api.get(`/unions/${id}`),
   create: (data: Record<string, unknown>) => api.post("/unions", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/unions/${id}`, data),
@@ -198,7 +272,7 @@ export const idCardApi = {
 }
 
 export const leaveTypeApi = {
-  list: (companyId?: string) => api.get("/leave-types", { params: companyId ? { company_id: companyId } : {} }),
+  list: (companyId?: string, params?: Record<string, string>) => api.get("/leave-types", { params: companyId ? { ...params, company_id: companyId } : params }),
   get: (id: string) => api.get(`/leave-types/${id}`),
   create: (data: Record<string, unknown>) => api.post("/leave-types", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/leave-types/${id}`, data),
@@ -243,8 +317,6 @@ export const uploadApi = {
   file: (file: File) => {
     const formData = new FormData()
     formData.append("file", file)
-    return api.post<{ url: string; filename: string }>("/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    return api.post<{ url: string; filename: string }>("/upload", formData)
   },
 }

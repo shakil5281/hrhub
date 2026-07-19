@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarCheckIcon, Loader2, PlusIcon } from "lucide-react"
+import { CalendarCheckIcon, PlusIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,11 @@ export default function LeavePage() {
   const [rejectDialogOpen, setRejectDialogOpen] = React.useState(false)
   const [rejectingId, setRejectingId] = React.useState<string | null>(null)
   const [rejectReason, setRejectReason] = React.useState("")
+
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
 
   const filterDefs: FilterDef[] = React.useMemo(() => [
     { key: "from_date", label: "Start Date", type: "datepicker" },
@@ -117,7 +122,7 @@ export default function LeavePage() {
     },
   ], [])
 
-  const fetchData = React.useCallback(async (params: Record<string, string>) => {
+  const fetchData = React.useCallback(async (params: Record<string, string>, p?: number, l?: number) => {
     setLoading(true)
     try {
       const active: Record<string, string> = {}
@@ -127,37 +132,50 @@ export default function LeavePage() {
       if (params.department_id) active.department_id = params.department_id
       if (params.employee_id) active.employee_id = params.employee_id
       if (params.status) active.status = params.status
+      active.page = String(p ?? page)
+      active.limit = String(l ?? limit)
       const { data: res } = await leaveApi.list(active)
-      setData(Array.isArray(res) ? res : [])
+      setData(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setData([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, limit])
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      departmentApi.list(),
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
     ]).then(([cRes, dRes]) => {
-      setCompanies(Array.isArray(cRes.data) ? cRes.data : [])
-      setDepartments(Array.isArray(dRes.data) ? dRes.data : [])
+      setCompanies(Array.isArray(cRes.data?.data) ? cRes.data.data : [])
+      setDepartments(Array.isArray(dRes.data?.data) ? dRes.data.data : [])
     }).catch(() => {})
-    fetchData({ from_date: today, to_date: today })
+    fetchData({ from_date: today, to_date: today }, 1, 20)
   }, [])
+
+  React.useEffect(() => {
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
+    fetchData(active)
+  }, [page, limit])
 
   const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const handleApply = () => {
+    setPage(1)
     const active: Record<string, string> = {}
     for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
-    fetchData(active)
+    fetchData(active, 1)
   }
 
   const handleReset = () => {
+    setPage(1)
+    setLimit(20)
     setFilters({ from_date: today, to_date: today })
-    fetchData({ from_date: today, to_date: today })
+    fetchData({ from_date: today, to_date: today }, 1, 20)
   }
 
   const handleApprove = async (id: string) => {
@@ -204,11 +222,18 @@ export default function LeavePage() {
         <FilterBar filters={filterDefs} values={filters} onChange={handleChange} onApply={handleApply} onReset={handleReset} submitting={loading} />
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <DataTable key={data.length} data={data} columns={columns} />
-      )}
+      <DataTable
+        data={data}
+        columns={columns}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
 
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent className="max-w-md">

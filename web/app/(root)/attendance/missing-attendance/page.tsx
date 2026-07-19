@@ -90,19 +90,19 @@ export default function MissingAttendancePage() {
   React.useEffect(() => {
     const init = async () => {
       const [cRes, dRes, secRes, desRes, lRes, gRes] = await Promise.all([
-        companyApi.list(),
-        departmentApi.list(),
-        sectionApi.list(),
-        designationApi.list(),
-        lineApi.list(),
-        groupApi.list(),
+        companyApi.list({ limit: "100" }),
+        departmentApi.list({ limit: "100" }),
+        sectionApi.list(undefined, { limit: "100" }),
+        designationApi.list(undefined, { limit: "100" }),
+        lineApi.list(undefined, { limit: "100" }),
+        groupApi.list({ limit: "100" }),
       ])
-      if (Array.isArray(cRes.data)) setCompanies(cRes.data)
-      if (Array.isArray(dRes.data)) setDepartments(dRes.data)
-      if (Array.isArray(secRes.data)) setSections(secRes.data)
-      if (Array.isArray(desRes.data)) setDesignations(desRes.data)
-      if (Array.isArray(lRes.data)) setLines(lRes.data)
-      if (Array.isArray(gRes.data)) setGroups(gRes.data)
+      if (Array.isArray(cRes.data?.data)) setCompanies(cRes.data.data)
+      if (Array.isArray(dRes.data?.data)) setDepartments(dRes.data.data)
+      if (Array.isArray(secRes.data?.data)) setSections(secRes.data.data)
+      if (Array.isArray(desRes.data?.data)) setDesignations(desRes.data.data)
+      if (Array.isArray(lRes.data?.data)) setLines(lRes.data.data)
+      if (Array.isArray(gRes.data?.data)) setGroups(gRes.data.data)
     }
     init()
     fetchData({ date: today })

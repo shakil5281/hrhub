@@ -22,12 +22,7 @@ export default function SalaryProcessPage() {
   const [result, setResult] = React.useState<{processed:number;total:number} | null>(null)
 
   React.useEffect(() => {
-    companyApi.list().then(({data})=>{
-      if (Array.isArray(data) && data.length>0) {
-        setCompanies(data)
-        setCompanyId(data[0].id)
-      }
-    })
+    companyApi.list({ limit: "100" }).then(({data})=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); if (list.length>0) { setCompanies(list); setCompanyId(list[0].id) } })
   }, [])
 
   const handleProcess = async () => {

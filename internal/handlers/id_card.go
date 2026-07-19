@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type IdCardHandler struct {
@@ -38,6 +39,22 @@ type UpdateIdCardRequest struct {
 	Status        string `json:"status"`
 }
 
+// ListIdCards godoc
+//
+// @Summary      List ID cards
+// @Tags         ID Cards
+// @Security     BearerAuth
+// @Produce      json
+// @Param        employee       query string false "Filter by employee name"
+// @Param        employee_id    query string false "Filter by employee ID"
+// @Param        department_id  query string false "Filter by department"
+// @Param        designation_id query string false "Filter by designation"
+// @Param        status         query string false "Filter by status"
+// @Param        card_no        query string false "Filter by card number"
+// @Param        page           query int    false "Page number (default: 1)"
+// @Param        limit          query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /id-cards [get]
 func (h *IdCardHandler) List(c *gin.Context) {
 	employee := c.Query("employee")
 	employeeID := c.Query("employee_id")
@@ -46,22 +63,23 @@ func (h *IdCardHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	cardNo := c.Query("card_no")
 
+	p := utils.ParsePagination(c)
 	if employee != "" || employeeID != "" || departmentID != "" || designationID != "" || status != "" || cardNo != "" {
-		items, err := h.repo.ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo)
+		items, total, err := h.repo.ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo, p.Page, p.Limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, items)
+		c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 		return
 	}
 
-	items, err := h.repo.List()
+	items, total, err := h.repo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 }
 
 func (h *IdCardHandler) GetByID(c *gin.Context) {

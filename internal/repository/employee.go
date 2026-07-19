@@ -23,8 +23,9 @@ func NewEmployeeRepository(db *gorm.DB) *EmployeeRepository {
 	return &EmployeeRepository{db: db}
 }
 
-func (r *EmployeeRepository) ListFiltered(f EmployeeFilter) ([]models.Employee, error) {
+func (r *EmployeeRepository) ListFiltered(f EmployeeFilter, page, limit int) ([]models.Employee, int64, error) {
 	var employees []models.Employee
+	var total int64
 	query := r.db.Where("status = ?", "active")
 	if f.CompanyID != "" {
 		query = query.Where("company_id = ?", f.CompanyID)
@@ -47,8 +48,12 @@ func (r *EmployeeRepository) ListFiltered(f EmployeeFilter) ([]models.Employee, 
 	if f.EmployeeID != "" {
 		query = query.Where("id = ? OR employee_id = ?", f.EmployeeID, f.EmployeeID)
 	}
-	err := query.Find(&employees).Error
-	return employees, err
+	if err := query.Model(&models.Employee{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Find(&employees).Error
+	return employees, total, err
 }
 
 func (r *EmployeeRepository) FindByEmployeeID(code string) (*models.Employee, error) {
@@ -91,7 +96,23 @@ func (r *EmployeeRepository) ListByCompany(companyID string) ([]models.Employee,
 	return employees, err
 }
 
-func (r *EmployeeRepository) ListActive(companyID string) ([]models.Employee, error) {
+func (r *EmployeeRepository) ListActive(companyID string, page, limit int) ([]models.Employee, int64, error) {
+	var employees []models.Employee
+	var total int64
+	query := r.db.Where("status = ?", "active")
+	if companyID != "" {
+		query = query.Where("company_id = ?", companyID)
+	}
+	if err := query.Model(&models.Employee{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Find(&employees).Error
+	return employees, total, err
+}
+
+// ListActiveAll returns all active employees without pagination (for batch operations like salary processing)
+func (r *EmployeeRepository) ListActiveAll(companyID string) ([]models.Employee, error) {
 	var employees []models.Employee
 	query := r.db.Where("status = ?", "active")
 	if companyID != "" {
@@ -117,21 +138,57 @@ func (r *EmployeeRepository) BulkUpdateByID(updates []models.Employee) error {
 			if err := tx.Model(&models.Employee{}).
 				Where("employee_id = ? AND company_id = ?", emp.EmployeeID, emp.CompanyID).
 				Updates(map[string]interface{}{
-					"name_en": emp.NameEn, "name_bn": emp.NameBn,
-					"father_name": emp.FatherName, "mother_name": emp.MotherName,
-					"date_of_birth": emp.DateOfBirth, "gender": emp.Gender,
-					"blood_group": emp.BloodGroup, "marital_status": emp.MaritalStatus,
-					"nationality": emp.Nationality, "nid": emp.NID,
-					"phone": emp.Phone, "email": emp.Email,
-					"present_address": emp.PresentAddress, "permanent_address": emp.PermanentAddress,
-					"spouse_name": emp.SpouseName, "emergency_contact": emp.EmergencyContact,
-					"emergency_phone": emp.EmergencyPhone, "number_of_dependents": emp.NumberOfDependents,
-					"punch_number": emp.PunchNumber, "grade": emp.Grade,
-					"joining_date": emp.JoiningDate, "status": emp.Status,
-					"gross_salary": emp.GrossSalary, "transport_allowance": emp.TransportAllowance,
-					"food_allowance": emp.FoodAllowance, "other_allowance": emp.OtherAllowance,
-					"account_type": emp.AccountType,
-					"account_number": emp.AccountNumber,
+					"name_en":             emp.NameEn,
+					"name_bn":             emp.NameBn,
+					"father_name":         emp.FatherName,
+					"mother_name":         emp.MotherName,
+					"spouse_name":         emp.SpouseName,
+					"date_of_birth":       emp.DateOfBirth,
+					"gender":              emp.Gender,
+					"blood_group":         emp.BloodGroup,
+					"marital_status":      emp.MaritalStatus,
+					"religion":            emp.Religion,
+					"nationality":         emp.Nationality,
+					"n_id":                emp.NID,
+					"phone":               emp.Phone,
+					"email":               emp.Email,
+					"emergency_contact":   emp.EmergencyContact,
+					"emergency_phone":     emp.EmergencyPhone,
+					"number_of_dependents": emp.NumberOfDependents,
+					"present_address":     emp.PresentAddress,
+					"permanent_address":   emp.PermanentAddress,
+					"punch_number":        emp.PunchNumber,
+					"employee_type":       emp.EmployeeType,
+					"grade":               emp.Grade,
+					"joining_date":        emp.JoiningDate,
+					"status":              emp.Status,
+					"over_time_status":    emp.OverTimeStatus,
+					"gross_salary":        emp.GrossSalary,
+					"basic_salary":        emp.BasicSalary,
+					"house_rent":          emp.HouseRent,
+					"transport_allowance": emp.TransportAllowance,
+					"food_allowance":      emp.FoodAllowance,
+					"medical_allowance":   emp.MedicalAllowance,
+					"other_allowance":     emp.OtherAllowance,
+					"account_type":        emp.AccountType,
+					"account_number":      emp.AccountNumber,
+					"department_id":          emp.DepartmentID,
+					"section_id":             emp.SectionID,
+					"designation_id":         emp.DesignationID,
+					"line_id":                emp.LineID,
+					"group_id":               emp.GroupID,
+					"floor_id":               emp.FloorID,
+					"shift_id":               emp.ShiftID,
+					"present_division_id":    emp.PresentDivisionID,
+					"present_district_id":    emp.PresentDistrictID,
+					"present_upazila_id":     emp.PresentUpazilaID,
+					"present_union_id":       emp.PresentUnionID,
+					"permanent_division_id":  emp.PermanentDivisionID,
+					"permanent_district_id":  emp.PermanentDistrictID,
+					"permanent_upazila_id":   emp.PermanentUpazilaID,
+					"permanent_union_id":     emp.PermanentUnionID,
+					"reports_to":             emp.ReportsTo,
+					"updated_by":             emp.UpdatedBy,
 				}).Error; err != nil {
 				return err
 			}

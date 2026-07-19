@@ -45,8 +45,8 @@ func main() {
 
 		emp := models.Employee{
 			CompanyID:    companyID,
-			EmployeeID:   e.EmployeeID,
-			PunchNumber:  e.PunchNumber,
+		EmployeeID: e.EmployeeID,
+		PunchNumber:  e.PunchNumber,
 			NameEn:       e.Name,
 			JoiningDate:  time.Now(),
 			Status:       "active",

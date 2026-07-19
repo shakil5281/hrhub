@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UsersIcon, PlusIcon, Loader2 } from "lucide-react"
+import { UsersIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -27,12 +27,19 @@ export default function GroupPage() {
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingGroup, setEditingGroup] = React.useState<Group | null>(null)
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
   const fetchGroups = async () => {
     setLoading(true)
     setError("")
     try {
-      const { data } = await groupApi.list()
-      setGroups(Array.isArray(data) ? data : [])
+      const { data: res } = await groupApi.list({ page: String(page), limit: String(limit) })
+      setGroups(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load groups")
     } finally {
@@ -42,7 +49,7 @@ export default function GroupPage() {
 
   React.useEffect(() => {
     fetchGroups()
-  }, [])
+  }, [page, limit])
 
   const handleAdd = () => {
     setEditingGroup(null)
@@ -86,20 +93,21 @@ export default function GroupPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable
-          key={groups.length}
-          data={groups}
-          columns={columns}
-          enableDnd
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      <DataTable
+        data={groups}
+        columns={columns}
+        enableDnd
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

@@ -68,20 +68,36 @@ func New(cfg *config.Config) *gin.Engine {
 	unionHandler := handlers.NewUnionHandler(unionRepo)
 	attendanceHandler := handlers.NewAttendanceHandler(attendanceRepo, employeeRepo, dataLogRepo)
 
+	roleRepo := repository.NewRoleRepository(database.DB)
+	roleHandler := handlers.NewRoleHandler(roleRepo)
+	settingsRepo := repository.NewSettingsRepository(database.DB)
+	settingsHandler := handlers.NewSettingsHandler(settingsRepo)
+	userService := service.NewUserService(userRepo, authRepo, roleRepo)
+	userHandler := handlers.NewUserHandler(userService)
+
 	mdbReader := service.NewMDBReader()
 	leaveRepo := repository.NewLeaveRepository(database.DB)
 	tempShiftRepo := repository.NewTemporaryShiftRepository(database.DB)
-	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, leaveRepo, tempShiftRepo, mdbReader)
+	dataLogService := service.NewDataLogService(dataLogRepo, mdbReader)
+	attendanceProcessor := service.NewAttendanceProcessor(dataLogRepo, attendanceRepo, employeeRepo, shiftRepo, leaveRepo, tempShiftRepo)
+	dataLogHandler := handlers.NewDataLogHandler(dataLogRepo, dataLogService, attendanceProcessor)
 	leaveHandler := handlers.NewLeaveHandler(leaveRepo, employeeRepo, attendanceRepo)
 	salaryRepo := repository.NewSalaryRepository(database.DB)
-	salaryHandler := handlers.NewSalaryHandler(salaryRepo, employeeRepo, attendanceRepo)
+	salaryService := service.NewSalaryService(employeeRepo, attendanceRepo, salaryRepo)
+	salaryHandler := handlers.NewSalaryHandler(salaryService, salaryRepo)
 	employeeImportHandler := handlers.NewEmployeeImportHandler(employeeRepo)
+	orgImportHandler := handlers.NewOrganizationImportHandler()
+	dashboardRepo := repository.NewDashboardRepository(database.DB)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardRepo)
+	databaseHandler := handlers.NewDatabaseHandler(cfg)
 	tempShiftHandler := handlers.NewTemporaryShiftHandler(tempShiftRepo, employeeRepo)
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.Logger())
+	r.Use(middleware.AuditMiddleware())
 
 	// Serve uploaded files
 	r.Static("/uploads", "./uploads")
@@ -89,7 +105,7 @@ func New(cfg *config.Config) *gin.Engine {
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, requirementHandler, separationHandler, idCardHandler, leaveHandler, salaryHandler, employeeImportHandler, tempShiftHandler, cfg.JWTSecret)
+	routes.Setup(r, authHandler, employeeHandler, companyHandler, shiftHandler, groupHandler, floorHandler, deptHandler, sectionHandler, desigHandler, lineHandler, orgImportHandler, dashboardHandler, databaseHandler, attendanceHandler, dataLogHandler, divisionHandler, districtHandler, upazilaHandler, unionHandler, requirementHandler, separationHandler, idCardHandler, leaveHandler, salaryHandler, employeeImportHandler, tempShiftHandler, userHandler, roleHandler, settingsHandler, cfg.JWTSecret)
 
 	return r
 }

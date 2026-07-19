@@ -49,12 +49,12 @@ func UploadFile(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Required field 'file' is missing. Please upload a file using a multipart/form-data request with field name 'file'."})
 		return
 	}
 
 	if file.Size > 5*1024*1024 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file size must be less than 5MB"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File size must be less than 5MB. Received: " + fmt.Sprintf("%d bytes", file.Size)})
 		return
 	}
 

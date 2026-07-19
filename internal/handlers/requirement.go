@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type RequirementHandler struct {
@@ -36,28 +37,43 @@ type UpdateRequirementRequest struct {
 	Description  string `json:"description"`
 }
 
+// ListRequirements godoc
+//
+// @Summary      List requirements
+// @Tags         Requirements
+// @Security     BearerAuth
+// @Produce      json
+// @Param        department_id query string false "Filter by department"
+// @Param        status        query string false "Filter by status"
+// @Param        priority      query string false "Filter by priority"
+// @Param        position      query string false "Filter by position"
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /requirements [get]
 func (h *RequirementHandler) List(c *gin.Context) {
 	departmentID := c.Query("department_id")
 	status := c.Query("status")
 	priority := c.Query("priority")
 	position := c.Query("position")
 
+	p := utils.ParsePagination(c)
 	if departmentID != "" || status != "" || priority != "" || position != "" {
-		items, err := h.repo.ListFiltered(departmentID, status, priority, position)
+		items, total, err := h.repo.ListFiltered(departmentID, status, priority, position, p.Page, p.Limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, items)
+		c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 		return
 	}
 
-	items, err := h.repo.List()
+	items, total, err := h.repo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 }
 
 func (h *RequirementHandler) GetByID(c *gin.Context) {

@@ -49,8 +49,8 @@ export function ShiftForm({ initialData, onSuccess, onCancel, isEditing = false,
   const weekendDay = watch("weekend_days")
 
   React.useEffect(() => {
-    companyApi.list().then(({ data }) => {
-      const list = Array.isArray(data) ? data : []
+    companyApi.list().then((res) => {
+      const list = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : []
       setCompanies(list)
     }).catch(() => {})
   }, [])

@@ -23,35 +23,44 @@ func (r *IdCardRepository) FindByID(id string) (*models.IdCard, error) {
 	return &card, err
 }
 
-func (r *IdCardRepository) List() ([]models.IdCard, error) {
+func (r *IdCardRepository) List(page, limit int) ([]models.IdCard, int64, error) {
+	base := r.db.Model(&models.IdCard{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var cards []models.IdCard
-	err := r.db.Preload("Department").Preload("Designation").Where("deleted_at IS NULL").Order("created_at DESC").Find(&cards).Error
-	return cards, err
+	err := base.Preload("Department").Preload("Designation").Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&cards).Error
+	return cards, total, err
 }
 
-func (r *IdCardRepository) ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo string) ([]models.IdCard, error) {
-	query := r.db.Preload("Department").Preload("Designation").Where("deleted_at IS NULL").Order("created_at DESC")
+func (r *IdCardRepository) ListFiltered(employee, employeeID, departmentID, designationID, status, cardNo string, page, limit int) ([]models.IdCard, int64, error) {
+	base := r.db.Model(&models.IdCard{}).Where("deleted_at IS NULL").Order("created_at DESC")
 	if employee != "" {
-		query = query.Where("employee ILIKE ?", "%"+employee+"%")
+		base = base.Where("employee ILIKE ?", "%"+employee+"%")
 	}
 	if employeeID != "" {
-		query = query.Where("employee_id ILIKE ?", "%"+employeeID+"%")
+		base = base.Where("employee_id ILIKE ?", "%"+employeeID+"%")
 	}
 	if departmentID != "" {
-		query = query.Where("department_id = ?", departmentID)
+		base = base.Where("department_id = ?", departmentID)
 	}
 	if designationID != "" {
-		query = query.Where("designation_id = ?", designationID)
+		base = base.Where("designation_id = ?", designationID)
 	}
 	if status != "" {
-		query = query.Where("status = ?", status)
+		base = base.Where("status = ?", status)
 	}
 	if cardNo != "" {
-		query = query.Where("card_no ILIKE ?", "%"+cardNo+"%")
+		base = base.Where("card_no ILIKE ?", "%"+cardNo+"%")
+	}
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 	var cards []models.IdCard
-	err := query.Find(&cards).Error
-	return cards, err
+	err := base.Preload("Department").Preload("Designation").Offset((page - 1) * limit).Limit(limit).Find(&cards).Error
+	return cards, total, err
 }
 
 func (r *IdCardRepository) Update(card *models.IdCard) error {

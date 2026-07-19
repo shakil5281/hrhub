@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type TemporaryShiftHandler struct {
@@ -46,7 +47,7 @@ func (h *TemporaryShiftHandler) Create(c *gin.Context) {
 		toDate = req.FromDate
 	}
 
-	dates, err := generateDateRange(req.FromDate, toDate)
+	dates, err := utils.GenerateDateRange(req.FromDate, toDate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format"})
 		return
@@ -91,14 +92,26 @@ func (h *TemporaryShiftHandler) Create(c *gin.Context) {
 	})
 }
 
+// ListTemporaryShifts godoc
+//
+// @Summary      List temporary shifts
+// @Tags         Temporary Shifts
+// @Security     BearerAuth
+// @Produce      json
+// @Param        company_id query string false "Filter by company"
+// @Param        page       query int    false "Page number (default: 1)"
+// @Param        limit      query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /temporary-shifts [get]
 func (h *TemporaryShiftHandler) List(c *gin.Context) {
 	companyID := c.Query("company_id")
-	list, err := h.repo.List(companyID)
+	p := utils.ParsePagination(c)
+	list, total, err := h.repo.List(companyID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 func (h *TemporaryShiftHandler) GetByID(c *gin.Context) {

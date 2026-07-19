@@ -18,6 +18,9 @@ func Setup(
 	sectionHandler *handlers.SectionHandler,
 	desigHandler *handlers.DesignationHandler,
 	lineHandler *handlers.LineHandler,
+	orgImportHandler *handlers.OrganizationImportHandler,
+	dashboardHandler *handlers.DashboardHandler,
+	databaseHandler *handlers.DatabaseHandler,
 	attendanceHandler *handlers.AttendanceHandler,
 	dataLogHandler *handlers.DataLogHandler,
 	divisionHandler *handlers.DivisionHandler,
@@ -31,6 +34,9 @@ func Setup(
 	salaryHandler *handlers.SalaryHandler,
 	employeeImportHandler *handlers.EmployeeImportHandler,
 	tempShiftHandler *handlers.TemporaryShiftHandler,
+	userHandler *handlers.UserHandler,
+	roleHandler *handlers.RoleHandler,
+	settingsHandler *handlers.SettingsHandler,
 	jwtSecret string,
 ) {
 	r.GET("/health", handlers.HealthCheck)
@@ -44,6 +50,8 @@ func Setup(
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authHandler.Logout)
+		auth.POST("/forgot-password", userHandler.ForgotPassword)
+		auth.POST("/reset-password", userHandler.ResetPassword)
 	}
 
 	// Protected auth routes
@@ -77,6 +85,7 @@ func Setup(
 		employee.POST("", employeeHandler.CreateEmployee)
 		employee.PUT("/:id", employeeHandler.UpdateEmployee)
 		employee.DELETE("/:id", employeeHandler.DeleteEmployee)
+		employee.GET("/by-code/:code", employeeHandler.GetEmployeeByCode)
 		employee.GET("/import/template", employeeImportHandler.DownloadTemplate)
 		employee.POST("/import", employeeImportHandler.ImportExcel)
 		employee.GET("/export/excel", employeeHandler.ExportExcel)
@@ -144,6 +153,38 @@ func Setup(
 		line.POST("", lineHandler.Create)
 		line.PUT("/:id", lineHandler.Update)
 		line.DELETE("/:id", lineHandler.Delete)
+	}
+
+	// Protected organization import routes
+	orgImport := api.Group("/organization")
+	orgImport.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		orgImport.GET("/template", orgImportHandler.DownloadTemplate)
+		orgImport.POST("/import", orgImportHandler.ImportExcel)
+	}
+
+	// Protected dashboard routes
+	dashboard := api.Group("/dashboard")
+	dashboard.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		dashboard.GET("/stats", dashboardHandler.GetStats)
+	}
+
+	// Protected database routes
+	database := api.Group("/database")
+	database.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		database.GET("/backups", databaseHandler.ListBackups)
+		database.GET("/export", databaseHandler.Export)
+
+		// Admin-only destructive database operations
+		databaseAdmin := database.Group("")
+		databaseAdmin.Use(middleware.RequireRole("super_admin"))
+		{
+			databaseAdmin.POST("/backup", databaseHandler.Backup)
+			databaseAdmin.POST("/import", databaseHandler.Import)
+			databaseAdmin.POST("/reset", databaseHandler.Reset)
+		}
 	}
 
 	// Protected address routes
@@ -226,7 +267,14 @@ func Setup(
 		attendance.POST("", attendanceHandler.Create)
 		attendance.PUT("/:id", attendanceHandler.Update)
 		attendance.DELETE("/:id", attendanceHandler.Delete)
-		attendance.DELETE("/delete-all", attendanceHandler.DeleteAll)
+
+		// Admin-only destructive attendance operations
+		attendanceAdmin := attendance.Group("")
+		attendanceAdmin.Use(middleware.RequireRole("super_admin"))
+		{
+			attendanceAdmin.DELETE("/delete-all", attendanceHandler.DeleteAll)
+		}
+
 		attendance.POST("/clock-in", attendanceHandler.ClockIn)
 		attendance.POST("/clock-out", attendanceHandler.ClockOut)
 	}
@@ -239,7 +287,13 @@ func Setup(
 		dataLog.GET("/stats", dataLogHandler.Stats)
 		dataLog.POST("/import", dataLogHandler.Import)
 		dataLog.POST("/process", dataLogHandler.Process)
-		dataLog.DELETE("/delete-all", dataLogHandler.DeleteAll)
+
+		// Admin-only destructive data-log operations
+		dataLogAdmin := dataLog.Group("")
+		dataLogAdmin.Use(middleware.RequireRole("super_admin"))
+		{
+			dataLogAdmin.DELETE("/delete-all", dataLogHandler.DeleteAll)
+		}
 	}
 
 	// Protected requirement routes
@@ -329,5 +383,46 @@ func Setup(
 	upload.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		upload.POST("", handlers.UploadFile)
+	}
+
+	// Protected user management routes
+	users := api.Group("/users")
+	users.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		users.GET("", userHandler.ListUsers)
+		users.GET("/:id", userHandler.GetUser)
+		users.POST("", userHandler.CreateUser)
+		users.PUT("/:id", userHandler.UpdateUser)
+		users.DELETE("/:id", userHandler.DeleteUser)
+		users.GET("/:id/roles", userHandler.GetUserRoles)
+		users.PUT("/:id/roles", userHandler.AssignRoles)
+		users.POST("/:id/reset-password", userHandler.AdminResetPassword)
+	}
+
+	// Protected role routes
+	roleRoutes := api.Group("/roles")
+	roleRoutes.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		roleRoutes.GET("", roleHandler.List)
+		roleRoutes.GET("/:id", roleHandler.GetByID)
+		roleRoutes.POST("", roleHandler.Create)
+		roleRoutes.PUT("/:id", roleHandler.Update)
+		roleRoutes.DELETE("/:id", roleHandler.Delete)
+		roleRoutes.PUT("/:id/permissions", roleHandler.AssignPermissions)
+	}
+
+	// Protected permission routes
+	permRoutes := api.Group("/permissions")
+	permRoutes.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		permRoutes.GET("", roleHandler.ListPermissions)
+	}
+
+	// Protected settings routes
+	settingsRoutes := api.Group("/settings")
+	settingsRoutes.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		settingsRoutes.GET("", settingsHandler.List)
+		settingsRoutes.PUT("", settingsHandler.Update)
 	}
 }

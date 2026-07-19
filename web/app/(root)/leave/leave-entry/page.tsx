@@ -30,13 +30,13 @@ export default function LeaveEntryPage() {
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      employeeApi.list(),
-      leaveTypeApi.list(),
+      companyApi.list({ limit: "100" }),
+      employeeApi.list({ limit: "100" }),
+      leaveTypeApi.list(undefined, { limit: "100" }),
     ]).then(([cRes, eRes, lRes]) => {
-      setCompanies(Array.isArray(cRes.data) ? cRes.data : [])
-      setEmployees(Array.isArray(eRes.data) ? eRes.data : [])
-      setLeaveTypes(Array.isArray(lRes.data) ? lRes.data : [])
+      setCompanies(Array.isArray(cRes.data?.data) ? cRes.data.data : [])
+      setEmployees(Array.isArray(eRes.data?.data) ? eRes.data.data : [])
+      setLeaveTypes(Array.isArray(lRes.data?.data) ? lRes.data.data : [])
     }).catch(() => toast.error("Failed to load data"))
   }, [])
 

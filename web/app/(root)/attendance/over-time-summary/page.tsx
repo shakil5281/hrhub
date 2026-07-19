@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChartColumnIcon, Loader2 } from "lucide-react"
+import { ChartColumnIcon } from "lucide-react"
 import { format } from "date-fns"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
@@ -49,21 +49,21 @@ export default function OverTimeSummaryPage() {
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      departmentApi.list(),
-      sectionApi.list(),
-      designationApi.list(),
-      lineApi.list(),
-      groupApi.list(),
-      shiftApi.list(),
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(undefined, { limit: "100" }),
+      designationApi.list(undefined, { limit: "100" }),
+      lineApi.list(undefined, { limit: "100" }),
+      groupApi.list({ limit: "100" }),
+      shiftApi.list({ limit: "100" }),
     ]).then(([cRes, dRes, secRes, desRes, lRes, gRes, sRes]) => {
-      setCompanies(cRes.data || [])
-      setDepartments(dRes.data || [])
-      setSections(secRes.data || [])
-      setDesignations(desRes.data || [])
-      setLines(lRes.data || [])
-      setGroups(gRes.data || [])
-      setShifts(sRes.data || [])
+      setCompanies(cRes.data?.data || [])
+      setDepartments(dRes.data?.data || [])
+      setSections(secRes.data?.data || [])
+      setDesignations(desRes.data?.data || [])
+      setLines(lRes.data?.data || [])
+      setGroups(gRes.data?.data || [])
+      setShifts(sRes.data?.data || [])
       fetchData({ date: today })
     }).catch(() => {})
   }, [])
@@ -168,15 +168,7 @@ export default function OverTimeSummaryPage() {
         />
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6">
-          <div className="rounded-lg border bg-card p-12 flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        </div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable data={data} columns={columns} loading={loading} />
     </div>
   )
 }

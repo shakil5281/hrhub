@@ -23,10 +23,15 @@ func (r *GroupRepository) FindByID(id string) (*models.Group, error) {
 	return &group, err
 }
 
-func (r *GroupRepository) List() ([]models.Group, error) {
+func (r *GroupRepository) List(page, limit int) ([]models.Group, int64, error) {
+	base := r.db.Model(&models.Group{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var groups []models.Group
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&groups).Error
-	return groups, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&groups).Error
+	return groups, total, err
 }
 
 func (r *GroupRepository) Update(group *models.Group) error {

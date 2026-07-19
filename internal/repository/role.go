@@ -63,3 +63,24 @@ func (r *RoleRepository) ListByCompany(companyID string) ([]models.Role, error) 
 	err := r.db.Where("company_id = ? AND deleted_at IS NULL", companyID).Find(&roles).Error
 	return roles, err
 }
+
+func (r *RoleRepository) ListAllPermissions() ([]models.Permission, error) {
+	var permissions []models.Permission
+	err := r.db.Order("resource ASC, action ASC").Find(&permissions).Error
+	return permissions, err
+}
+
+func (r *RoleRepository) ReplaceRolePermissions(roleID string, permissionIDs []string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("role_id = ?", roleID).Delete(&models.RolePermission{}).Error; err != nil {
+			return err
+		}
+		for _, pid := range permissionIDs {
+			rp := models.RolePermission{RoleID: roleID, PermissionID: pid}
+			if err := tx.Create(&rp).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

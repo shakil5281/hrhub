@@ -2,7 +2,7 @@ import { z } from "zod";
 export interface TempShift {
     id: number;
     employee: string;
-    employeeCode: string;
+    employeeId: string;
     shift: string;
     fromDate: string;
     toDate: string;
@@ -11,7 +11,7 @@ export interface TempShift {
 }
 export declare const tempShiftSchema: z.ZodObject<{
     employee: z.ZodString;
-    employeeCode: z.ZodString;
+    employeeId: z.ZodString;
     shift: z.ZodString;
     fromDate: z.ZodString;
     toDate: z.ZodString;

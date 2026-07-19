@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type DepartmentHandler struct {
@@ -21,13 +22,24 @@ type OrgNameRequest struct {
 	NameBn string `json:"name_bn"`
 }
 
+// ListDepartments godoc
+//
+// @Summary      List departments
+// @Tags         Organization
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page   query int false "Page number (default: 1)"
+// @Param        limit  query int false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /departments [get]
 func (h *DepartmentHandler) List(c *gin.Context) {
-	list, err := h.repo.List()
+	p := utils.ParsePagination(c)
+	list, total, err := h.repo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 func (h *DepartmentHandler) GetByID(c *gin.Context) {
@@ -101,14 +113,26 @@ type SectionRequest struct {
 	DepartmentID string `json:"department_id" binding:"required"`
 }
 
+// ListSections godoc
+//
+// @Summary      List sections
+// @Tags         Organization
+// @Security     BearerAuth
+// @Produce      json
+// @Param        department_id query string false "Filter by department"
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /sections [get]
 func (h *SectionHandler) List(c *gin.Context) {
 	departmentID := c.Query("department_id")
-	list, err := h.repo.List(departmentID)
+	p := utils.ParsePagination(c)
+	list, total, err := h.repo.List(departmentID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 func (h *SectionHandler) GetByID(c *gin.Context) {
@@ -183,14 +207,26 @@ type DesignationRequest struct {
 	SectionID string `json:"section_id" binding:"required"`
 }
 
+// ListDesignations godoc
+//
+// @Summary      List designations
+// @Tags         Organization
+// @Security     BearerAuth
+// @Produce      json
+// @Param        section_id query string false "Filter by section"
+// @Param        page       query int    false "Page number (default: 1)"
+// @Param        limit      query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /designations [get]
 func (h *DesignationHandler) List(c *gin.Context) {
 	sectionID := c.Query("section_id")
-	list, err := h.repo.List(sectionID)
+	p := utils.ParsePagination(c)
+	list, total, err := h.repo.List(sectionID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 func (h *DesignationHandler) GetByID(c *gin.Context) {
@@ -265,14 +301,26 @@ type LineRequest struct {
 	SectionID string `json:"section_id" binding:"required"`
 }
 
+// ListLines godoc
+//
+// @Summary      List lines
+// @Tags         Organization
+// @Security     BearerAuth
+// @Produce      json
+// @Param        section_id query string false "Filter by section"
+// @Param        page       query int    false "Page number (default: 1)"
+// @Param        limit      query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /lines [get]
 func (h *LineHandler) List(c *gin.Context) {
 	sectionID := c.Query("section_id")
-	list, err := h.repo.List(sectionID)
+	p := utils.ParsePagination(c)
+	list, total, err := h.repo.List(sectionID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 func (h *LineHandler) GetByID(c *gin.Context) {

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UsersIcon, PlusIcon, Loader2, UploadIcon, DownloadIcon, FileTextIcon } from "lucide-react"
+import { UsersIcon, PlusIcon, UploadIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
@@ -63,7 +63,13 @@ const columns: ColumnDef<Employee>[] = [
   },
   { accessorKey: "punch_number", header: "Punch No" },
   { accessorKey: "phone", header: "Phone" },
-  { accessorKey: "joining_date", header: "Joining Date" },
+  {
+    accessorKey: "joining_date",
+    header: "Joining Date",
+    cell: ({ row }) => row.original.joining_date
+      ? new Date(row.original.joining_date).toLocaleDateString("en-GB")
+      : "-",
+  },
   {
     accessorKey: "gross_salary",
     header: "Salary",
@@ -101,40 +107,53 @@ export default function EmployeesPage() {
   const [groups, setGroups] = React.useState<Group[]>([])
   const [floors, setFloors] = React.useState<Floor[]>([])
 
-  const fetchEmployees = async (f?: Record<string, string>) => {
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
+  const fetchEmployees = async (f?: Record<string, string>, p?: number, l?: number) => {
     setError("")
+    setLoading(true)
     try {
-      const { data: res } = await employeeApi.list(f && Object.keys(f).length > 0 ? f : undefined)
-      setData(Array.isArray(res) ? res : [])
+      const params = { ...(f || {}), page: String(p ?? page), limit: String(l ?? limit) }
+      const { data: res } = await employeeApi.list(params)
+      setData(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load employees")
+    } finally {
+      setLoading(false)
     }
   }
 
   React.useEffect(() => {
     const init = async () => {
-      setLoading(true)
       try {
         const [compRes, deptRes, shiftRes, groupRes, floorRes] = await Promise.all([
-          companyApi.list(),
-          departmentApi.list(),
-          shiftApi.list(),
-          groupApi.list(),
-          floorApi.list(),
+          companyApi.list({ limit: "100" }),
+          departmentApi.list({ limit: "100" }),
+          shiftApi.list({ limit: "100" }),
+          groupApi.list({ limit: "100" }),
+          floorApi.list({ limit: "100" }),
         ])
-        setCompanies(Array.isArray(compRes.data) ? compRes.data : [])
-        setDepartments(Array.isArray(deptRes.data) ? deptRes.data : [])
-        setShifts(Array.isArray(shiftRes.data) ? shiftRes.data : [])
-        setGroups(Array.isArray(groupRes.data) ? groupRes.data : [])
-        setFloors(Array.isArray(floorRes.data) ? floorRes.data : [])
+        setCompanies(Array.isArray(compRes.data?.data) ? compRes.data.data : [])
+        setDepartments(Array.isArray(deptRes.data?.data) ? deptRes.data.data : [])
+        setShifts(Array.isArray(shiftRes.data?.data) ? shiftRes.data.data : [])
+        setGroups(Array.isArray(groupRes.data?.data) ? groupRes.data.data : [])
+        setFloors(Array.isArray(floorRes.data?.data) ? floorRes.data.data : [])
       } catch {
         // dropdowns will be empty
       }
       await fetchEmployees()
-      setLoading(false)
     }
     init()
   }, [])
+
+  React.useEffect(() => {
+    fetchEmployees(filters)
+  }, [page, limit])
 
   const handleDepartmentChange = async (value: string) => {
     setFilters((prev) => ({
@@ -146,8 +165,8 @@ export default function EmployeesPage() {
     }))
     if (value) {
       try {
-        const { data: secData } = await sectionApi.list(value)
-        setSections(Array.isArray(secData) ? secData : [])
+        const { data: secData } = await sectionApi.list(value, { limit: "100" })
+        setSections(Array.isArray(secData.data) ? secData.data : [])
       } catch {
         setSections([])
       }
@@ -168,11 +187,11 @@ export default function EmployeesPage() {
     if (value) {
       try {
         const [desigRes, lineRes] = await Promise.all([
-          designationApi.list(value),
-          lineApi.list(value),
+          designationApi.list(value, { limit: "100" }),
+          lineApi.list(value, { limit: "100" }),
         ])
-        setDesignations(Array.isArray(desigRes.data) ? desigRes.data : [])
-        setLines(Array.isArray(lineRes.data) ? lineRes.data : [])
+        setDesignations(Array.isArray(desigRes.data?.data) ? desigRes.data.data : [])
+        setLines(Array.isArray(lineRes.data?.data) ? lineRes.data.data : [])
       } catch {
         setDesignations([])
         setLines([])
@@ -184,21 +203,24 @@ export default function EmployeesPage() {
   }
 
   const handleApply = async () => {
+    setPage(1)
     setSubmitting(true)
     setError("")
     const active = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ""))
-    await fetchEmployees(active)
+    await fetchEmployees(active, 1)
     setSubmitting(false)
   }
 
   const handleReset = async () => {
+    setPage(1)
+    setLimit(20)
     setFilters({})
     setSections([])
     setDesignations([])
     setLines([])
     setError("")
     setSubmitting(true)
-    await fetchEmployees()
+    await fetchEmployees({}, 1, 20)
     setSubmitting(false)
   }
 
@@ -207,6 +229,7 @@ export default function EmployeesPage() {
     try {
       await employeeApi.delete(emp.id)
       setData((prev) => prev.filter((e) => e.id !== emp.id))
+      setTotal((prev) => Math.max(0, prev - 1))
     } catch {
       setError("Failed to delete employee")
     }
@@ -474,13 +497,20 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable key={data.length} data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
-      )}
+      <DataTable
+        data={data}
+        columns={columns}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
     </div>
   )
 }

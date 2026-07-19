@@ -34,7 +34,7 @@ export default function ManualAttendancePage() {
       setLoading(true)
       try {
         const { data: res } = await employeeApi.list()
-        setEmployees(res.employees || res || [])
+        setEmployees(res?.data || [])
       } catch {
         toast.error("Failed to load employees")
       } finally {

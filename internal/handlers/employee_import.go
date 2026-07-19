@@ -10,10 +10,165 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
+
+type importLookups struct {
+	companies    map[string]string
+	shifts       map[string]string
+	departments  map[string]string
+	sections     map[string]string
+	designations map[string]string
+	lines        map[string]string
+	groups       map[string]string
+	floors       map[string]string
+	divisions    map[string]string
+	districts    map[string]string
+	upazilas     map[string]string
+	unions       map[string]string
+	employees    map[string]string // employee_id (business key) → UUID
+}
+
+func loadImportLookups(db *gorm.DB) *importLookups {
+	l := &importLookups{
+		companies:    make(map[string]string),
+		shifts:       make(map[string]string),
+		departments:  make(map[string]string),
+		sections:     make(map[string]string),
+		designations: make(map[string]string),
+		lines:        make(map[string]string),
+		groups:       make(map[string]string),
+		floors:       make(map[string]string),
+		divisions:    make(map[string]string),
+		districts:    make(map[string]string),
+		upazilas:     make(map[string]string),
+		unions:       make(map[string]string),
+		employees:    make(map[string]string),
+	}
+
+	var companies []models.Company
+	db.Find(&companies)
+	for _, c := range companies {
+		name := strings.TrimSpace(strings.ToLower(c.CompanyNameEn))
+		if name != "" {
+			l.companies[name] = c.ID
+		}
+	}
+
+	var shifts []models.Shift
+	db.Find(&shifts)
+	for _, s := range shifts {
+		name := strings.TrimSpace(strings.ToLower(s.Name))
+		if name != "" {
+			l.shifts[name] = s.ID
+		}
+	}
+
+	var depts []models.Department
+	db.Find(&depts)
+	for _, d := range depts {
+		name := strings.TrimSpace(strings.ToLower(d.Name))
+		if name != "" {
+			l.departments[name] = d.ID
+		}
+	}
+
+	var sections []models.Section
+	db.Find(&sections)
+	for _, s := range sections {
+		name := strings.TrimSpace(strings.ToLower(s.Name))
+		if name != "" {
+			l.sections[name] = s.ID
+		}
+	}
+
+	var desigs []models.Designation
+	db.Find(&desigs)
+	for _, d := range desigs {
+		name := strings.TrimSpace(strings.ToLower(d.Name))
+		if name != "" {
+			l.designations[name] = d.ID
+		}
+	}
+
+	var lines []models.Line
+	db.Find(&lines)
+	for _, li := range lines {
+		name := strings.TrimSpace(strings.ToLower(li.Name))
+		if name != "" {
+			l.lines[name] = li.ID
+		}
+	}
+
+	var grps []models.Group
+	db.Find(&grps)
+	for _, g := range grps {
+		name := strings.TrimSpace(strings.ToLower(g.Name))
+		if name != "" {
+			l.groups[name] = g.ID
+		}
+	}
+
+	var floors []models.Floor
+	db.Find(&floors)
+	for _, f := range floors {
+		name := strings.TrimSpace(strings.ToLower(f.Name))
+		if name != "" {
+			l.floors[name] = f.ID
+		}
+	}
+
+	var divs []models.Division
+	db.Find(&divs)
+	for _, d := range divs {
+		name := strings.TrimSpace(strings.ToLower(d.Name))
+		if name != "" {
+			l.divisions[name] = d.ID
+		}
+	}
+
+	var dists []models.District
+	db.Find(&dists)
+	for _, d := range dists {
+		name := strings.TrimSpace(strings.ToLower(d.Name))
+		if name != "" {
+			l.districts[name] = d.ID
+		}
+	}
+
+	var upazilas []models.Upazila
+	db.Find(&upazilas)
+	for _, u := range upazilas {
+		name := strings.TrimSpace(strings.ToLower(u.Name))
+		if name != "" {
+			l.upazilas[name] = u.ID
+		}
+	}
+
+	var unions []models.Union
+	db.Find(&unions)
+	for _, u := range unions {
+		name := strings.TrimSpace(strings.ToLower(u.Name))
+		if name != "" {
+			l.unions[name] = u.ID
+		}
+	}
+
+	var employees []models.Employee
+	db.Select("id, employee_id").Find(&employees)
+	for _, e := range employees {
+		key := strings.TrimSpace(strings.ToLower(e.EmployeeID))
+		if key != "" {
+			l.employees[key] = e.ID
+		}
+	}
+
+	return l
+}
 
 type EmployeeImportHandler struct {
 	employeeRepo *repository.EmployeeRepository
@@ -24,56 +179,74 @@ func NewEmployeeImportHandler(employeeRepo *repository.EmployeeRepository) *Empl
 }
 
 var importHeaders = []string{
-	"employee_id", "name_en", "name_bn", "father_name", "mother_name",
-	"date_of_birth", "gender", "blood_group", "marital_status", "nationality",
-	"nid", "phone", "email", "present_address", "permanent_address",
-	"designation", "section", "grade", "line", "group_name", "floor",
-	"punch_number", "joining_date", "status",
-	"gross_salary",
-	"account_type", "account_number",
-	"company_id",
+	"Sl No",
+	"EmployeeId", "PunchNumber",
+	"Name (En)", "Name (Bn)",
+	"fatherName", "motherName", "spouseName",
+	"date_of_birth", "Gender", "Blood_group", "MaritalStatus", "Religion", "Nationality",
+	"NidNumber", "Phone", "Email",
+	"EmergencyContact", "EmergencyPhone", "NumberOfDependents",
+	"Present_Division", "Present_District", "Present_Upazila", "Present_Union", "Present_Address",
+	"Permanent_Division", "Permanent_District", "Permanent_Upazila", "Permanent_Union", "Permanent_Address",
+	"CompanyName", "EmployeeType", "JoiningDate",
+	"shiftName", "Department", "Section", "Designation", "ReportsTo", "Line", "Group", "Floor",
+	"Grade", "Status", "OverTimeStatus",
+	"Gross_Salary", "BasicSalary", "HouseRent", "TransportAllowance", "FoodAllowance", "MedicalAllowance", "OtherAllowance",
+	"accountType", "AccountNumber",
 }
 
 var importDescriptions = []string{
-	"Unique employee ID *", "Full name in English *", "Name in Bangla", "Father's name",
-	"Mother's name", "Date of birth (YYYY-MM-DD)", "Male/Female/Other", "A+/A-/B+/B-/AB+/AB-/O+/O-",
-	"Single/Married/Divorced/Widowed", "Bangladeshi", "National ID number",
-	"Phone number", "Email address", "Present address", "Permanent address",
-	"Designation name", "Section name", "Grade", "Production line", "Group name", "Floor",
-	"Badge/punch number", "Joining date (YYYY-MM-DD) *", "active/inactive",
-	"Gross salary",
+	"Serial number (auto)",
+	"Unique employee ID *", "Badge/punch number *",
+	"Full name in English *", "Name in Bangla",
+	"Father's name", "Mother's name", "Spouse's name",
+	"Date of birth (YYYY-MM-DD)", "Male/Female/Other", "A+/A-/B+/B-/AB+/AB-/O+/O-", "Marital status", "Religion", "Nationality",
+	"National ID number", "Phone number", "Email address",
+	"Emergency contact person", "Emergency phone", "Number of dependents",
+	"Present division name", "Present district name", "Present upazila name", "Present union name", "Present address",
+	"Permanent division name", "Permanent district name", "Permanent upazila name", "Permanent union name", "Permanent address",
+	"Company name *", "Regular/Lefty/Close/Resign", "Joining date (YYYY-MM-DD) *",
+	"Shift name", "Department name", "Section name", "Designation name", "Manager employee ID", "Line name", "Group name", "Floor name",
+	"Grade", "active/inactive", "true/false",
+	"Gross salary", "Basic salary", "House rent", "Transport allowance", "Food allowance", "Medical allowance", "Other allowance",
 	"mCash or Card", "Account number (12 for mCash, 17 for Card)",
-	"Company ID *",
 }
 
 func (h *EmployeeImportHandler) DownloadTemplate(c *gin.Context) {
 	f := excelize.NewFile()
 
-	styleHeader, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true, Color: "FFFFFF", Size: 11},
-		Fill: excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"4472C4"}},
-		Border: []excelize.Border{
-			{Type: "left", Style: 1, Color: "000000"},
-			{Type: "right", Style: 1, Color: "000000"},
-			{Type: "top", Style: 1, Color: "000000"},
-			{Type: "bottom", Style: 1, Color: "000000"},
+	centerStyle, _ := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
 		},
 	})
 
-	numCols := len(importHeaders)
-	endCol := string(rune('A' + numCols - 1))
-
-	writeHeaders := func(sheet string) {
-		for i, hdr := range importHeaders {
-			f.SetCellValue(sheet, fmt.Sprintf("%s1", string(rune('A'+i))), hdr)
-		}
-		f.SetCellStyle(sheet, "A1", fmt.Sprintf("%s1", endCol), styleHeader)
-		for i := range importHeaders {
-			width := 18.0
-			if importHeaders[i] == "present_address" || importHeaders[i] == "permanent_address" {
-				width = 30
+	calcColWidth := func(texts ...string) float64 {
+		max := 0.0
+		for _, t := range texts {
+			w := float64(len(t)) * 1.3
+			if w < 12 {
+				w = 12
 			}
-			f.SetColWidth(sheet, string(rune('A'+i)), string(rune('A'+i)), width)
+			if w > 40 {
+				w = 40
+			}
+			if w > max {
+				max = w
+			}
+		}
+		return max
+	}
+
+	setupSheet := func(sheet string, maxRow int) {
+		for r := 1; r <= maxRow; r++ {
+			f.SetRowHeight(sheet, r, 25)
+		}
+		for i, hdr := range importHeaders {
+			col, _ := excelize.ColumnNumberToName(i + 1)
+			f.SetCellValue(sheet, fmt.Sprintf("%s1", col), hdr)
+			f.SetCellStyle(sheet, fmt.Sprintf("%s1", col), fmt.Sprintf("%s1", col), centerStyle)
 		}
 		f.SetPanes(sheet, &excelize.Panes{
 			Freeze:      true,
@@ -83,55 +256,88 @@ func (h *EmployeeImportHandler) DownloadTemplate(c *gin.Context) {
 		})
 	}
 
-	// Sheet 1: Data Entry - empty headers for user data import
+	// Sheet 1: Data Entry
 	dataEntry := "Data Entry"
 	f.SetSheetName("Sheet1", dataEntry)
-	writeHeaders(dataEntry)
+	setupSheet(dataEntry, 200)
 
-	// Sheet 2: Demo - same design with 3 example rows
+	// Sheet 2: Demo
 	demo := "Demo"
 	f.NewSheet(demo)
-	writeHeaders(demo)
+	setupSheet(demo, 4)
 
 	demoData := [][]interface{}{
 		{
-			"DEMO001", "Shakil Ahmed", "শাকিল আহমেদ", "Abdul Halim", "Rahima Khatun",
-			"1995-06-15", "Male", "B+", "Married", "Bangladeshi",
-			"1995123456", "01711111111", "shakil@example.com", "House 12, Road 5, Mirpur", "Village: Uttarpara, Thana: Sadar",
-			"Assistant Manager", "IT", "Grade-5", "Line-2", "Group-B", "Floor-1",
-			"2001", "2023-01-01", "active",
-			"50000",
+			"1", "DEMO001", "2001",
+			"Shakil Ahmed", "শাকিল আহমেদ",
+			"Abdul Halim", "Rahima Khatun", "Jorina Khatun",
+			"1995-06-15", "Male", "B+", "Married", "Islam", "Bangladeshi",
+			"1995123456", "01711111111", "shakil@example.com",
+			"Karim Ahmed", "01711111112", "2",
+			"Dhaka", "Dhaka", "Uttara", "Uttara West", "House 12, Road 5, Sector 3, Uttara",
+			"Dhaka", "Gazipur", "Gazipur Sadar", "Bason", "Village: Uttarpara",
+			"Ekushe Fashions", "Regular", "2023-01-01",
+			"General", "IT", "Software", "Jr. Executive", "", "Line-2", "Group-A", "Floor-1",
+			"Grade-5", "active", "true",
+			"50000", "25000", "10000", "5000", "4500", "3000", "2500",
 			"mCash", "012345678901",
-			"UUID-OF-COMPANY",
 		},
 		{
-			"DEMO002", "Fatima Begum", "ফাতিমা বেগম", "Mohammad Ali", "Saleha Begum",
-			"1998-09-22", "Female", "O+", "Single", "Bangladeshi",
-			"1998123456", "01722222222", "fatima@example.com", "Flat 3B, 45 Elephant Road", "23/1 Old Town, Cumilla",
-			"Jr. Executive", "HR", "Grade-3", "Line-1", "Group-A", "Floor-2",
-			"2002", "2023-06-01", "active",
-			"36000",
+			"2", "DEMO002", "2002",
+			"Fatima Begum", "ফাতিমা বেগম",
+			"Mohammad Ali", "Saleha Begum", "",
+			"1998-09-22", "Female", "O+", "Unmarried", "Islam", "Bangladeshi",
+			"1998123456", "01722222222", "fatima@example.com",
+			"Mohammad Ali", "01722222223", "0",
+			"Dhaka", "Dhaka", "Tejgaon", "Tejgaon Ind. Area", "Flat 3B, 45 Elephant Road",
+			"Chattogram", "Cumilla", "Cumilla Sadar", "Jhawtala", "23/1 Old Town",
+			"Ekushe Fashions", "Regular", "2023-06-01",
+			"General", "HR", "Recruitment", "Jr. Executive", "DEMO001", "Line-1", "Group-B", "Floor-2",
+			"Grade-3", "active", "false",
+			"36000", "18000", "7200", "450", "1250", "750", "1800",
 			"Card", "12345678901234567",
-			"UUID-OF-COMPANY",
 		},
 		{
-			"DEMO003", "Rahim Uddin", "রহিম উদ্দিন", "Karim Uddin", "Jahanara Begum",
-			"1992-03-08", "Male", "AB-", "Married", "Bangladeshi",
-			"1992123456", "01733333333", "rahim@example.com", "456 New Market, Khulna", "87 Old Road, Barisal",
-			"Manager", "Production", "Grade-8", "Line-3", "Group-C", "Floor-1",
-			"2003", "2022-07-15", "active",
-			"70000",
+			"3", "DEMO003", "2003",
+			"Rahim Uddin", "রহিম উদ্দিন",
+			"Karim Uddin", "Jahanara Begum", "Saleha Begum",
+			"1992-03-08", "Male", "AB-", "Married", "Islam", "Bangladeshi",
+			"1992123456", "01733333333", "rahim@example.com",
+			"Karim Uddin", "01733333334", "4",
+			"Khulna", "Khulna", "Khulna Sadar", "Khalishpur", "456 New Market",
+			"Barishal", "Barishal", "Barishal Sadar", "Kashipur", "87 Old Road",
+			"Ekushe Fashions", "Regular", "2022-07-15",
+			"General", "Production", "Cutting", "Manager", "DEMO002", "Line-3", "Group-C", "Floor-1",
+			"Grade-8", "active", "true",
+			"70000", "35000", "14000", "450", "1250", "750", "3500",
 			"mCash", "987654321012",
-			"UUID-OF-COMPANY",
 		},
 	}
 
 	for rowIdx, rowData := range demoData {
 		row := rowIdx + 2
 		for colIdx, val := range rowData {
-			col := string(rune('A' + colIdx))
+			col, _ := excelize.ColumnNumberToName(colIdx + 1)
 			f.SetCellValue(demo, fmt.Sprintf("%s%d", col, row), val)
+			f.SetCellStyle(demo, fmt.Sprintf("%s%d", col, row), fmt.Sprintf("%s%d", col, row), centerStyle)
 		}
+		f.SetRowHeight(demo, row, 25)
+	}
+
+	// Auto-fit column widths
+	for i, hdr := range importHeaders {
+		col, _ := excelize.ColumnNumberToName(i + 1)
+		longest := hdr
+		for _, rowData := range demoData {
+			if i < len(rowData) {
+				if val, ok := rowData[i].(string); ok && len(val) > len(longest) {
+					longest = val
+				}
+			}
+		}
+		w := calcColWidth(hdr, longest)
+		f.SetColWidth(dataEntry, col, col, w)
+		f.SetColWidth(demo, col, col, w)
 	}
 
 	if idx, _ := f.GetSheetIndex(dataEntry); idx > 0 {
@@ -159,13 +365,13 @@ func (h *EmployeeImportHandler) DownloadTemplate(c *gin.Context) {
 func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Required field 'file' is missing. Please upload a .xlsx file using a multipart/form-data request with field name 'file'."})
 		return
 	}
 	defer file.Close()
 
 	if !strings.HasSuffix(header.Filename, ".xlsx") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only .xlsx files are supported"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Only .xlsx files are supported. Received: " + header.Filename})
 		return
 	}
 
@@ -183,7 +389,6 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 	defer f.Close()
 
 	sheetName := f.GetSheetName(f.GetActiveSheetIndex())
-	// Prefer "Data Entry" sheet, fallback to active
 	if idx, _ := f.GetSheetIndex("Data Entry"); idx > 0 {
 		sheetName = "Data Entry"
 	}
@@ -197,17 +402,19 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 	headerRow := rows[0]
 	colMap := make(map[string]int)
 	for i, h := range headerRow {
-		h = strings.TrimSpace(strings.ToLower(h))
+		h = strings.TrimSpace(h)
 		colMap[h] = i
 	}
 
-	requiredFields := []string{"employee_id", "name_en", "joining_date"}
+	requiredFields := []string{"EmployeeId", "Name (En)", "JoiningDate"}
 	for _, rf := range requiredFields {
 		if _, ok := colMap[rf]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("required column '%s' not found", rf)})
 			return
 		}
 	}
+
+	lookups := loadImportLookups(database.DB)
 
 	var parsed []parsedRow
 	var errors []string
@@ -217,29 +424,30 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 		if len(row) == 0 || allEmpty(row) {
 			continue
 		}
-		empID := getCell(row, colMap, "employee_id")
+		empID := getCell(row, colMap, "EmployeeId")
 		if empID == "" {
-			errors = append(errors, fmt.Sprintf("Row %d: employee_id is required", rowIdx+1))
+			errors = append(errors, fmt.Sprintf("Row %d: EmployeeId is required", rowIdx+1))
 			continue
 		}
 
-		dateOfBirth := getCell(row, colMap, "date_of_birth")
-		if dateOfBirth != "" && !isValidDate(dateOfBirth) {
-			errors = append(errors, fmt.Sprintf("Row %d: invalid date_of_birth format '%s' (use YYYY-MM-DD)", rowIdx+1, dateOfBirth))
+		dob := getCell(row, colMap, "date_of_birth")
+		if dob != "" && !isValidDate(dob) {
+			errors = append(errors, fmt.Sprintf("Row %d: invalid date_of_birth format '%s' (use YYYY-MM-DD)", rowIdx+1, dob))
 			continue
 		}
 
-		joiningDate := getCell(row, colMap, "joining_date")
+		joiningDate := getCell(row, colMap, "JoiningDate")
 		if joiningDate != "" && !isValidDate(joiningDate) {
-			errors = append(errors, fmt.Sprintf("Row %d: invalid joining_date format '%s' (use YYYY-MM-DD)", rowIdx+1, joiningDate))
+			errors = append(errors, fmt.Sprintf("Row %d: invalid JoiningDate format '%s' (use YYYY-MM-DD)", rowIdx+1, joiningDate))
 			continue
 		}
 
 		parsed = append(parsed, parsedRow{
-			row:    row,
-			index:  rowIdx + 1,
-			code:   empID,
-			colMap: colMap,
+			row:      row,
+			index:    rowIdx + 1,
+			code:     empID,
+			colMap:   colMap,
+			lookups:  lookups,
 		})
 	}
 
@@ -257,13 +465,14 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	companyID := c.GetString("company_id")
-	if companyID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id not found in auth context"})
-		return
+	// Company resolved from CompanyName column, fallback to auth context
+	companyName := strings.TrimSpace(strings.ToLower(getCell(parsed[0].row, parsed[0].colMap, "CompanyName")))
+	resolvedCompanyID := lookups.companies[companyName]
+	if resolvedCompanyID == "" {
+		resolvedCompanyID = c.GetString("company_id")
 	}
 
-	existingMap, err := h.employeeRepo.MapByID(companyID)
+	existingMap, err := h.employeeRepo.MapByID(resolvedCompanyID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup existing employees"})
 		return
@@ -273,9 +482,11 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 	var toUpdate []models.Employee
 
 	for _, p := range parsed {
-		emp := rowToEmployee(p.row, p.colMap, companyID, userID)
+		emp := rowToEmployee(p.row, p.colMap, resolvedCompanyID, userID, lookups)
 		if _, exists := existingMap[p.code]; exists {
 			emp.ID = existingMap[p.code].ID
+			emp.UpdatedBy = &userID
+			emp.CreatedBy = nil
 			toUpdate = append(toUpdate, emp)
 		} else {
 			toCreate = append(toCreate, emp)
@@ -308,10 +519,11 @@ func (h *EmployeeImportHandler) ImportExcel(c *gin.Context) {
 }
 
 type parsedRow struct {
-	row    []string
-	index  int
-	code   string
-	colMap map[string]int
+	row     []string
+	index   int
+	code    string
+	colMap  map[string]int
+	lookups *importLookups
 }
 
 func getCell(row []string, colMap map[string]int, key string) string {
@@ -344,44 +556,82 @@ func isValidDate(dateStr string) bool {
 	return err == nil
 }
 
-func rowToEmployee(row []string, colMap map[string]int, companyID, userID string) models.Employee {
-	joiningDate := getCell(row, colMap, "joining_date")
+func lookupID(nameMap map[string]string, name string) *string {
+	if name == "" {
+		return nil
+	}
+	key := strings.TrimSpace(strings.ToLower(name))
+	if id, ok := nameMap[key]; ok {
+		return &id
+	}
+	return nil
+}
+
+func rowToEmployee(row []string, colMap map[string]int, companyID, userID string, lookups *importLookups) models.Employee {
+	joiningDate := getCell(row, colMap, "JoiningDate")
 	parsedJoining, _ := time.Parse("2006-01-02", joiningDate)
 
 	dateOfBirth := getCell(row, colMap, "date_of_birth")
 
-	empCompanyID := getCell(row, colMap, "company_id")
-	if empCompanyID == "" {
-		empCompanyID = companyID
-	}
+	overTimeStatus := strings.ToLower(getCell(row, colMap, "OverTimeStatus"))
+	overTimeBool := overTimeStatus == "true" || overTimeStatus == "1" || overTimeStatus == "yes"
+
+	dependentsStr := getCell(row, colMap, "NumberOfDependents")
+	dependents, _ := strconv.Atoi(dependentsStr)
 
 	return models.Employee{
-		CompanyID:          empCompanyID,
-		EmployeeID:         getCell(row, colMap, "employee_id"),
-		NameEn:             getCell(row, colMap, "name_en"),
-		NameBn:             getCell(row, colMap, "name_bn"),
-		FatherName:         getCell(row, colMap, "father_name"),
-		MotherName:         getCell(row, colMap, "mother_name"),
-		DateOfBirth:        dateOfBirth,
-		Gender:             getCell(row, colMap, "gender"),
-		BloodGroup:         getCell(row, colMap, "blood_group"),
-		MaritalStatus:      getCell(row, colMap, "marital_status"),
-		Nationality:        getCell(row, colMap, "nationality"),
-		NID:                getCell(row, colMap, "nid"),
-		Phone:              getCell(row, colMap, "phone"),
-		Email:              getCell(row, colMap, "email"),
-		PresentAddress:     getCell(row, colMap, "present_address"),
-		PermanentAddress:   getCell(row, colMap, "permanent_address"),
-		Grade:              getCell(row, colMap, "grade"),
-		PunchNumber:        getCell(row, colMap, "punch_number"),
-		JoiningDate:        parsedJoining,
-		Status:             getCell(row, colMap, "status"),
-		GrossSalary:        getCellFloat(row, colMap, "gross_salary"),
-		TransportAllowance: getCellFloat(row, colMap, "transport_allowance"),
-		FoodAllowance:      getCellFloat(row, colMap, "food_allowance"),
-		OtherAllowance:     getCellFloat(row, colMap, "other_allowance"),
-		AccountType:        getCell(row, colMap, "account_type"),
-		AccountNumber:      getCell(row, colMap, "account_number"),
-		CreatedBy:          &userID,
+		CompanyID:           companyID,
+		EmployeeID:        getCell(row, colMap, "EmployeeId"),
+		NameEn:              getCell(row, colMap, "Name (En)"),
+		NameBn:              getCell(row, colMap, "Name (Bn)"),
+		FatherName:          getCell(row, colMap, "fatherName"),
+		MotherName:          getCell(row, colMap, "motherName"),
+		SpouseName:          getCell(row, colMap, "spouseName"),
+		DateOfBirth:         dateOfBirth,
+		Gender:              getCell(row, colMap, "Gender"),
+		BloodGroup:          getCell(row, colMap, "Blood_group"),
+		MaritalStatus:       getCell(row, colMap, "MaritalStatus"),
+		Religion:            getCell(row, colMap, "Religion"),
+		Nationality:         getCell(row, colMap, "Nationality"),
+		NID:                 getCell(row, colMap, "NidNumber"),
+		Phone:               getCell(row, colMap, "Phone"),
+		Email:               getCell(row, colMap, "Email"),
+		EmergencyContact:    getCell(row, colMap, "EmergencyContact"),
+		EmergencyPhone:      getCell(row, colMap, "EmergencyPhone"),
+		NumberOfDependents:  dependents,
+		PresentAddress:      getCell(row, colMap, "Present_Address"),
+		PermanentAddress:    getCell(row, colMap, "Permanent_Address"),
+		PresentDivisionID:   lookupID(lookups.divisions, getCell(row, colMap, "Present_Division")),
+		PresentDistrictID:   lookupID(lookups.districts, getCell(row, colMap, "Present_District")),
+		PresentUpazilaID:    lookupID(lookups.upazilas, getCell(row, colMap, "Present_Upazila")),
+		PresentUnionID:      lookupID(lookups.unions, getCell(row, colMap, "Present_Union")),
+		PermanentDivisionID: lookupID(lookups.divisions, getCell(row, colMap, "Permanent_Division")),
+		PermanentDistrictID: lookupID(lookups.districts, getCell(row, colMap, "Permanent_District")),
+		PermanentUpazilaID:  lookupID(lookups.upazilas, getCell(row, colMap, "Permanent_Upazila")),
+		PermanentUnionID:    lookupID(lookups.unions, getCell(row, colMap, "Permanent_Union")),
+		PunchNumber:         getCell(row, colMap, "PunchNumber"),
+		EmployeeType:        getCell(row, colMap, "EmployeeType"),
+		Grade:               getCell(row, colMap, "Grade"),
+		DepartmentID:        lookupID(lookups.departments, getCell(row, colMap, "Department")),
+		SectionID:           lookupID(lookups.sections, getCell(row, colMap, "Section")),
+		DesignationID:       lookupID(lookups.designations, getCell(row, colMap, "Designation")),
+		LineID:              lookupID(lookups.lines, getCell(row, colMap, "Line")),
+		GroupID:             lookupID(lookups.groups, getCell(row, colMap, "Group")),
+		FloorID:             lookupID(lookups.floors, getCell(row, colMap, "Floor")),
+		ShiftID:             lookupID(lookups.shifts, getCell(row, colMap, "shiftName")),
+		ReportsTo:           lookupID(lookups.employees, getCell(row, colMap, "ReportsTo")),
+		JoiningDate:         parsedJoining,
+		Status:              getCell(row, colMap, "Status"),
+		OverTimeStatus:      overTimeBool,
+		GrossSalary:         getCellFloat(row, colMap, "Gross_Salary"),
+		BasicSalary:         getCellFloat(row, colMap, "BasicSalary"),
+		HouseRent:           getCellFloat(row, colMap, "HouseRent"),
+		TransportAllowance:  getCellFloat(row, colMap, "TransportAllowance"),
+		FoodAllowance:       getCellFloat(row, colMap, "FoodAllowance"),
+		MedicalAllowance:    getCellFloat(row, colMap, "MedicalAllowance"),
+		OtherAllowance:      getCellFloat(row, colMap, "OtherAllowance"),
+		AccountType:         getCell(row, colMap, "accountType"),
+		AccountNumber:       getCell(row, colMap, "AccountNumber"),
+		CreatedBy:           &userID,
 	}
 }

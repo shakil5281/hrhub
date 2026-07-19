@@ -33,14 +33,18 @@ func (r *TemporaryShiftRepository) FindByID(id string) (*models.TemporaryShift, 
 	return &ts, nil
 }
 
-func (r *TemporaryShiftRepository) List(companyID string) ([]models.TemporaryShift, error) {
-	var list []models.TemporaryShift
-	q := r.db.Preload("Employee").Preload("Shift").Order("created_at DESC")
+func (r *TemporaryShiftRepository) List(companyID string, page, limit int) ([]models.TemporaryShift, int64, error) {
+	base := r.db.Model(&models.TemporaryShift{}).Order("created_at DESC")
 	if companyID != "" {
-		q = q.Where("company_id = ?", companyID)
+		base = base.Where("company_id = ?", companyID)
 	}
-	err := q.Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.TemporaryShift
+	err := base.Preload("Employee").Preload("Shift").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *TemporaryShiftRepository) ListByEmployeeAndDateRange(employeeID, startDate, endDate string) ([]models.TemporaryShift, error) {

@@ -50,19 +50,36 @@ export default function TemporaryShiftPage() {
   const [editing, setEditing] = React.useState<TempShift | null>(null)
   const [companyId, setCompanyId] = React.useState("")
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
+  const refreshData = async (p?: number, l?: number) => {
+    const result = await getTempShifts(companyId, { page: String(p ?? page), limit: String(l ?? limit) })
+    setData(result.data)
+    setTotal(result.total)
+    setTotalPages(result.total_pages)
+  }
+
   React.useEffect(() => {
-    companyApi.list().then((res) => {
-      const list = Array.isArray(res.data) ? res.data : []
+    companyApi.list({ limit: "100" }).then((res) => {
+      const list = Array.isArray(res.data?.data) ? res.data.data : []
       const cid = list[0]?.id || ""
       setCompanyId(cid)
-      return getTempShifts(cid)
-    }).then(setData)
+      return getTempShifts(cid, { page: "1", limit: "20" })
+    }).then((result) => {
+      setData(result.data)
+      setTotal(result.total)
+      setTotalPages(result.total_pages)
+    })
   }, [])
 
-  const refreshData = async () => {
-    const d = await getTempShifts(companyId)
-    setData(d)
-  }
+  React.useEffect(() => {
+    if (companyId) {
+      refreshData()
+    }
+  }, [page, limit])
 
   const handleAdd = () => { setEditing(null); setDialogOpen(true) }
   const handleEdit = (item: TempShift) => { setEditing(item); setDialogOpen(true) }
@@ -96,7 +113,19 @@ export default function TemporaryShiftPage() {
           Add
         </Button>
       </div>
-      <DataTable key={data.length} data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <DataTable
+        data={data}
+        columns={columns}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+      />
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

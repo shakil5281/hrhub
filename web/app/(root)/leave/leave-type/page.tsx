@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { TagIcon, PlusIcon, Loader2 } from "lucide-react"
+import { TagIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -24,19 +24,26 @@ export default function LeaveTypePage() {
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingItem, setEditingItem] = React.useState<LeaveType | null>(null)
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
   const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
-      const { data: res } = await leaveTypeApi.list()
-      setData(Array.isArray(res) ? res : [])
+      const { data: res } = await leaveTypeApi.list(undefined, { page: String(page), limit: String(limit) })
+      setData(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setData([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, limit])
 
-  React.useEffect(() => { fetchData() }, [])
+  React.useEffect(() => { fetchData() }, [fetchData])
 
   const handleAdd = () => {
     setEditingItem(null)
@@ -74,11 +81,20 @@ export default function LeaveTypePage() {
         </Button>
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <DataTable key={data.length} data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
-      )}
+      <DataTable
+        data={data}
+        columns={columns}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

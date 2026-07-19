@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type SeparationHandler struct {
@@ -36,6 +37,21 @@ type UpdateSeparationRequest struct {
 	Reason       string `json:"reason"`
 }
 
+// ListSeparations godoc
+//
+// @Summary      List separations
+// @Tags         Separations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        employee      query string false "Filter by employee name"
+// @Param        employee_id   query string false "Filter by employee ID"
+// @Param        department_id query string false "Filter by department"
+// @Param        type          query string false "Filter by type"
+// @Param        status        query string false "Filter by status"
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
+// @Router       /separations [get]
 func (h *SeparationHandler) List(c *gin.Context) {
 	employee := c.Query("employee")
 	employeeID := c.Query("employee_id")
@@ -43,22 +59,23 @@ func (h *SeparationHandler) List(c *gin.Context) {
 	sepType := c.Query("type")
 	status := c.Query("status")
 
+	p := utils.ParsePagination(c)
 	if employee != "" || employeeID != "" || departmentID != "" || sepType != "" || status != "" {
-		items, err := h.repo.ListFiltered(employee, employeeID, departmentID, sepType, status)
+		items, total, err := h.repo.ListFiltered(employee, employeeID, departmentID, sepType, status, p.Page, p.Limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, items)
+		c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 		return
 	}
 
-	items, err := h.repo.List()
+	items, total, err := h.repo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(items, total, p))
 }
 
 func (h *SeparationHandler) GetByID(c *gin.Context) {

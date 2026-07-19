@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type ShiftHandler struct {
@@ -43,17 +44,20 @@ type UpdateShiftRequest struct {
 // @Tags         Shifts
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {array}   map[string]interface{}
+// @Param        page   query int    false "Page number (default: 1)"
+// @Param        limit  query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /shifts [get]
 func (h *ShiftHandler) List(c *gin.Context) {
-	shifts, err := h.shiftRepo.List()
+	p := utils.ParsePagination(c)
+	shifts, total, err := h.shiftRepo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, shifts)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(shifts, total, p))
 }
 
 // GetShift godoc

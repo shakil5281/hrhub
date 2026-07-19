@@ -65,7 +65,7 @@ func seedRole(db *gorm.DB) *models.Role {
 func seedPermissions(db *gorm.DB, role *models.Role) {
 	resources := []string{
 		"users", "roles", "permissions",
-		"companies", "branches", "departments", "sections", "designations", "lines", "groups", "floors",
+		"companies", "departments", "sections", "designations", "lines", "groups", "floors",
 		"employees",
 		"shifts",
 		"attendance",

@@ -1,251 +1,213 @@
 "use client"
 
 import * as React from "react"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { 
-  ListIcon, 
-  PlusIcon, 
-  SearchIcon, 
-  FilterIcon,
-  ChevronDownIcon,
-  MoreHorizontalIcon,
-  CheckCircle2Icon,
-  AlertCircleIcon,
-  ClockIcon,
-  ArrowUpDownIcon,
-  KanbanIcon
-} from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loader2, UserPlusIcon, UsersIcon, UserXIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from "lucide-react"
+import { dashboardApi, employeeApi, separationApi } from "@/lib/api"
+import { toast } from "sonner"
 
-const lifecycleStages = [
-  { id: "ideation", title: "Ideation", color: "bg-gray-100 text-gray-700", count: 12, icon: ListIcon },
-  { id: "planning", title: "Planning", color: "bg-blue-100 text-blue-700", count: 8, icon: ArrowUpDownIcon },
-  { id: "development", title: "Development", color: "bg-yellow-100 text-yellow-700", count: 15, icon: ClockIcon },
-  { id: "review", title: "Review", color: "bg-purple-100 text-purple-700", count: 5, icon: AlertCircleIcon },
-  { id: "testing", title: "Testing", color: "bg-orange-100 text-orange-700", count: 7, icon: CheckCircle2Icon },
-  { id: "deployment", title: "Deployment", color: "bg-green-100 text-green-700", count: 3, icon: CheckCircle2Icon },
-]
+interface Employee {
+  id: string
+  employee_id: string
+  name_en: string
+  status: string
+  joining_date: string
+}
 
-const projects = [
-  { id: 1, name: "E-commerce Redesign", stage: "development", progress: 65, team: "Frontend Team", deadline: "2026-07-20", priority: "high", description: "Complete redesign of the e-commerce platform" },
-  { id: 2, name: "Mobile App v2.0", stage: "review", progress: 90, team: "Mobile Team", deadline: "2026-07-18", priority: "high", description: "New version of mobile application" },
-  { id: 3, name: "API Gateway Migration", stage: "testing", progress: 45, team: "Backend Team", deadline: "2026-08-01", priority: "medium", description: "Migration" },
-  { id: 4, name: "Dashboard Analytics", stage: "planning", progress: 15, team: "Data Team", deadline: "2026-08-15", priority: "low", description: "New analytics dashboard" },
-  { id: 5, name: "Security Audit", stage: "ideation", progress: 5, team: "Security Team", deadline: "2026-09-01", priority: "medium", description: "Comprehensive security audit" },
-  { id: 6, name: "User Onboarding Flow", stage: "development", progress: 30, team: "UX Team", deadline: "2026-07-25", priority: "high", description: "Improve user onboarding" },
-  { id: 7, name: "Performance Optimization", stage: "deployment", progress: 100, team: "DevOps", deadline: "2026-07-15", priority: "high", description: "System performance optimization" },
-  { id: 8, name: "Documentation Update", stage: "testing", progress: 80, team: "Tech Writers", deadline: "2026-07-22", priority: "low", description: "Update technical documentation" },
-]
-
-const kanbanColumns = lifecycleStages.map(stage => ({
-  ...stage,
-  items: projects.filter(p => p.stage === stage.id)
-}))
+interface Separation {
+  id: string
+  employee: string
+  type: string
+  date: string
+  status: string
+}
 
 export default function LifecyclePage() {
-  const [viewMode, setViewMode] = React.useState<"kanban" | "table">("kanban")
-  const [searchTerm, setSearchTerm] = React.useState("")
+  const [employees, setEmployees] = React.useState<Employee[]>([])
+  const [separations, setSeparations] = React.useState<Separation[]>([])
+  const [stats, setStats] = React.useState<{ new_hires_month: number; separations_month: number; active_employees: number } | null>(null)
+  const [loading, setLoading] = React.useState(true)
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.team.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  React.useEffect(() => {
+    Promise.all([
+      dashboardApi.stats(),
+      employeeApi.list({ status: "active", limit: "10" }),
+      separationApi.list(),
+    ])
+      .then(([statsRes, empRes, sepRes]) => {
+        setStats({ new_hires_month: statsRes.data.new_hires_month, separations_month: statsRes.data.separations_month, active_employees: statsRes.data.active_employees })
+        setEmployees(Array.isArray(empRes.data?.data) ? empRes.data.data.slice(0, 10) : (Array.isArray(empRes.data) ? empRes.data.slice(0, 10) : []))
+        setSeparations(Array.isArray(sepRes.data?.data) ? sepRes.data.data.slice(0, 10) : (Array.isArray(sepRes.data) ? sepRes.data.slice(0, 10) : []))
+      })
+      .catch(() => toast.error("Failed to load lifecycle data"))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "high": return <Badge variant="destructive">High</Badge>
-      case "medium": return <Badge variant="secondary">Medium</Badge>
-      case "low": return <Badge variant="outline">Low</Badge>
-    }
-  }
-
-  const getStageIcon = (stage: string) => {
-    const stageData = lifecycleStages.find(s => s.id === stage)
-    return stageData ? <stageData.icon className="h-4 w-4" /> : <ListIcon className="h-4 w-4" />
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <div className="px-4 lg:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lifecycle Management</h1>
-          <p className="text-muted-foreground mt-1">Track projects through all lifecycle stages</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <FilterIcon className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <Button size="sm">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            New Project
-          </Button>
-        </div>
+      <div className="px-4 lg:px-6">
+        <h1 className="text-3xl font-bold tracking-tight">Lifecycle Management</h1>
+        <p className="text-muted-foreground mt-1">Employee lifecycle overview from hire to separation</p>
       </div>
 
-      <div className="px-4 lg:px-6">
-        <div className="flex gap-2 overflow-x-auto pb-4 md:pb-0">
-          {lifecycleStages.map((stage) => (
-            <Badge key={stage.id} className={`${stage.color} whitespace-nowrap gap-1 flex items-center`}>
-              <stage.icon className="h-3 w-3" />
-              {stage.title}
-              <span className="bg-white/50 px-2 py-0.5 rounded-full text-xs font-medium">{stage.count}</span>
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 lg:px-6">
-        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "kanban" | "table")} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="kanban">
-              <KanbanIcon className="h-4 w-4 mr-2" />
-              Kanban Board
-            </TabsTrigger>
-            <TabsTrigger value="table">
-              <ListIcon className="h-4 w-4 mr-2" />
-              Table View
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="kanban" className="mt-4">
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {kanbanColumns.map((column) => (
-                <div key={column.id} className="min-w-[300px] max-w-[350px] flex flex-col">
-                  <div className="flex items-center justify-between mb-3 p-2 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg ${column.color}`}>
-                        <column.icon className="h-4 w-4" />
-                      </div>
-                      <span className="font-medium">{column.title}</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">{column.items.length}</Badge>
-                  </div>
-                  <div className="space-y-3 flex-1 min-h-[400px]">
-                    {column.items.map((project) => (
-                      <Card key={project.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{project.name}</p>
-                              <p className="text-xs text-muted-foreground mt-1 truncate">{project.description}</p>
-                            </div>
-                          </div>
-                          <div className="mt-3 space-y-2">
-                            <div>
-                              <div className="flex items-center justify-between text-xs mb-1">
-                                <span className="text-muted-foreground">Progress</span>
-                                <span>{project.progress}%</span>
-                              </div>
-                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-primary rounded-full transition-all duration-300" 
-                                  style={{ width: `${project.progress}%` }}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">{project.team}</span>
-                              <span className="text-muted-foreground">{project.deadline}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              {getPriorityBadge(project.priority)}
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <MoreHorizontalIcon className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {column.items.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                        No projects in this stage
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+      <div className="grid gap-4 md:grid-cols-4 px-4 lg:px-6">
+        <Card className="border-l-4 border-l-emerald-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <UserPlusIcon className="h-4 w-4 text-emerald-500" />
+              New Hires (Month)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-emerald-600">{stats?.new_hires_month ?? 0}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <UsersIcon className="h-4 w-4 text-blue-500" />
+              Active Employees
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600">{stats?.active_employees ?? 0}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <UserXIcon className="h-4 w-4 text-red-500" />
+              Separations (Month)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">{stats?.separations_month ?? 0}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ClockIcon className="h-4 w-4 text-purple-500" />
+              Retention Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-600">
+              {stats && (stats.active_employees + stats.separations_month) > 0
+                ? Math.round((stats.active_employees / (stats.active_employees + stats.separations_month)) * 100)
+                : 100}%
             </div>
-          </TabsContent>
+          </CardContent>
+        </Card>
+      </div>
 
-          <TabsContent value="table" className="mt-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>All Projects</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm">
-                    <SearchIcon className="h-4 w-4 mr-1" />
-                    Search
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <ArrowUpDownIcon className="h-4 w-4 mr-1" />
-                    Sort
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stage</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Progress</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Deadline</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Priority</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {filteredProjects.map((project) => (
-                        <tr key={project.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-primary/10 rounded-lg">
-                                {getStageIcon(project.stage)}
-                              </div>
-                              <div>
-                                <p className="font-medium">{project.name}</p>
-                                <p className="text-sm text-muted-foreground">ID: PRJ-{project.id.toString().padStart(4, '0')}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant="outline" className="capitalize">{project.stage}</Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="w-32">
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-primary rounded-full transition-all duration-300" 
-                                  style={{ width: `${project.progress}%` }}
-                                />
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">{project.progress}%</p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{project.team}</td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{project.deadline}</td>
-                          <td className="px-4 py-3">{getPriorityBadge(project.priority)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontalIcon className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      <div className="grid gap-4 md:grid-cols-2 px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlusIcon className="h-4 w-4 text-emerald-500" />
+              Recent Hires
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {employees.length > 0 ? (
+              <div className="space-y-2">
+                {employees.map((emp) => (
+                  <div key={emp.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">{emp.name_en}</p>
+                      <p className="text-xs text-muted-foreground">ID: {emp.employee_id}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {emp.joining_date || "N/A"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No employee data</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserXIcon className="h-4 w-4 text-red-500" />
+              Recent Separations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {separations.length > 0 ? (
+              <div className="space-y-2">
+                {separations.map((sep) => (
+                  <div key={sep.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium">{sep.employee}</p>
+                      <p className="text-xs text-muted-foreground">{sep.type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{sep.date}</span>
+                      {sep.status === "Approved" ? (
+                        <CheckCircleIcon className="h-3.5 w-3.5 text-red-500" />
+                      ) : (
+                        <ClockIcon className="h-3.5 w-3.5 text-amber-500" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No separation data</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Employee Lifecycle Stages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                <div className="text-2xl font-bold text-blue-600">01</div>
+                <p className="text-sm font-medium mt-1">Requirement</p>
+                <p className="text-xs text-muted-foreground">Job requisition & approval</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                <div className="text-2xl font-bold text-green-600">02</div>
+                <p className="text-sm font-medium mt-1">Hiring</p>
+                <p className="text-xs text-muted-foreground">Onboarding & orientation</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
+                <div className="text-2xl font-bold text-teal-600">03</div>
+                <p className="text-sm font-medium mt-1">Active</p>
+                <p className="text-xs text-muted-foreground">Regular employment</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                <div className="text-2xl font-bold text-amber-600">04</div>
+                <p className="text-sm font-medium mt-1">Offboarding</p>
+                <p className="text-xs text-muted-foreground">Resignation/termination</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div className="text-2xl font-bold text-gray-600">05</div>
+                <p className="text-sm font-medium mt-1">Separated</p>
+                <p className="text-xs text-muted-foreground">Exit & final settlement</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

@@ -40,8 +40,8 @@ export default function MonthlyProcessPage() {
 
   const fetchCompanies = async () => {
     try {
-      const { data } = await companyApi.list()
-      setCompanies(Array.isArray(data) ? data : [])
+      const { data } = await companyApi.list({ limit: "100" })
+      setCompanies(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []))
     } catch {
       // ignore
     }

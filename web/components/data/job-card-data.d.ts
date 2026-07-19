@@ -1,7 +1,7 @@
 export interface JobCardRecord {
     id: number;
     employee: string;
-    employeeCode: string;
+    employeeId: string;
     company: string;
     department: string;
     designation: string;
@@ -18,7 +18,7 @@ export interface JobCardRecord {
 }
 export interface EmployeeInfo {
     employee: string;
-    employeeCode: string;
+    employeeId: string;
     company: string;
     department: string;
     designation: string;

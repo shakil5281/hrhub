@@ -20,7 +20,8 @@ type Employee struct {
 	Gender           string  `json:"gender" gorm:"type:varchar(20)"`
 	BloodGroup       string  `json:"blood_group" gorm:"type:varchar(5)"`
 	MaritalStatus    string  `json:"marital_status" gorm:"type:varchar(20)"`
-	Nationality      string  `json:"nationality" gorm:"type:varchar(100)"`
+	Religion         string  `json:"religion" gorm:"type:varchar(50)"`
+	Nationality      string  `json:"nationality" gorm:"type:varchar(100);default:'Bangladeshi'"`
 	NID              string  `json:"nid" gorm:"type:varchar(50)"`
 	Phone            string  `json:"phone" gorm:"type:varchar(20)"`
 	Email            string  `json:"email" gorm:"type:varchar(255)"`
@@ -34,15 +35,15 @@ type Employee struct {
 	NumberOfDependents  int    `json:"number_of_dependents" gorm:"default:0"`
 
 	// Office Information
-	BranchID       *string   `json:"branch_id" gorm:"type:uuid"`
 	DepartmentID   *string   `json:"department_id" gorm:"type:uuid"`
 	SectionID      *string   `json:"section_id" gorm:"type:uuid"`
 	DesignationID  *string   `json:"designation_id" gorm:"type:uuid"`
 	LineID         *string   `json:"line_id" gorm:"type:uuid"`
 	GroupID        *string   `json:"group_id" gorm:"type:uuid"`
 	FloorID        *string   `json:"floor_id" gorm:"type:uuid"`
-	EmployeeID     string    `json:"employee_id" gorm:"column:employee_id;type:varchar(50)"`
-	PunchNumber    string    `json:"punch_number" gorm:"type:varchar(50)"`
+	EmployeeID   string    `json:"employee_id" gorm:"column:employee_id;type:varchar(50);uniqueIndex;not null"`
+	PunchNumber    string    `json:"punch_number" gorm:"type:varchar(50);uniqueIndex;not null"`
+	EmployeeType   string    `json:"employee_type" gorm:"type:varchar(50)"`
 	Grade          string    `json:"grade" gorm:"type:varchar(50)"`
 	JoiningDate    time.Time `json:"joining_date" gorm:"not null"`
 	ShiftID        *string   `json:"shift_id" gorm:"type:uuid"`
@@ -67,15 +68,13 @@ type Employee struct {
 	FoodAllowance       float64 `json:"food_allowance" gorm:"type:decimal(12,2);default:1250"`
 	MedicalAllowance    float64 `json:"medical_allowance" gorm:"type:decimal(12,2);default:750"`
 	OtherAllowance      float64 `json:"other_allowance" gorm:"type:decimal(12,2)"`
-	ProvidentFund       float64 `json:"provident_fund" gorm:"type:decimal(12,2)"`
-	Tax                 float64 `json:"tax" gorm:"type:decimal(12,2)"`
-
 	// Account Information
 	AccountType   string `json:"account_type" gorm:"type:varchar(20)"`
 	AccountNumber string `json:"account_number" gorm:"type:varchar(20)"`
 
 	// Status
-	Status string `json:"status" gorm:"type:varchar(20);default:active"`
+	Status          string `json:"status" gorm:"type:varchar(20);default:active"`
+	OverTimeStatus  bool   `json:"over_time_status" gorm:"default:false"`
 
 	// Signature & Image
 	SignatureURL string `json:"signature_url" gorm:"type:varchar(500)"`
@@ -91,7 +90,6 @@ type Employee struct {
 	// Relations
 	User              *User       `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Company           Company     `json:"company" gorm:"foreignKey:CompanyID"`
-	Branch            *Branch     `json:"branch,omitempty" gorm:"foreignKey:BranchID"`
 	Department        *Department `json:"department,omitempty" gorm:"foreignKey:DepartmentID"`
 	SectionRef        *Section    `json:"section_ref,omitempty" gorm:"foreignKey:SectionID"`
 	DesignationRef    *Designation `json:"designation_ref,omitempty" gorm:"foreignKey:DesignationID"`

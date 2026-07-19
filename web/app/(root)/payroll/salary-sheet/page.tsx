@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FileSpreadsheetIcon, Loader2 } from "lucide-react"
+import { FileSpreadsheetIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { salaryApi, companyApi } from "@/lib/api"
@@ -59,12 +59,7 @@ export default function SalarySheetPage() {
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
-    companyApi.list().then(({data})=>{
-      if (Array.isArray(data) && data.length>0) {
-        setCompanies(data)
-        setCompanyId(data[0].id)
-      }
-    })
+    companyApi.list({ limit: "100" }).then(({data})=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); if (list.length>0) { setCompanies(list); setCompanyId(list[0].id) } })
   }, [])
 
   const fetchData = React.useCallback(async () => {
@@ -146,26 +141,22 @@ export default function SalarySheetPage() {
         <h2 className="text-lg font-semibold mb-2">{MONTHS[month]} {year} - Salary Sheet</h2>
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <>
-          {totals && (
-            <div className="px-4 lg:px-6">
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground mb-2 p-3 rounded-lg border bg-card">
-                <span>Gross: <strong className="text-foreground">{totals.gross_salary?.toLocaleString()}</strong></span>
-                <span>Absent Ded.: <strong className="text-foreground">{totals.absent_deduction?.toLocaleString()}</strong></span>
-                <span>OT Hrs: <strong className="text-foreground">{totals.overtime_hours?.toFixed(2)}</strong></span>
-                <span>OT Amt: <strong className="text-foreground">{totals.overtime_amount?.toLocaleString()}</strong></span>
-                <span>Att. Bonus: <strong className="text-foreground">{totals.attendance_bonus?.toLocaleString()}</strong></span>
-                <span>Deductions: <strong className="text-foreground">{totals.total_deductions?.toLocaleString()}</strong></span>
-                <span>Net: <strong className="text-foreground">{totals.net_salary?.toLocaleString()}</strong></span>
-              </div>
+      <>
+        {totals && (
+          <div className="px-4 lg:px-6">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground mb-2 p-3 rounded-lg border bg-card">
+              <span>Gross: <strong className="text-foreground">{totals.gross_salary?.toLocaleString()}</strong></span>
+              <span>Absent Ded.: <strong className="text-foreground">{totals.absent_deduction?.toLocaleString()}</strong></span>
+              <span>OT Hrs: <strong className="text-foreground">{totals.overtime_hours?.toFixed(2)}</strong></span>
+              <span>OT Amt: <strong className="text-foreground">{totals.overtime_amount?.toLocaleString()}</strong></span>
+              <span>Att. Bonus: <strong className="text-foreground">{totals.attendance_bonus?.toLocaleString()}</strong></span>
+              <span>Deductions: <strong className="text-foreground">{totals.total_deductions?.toLocaleString()}</strong></span>
+              <span>Net: <strong className="text-foreground">{totals.net_salary?.toLocaleString()}</strong></span>
             </div>
-          )}
-          <DataTable data={data} columns={columns} />
-        </>
-      )}
+          </div>
+        )}
+        <DataTable data={data} columns={columns} loading={loading} />
+      </>
     </div>
   )
 }

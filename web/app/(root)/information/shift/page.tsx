@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarClockIcon, PlusIcon, Loader2 } from "lucide-react"
+import { CalendarClockIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -47,12 +47,19 @@ export default function ShiftPage() {
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editingShift, setEditingShift] = React.useState<Shift | null>(null)
 
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
   const fetchShifts = async () => {
     setLoading(true)
     setError("")
     try {
-      const { data } = await shiftApi.list()
-      setShifts(Array.isArray(data) ? data : [])
+      const { data: res } = await shiftApi.list({ page: String(page), limit: String(limit) })
+      setShifts(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load shifts")
     } finally {
@@ -62,7 +69,7 @@ export default function ShiftPage() {
 
   React.useEffect(() => {
     fetchShifts()
-  }, [])
+  }, [page, limit])
 
   const handleAdd = () => {
     setEditingShift(null)
@@ -106,19 +113,20 @@ export default function ShiftPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="px-4 lg:px-6 flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable
-          key={shifts.length}
-          data={shifts}
-          columns={columns}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      <DataTable
+        data={shifts}
+        columns={columns}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

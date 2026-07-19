@@ -23,32 +23,41 @@ func (r *SeparationRepository) FindByID(id string) (*models.Separation, error) {
 	return &sep, err
 }
 
-func (r *SeparationRepository) List() ([]models.Separation, error) {
+func (r *SeparationRepository) List(page, limit int) ([]models.Separation, int64, error) {
+	base := r.db.Model(&models.Separation{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var seps []models.Separation
-	err := r.db.Preload("Department").Where("deleted_at IS NULL").Order("created_at DESC").Find(&seps).Error
-	return seps, err
+	err := base.Preload("Department").Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&seps).Error
+	return seps, total, err
 }
 
-func (r *SeparationRepository) ListFiltered(employee, employeeID, departmentID, sepType, status string) ([]models.Separation, error) {
-	query := r.db.Preload("Department").Where("deleted_at IS NULL").Order("created_at DESC")
+func (r *SeparationRepository) ListFiltered(employee, employeeID, departmentID, sepType, status string, page, limit int) ([]models.Separation, int64, error) {
+	base := r.db.Model(&models.Separation{}).Where("deleted_at IS NULL").Order("created_at DESC")
 	if employee != "" {
-		query = query.Where("employee ILIKE ?", "%"+employee+"%")
+		base = base.Where("employee ILIKE ?", "%"+employee+"%")
 	}
 	if employeeID != "" {
-		query = query.Where("employee_id ILIKE ?", "%"+employeeID+"%")
+		base = base.Where("employee_id ILIKE ?", "%"+employeeID+"%")
 	}
 	if departmentID != "" {
-		query = query.Where("department_id = ?", departmentID)
+		base = base.Where("department_id = ?", departmentID)
 	}
 	if sepType != "" {
-		query = query.Where("type = ?", sepType)
+		base = base.Where("type = ?", sepType)
 	}
 	if status != "" {
-		query = query.Where("status = ?", status)
+		base = base.Where("status = ?", status)
+	}
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
 	}
 	var seps []models.Separation
-	err := query.Find(&seps).Error
-	return seps, err
+	err := base.Preload("Department").Offset((page - 1) * limit).Limit(limit).Find(&seps).Error
+	return seps, total, err
 }
 
 func (r *SeparationRepository) Update(sep *models.Separation) error {

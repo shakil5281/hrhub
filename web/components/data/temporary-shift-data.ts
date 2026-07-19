@@ -27,11 +27,15 @@ export const tempShiftSchema = z.object({
 
 export type TempShiftFormData = z.infer<typeof tempShiftSchema>
 
-export async function getTempShifts(companyId?: string): Promise<TempShift[]> {
-  const params: Record<string, string> = {}
-  if (companyId) params.company_id = companyId
-  const res = await temporaryShiftApi.list(params)
-  return res.data as TempShift[]
+export async function getTempShifts(companyId?: string, params?: Record<string, string>): Promise<{ data: TempShift[]; total: number; total_pages: number }> {
+  const reqParams: Record<string, string> = { ...params }
+  if (companyId) reqParams.company_id = companyId
+  const res = await temporaryShiftApi.list(reqParams)
+  return {
+    data: (res.data?.data || res.data || []) as TempShift[],
+    total: res.data?.total || 0,
+    total_pages: res.data?.total_pages || 0,
+  }
 }
 
 export async function createTempShift(data: Record<string, unknown>): Promise<boolean> {

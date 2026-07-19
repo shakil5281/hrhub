@@ -24,14 +24,28 @@ export function CompanyTable() {
   const [createOpen, setCreateOpen] = React.useState(false)
   const [currentPage, setCurrentPage] = React.useState(1)
   const [sortConfig, setSortConfig] = React.useState<{ key: keyof Company; direction: "asc" | "desc" } | null>(null)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
   const pageSize = 10
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (p?: number) => {
     setLoading(true)
     setError("")
     try {
-      const { data } = await companyApi.list()
-      setCompanies(Array.isArray(data) ? data : [])
+      const { data: res } = await companyApi.list({ page: String(p ?? currentPage), limit: String(pageSize) })
+      let list = Array.isArray(res.data) ? res.data : []
+      if (sortConfig) {
+        list = [...list].sort((a: any, b: any) => {
+          const aVal = a[sortConfig.key] ?? ""
+          const bVal = b[sortConfig.key] ?? ""
+          if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1
+          if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1
+          return 0
+        })
+      }
+      setCompanies(list)
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       setError("Failed to load companies")
     } finally {
@@ -43,22 +57,13 @@ export function CompanyTable() {
     fetchCompanies()
   }, [])
 
-  let sortedCompanies = [...companies]
-  if (sortConfig) {
-    sortedCompanies.sort((a, b) => {
-      const aVal = a[sortConfig.key] ?? ""
-      const bVal = b[sortConfig.key] ?? ""
-      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1
-      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1
-      return 0
-    })
-  }
+  React.useEffect(() => {
+    fetchCompanies()
+  }, [currentPage])
 
-  const totalPages = Math.ceil(sortedCompanies.length / pageSize)
-  const paginatedCompanies = sortedCompanies.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+  React.useEffect(() => {
+    fetchCompanies(1)
+  }, [sortConfig])
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
@@ -67,6 +72,7 @@ export function CompanyTable() {
       setCompanies((prev) => prev.filter((c) => c.id !== id))
       setDeleteId(null)
       toast.success("Company deleted successfully")
+      fetchCompanies()
     } catch {
       toast.error("Failed to delete company")
     } finally {
@@ -79,6 +85,7 @@ export function CompanyTable() {
       key,
       direction: prev?.key === key && prev.direction === "asc" ? "desc" : "asc",
     }))
+    setCurrentPage(1)
   }
 
   return (
@@ -117,7 +124,7 @@ export function CompanyTable() {
 
       <Card>
         <CardHeader className="pb-0">
-          <CardTitle className="text-lg">All Companies ({companies.length})</CardTitle>
+          <CardTitle className="text-lg">All Companies ({total})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -150,7 +157,7 @@ export function CompanyTable() {
                       <p className="text-sm text-muted-foreground mt-2">Loading companies...</p>
                     </TableCell>
                   </TableRow>
-                ) : paginatedCompanies.length === 0 ? (
+                ) : companies.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                       <Building2 className="mx-auto h-12 w-12 text-muted-foreground/50 mb-2" />
@@ -159,7 +166,7 @@ export function CompanyTable() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedCompanies.map((company) => (
+                  companies.map((company) => (
                     <TableRow key={company.id} className="hover:bg-muted/50 transition-colors border-t border-border/50">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
@@ -247,7 +254,7 @@ export function CompanyTable() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t">
               <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, sortedCompanies.length)} of {sortedCompanies.length} companies
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, total)} of {total} companies
               </p>
               <div className="flex items-center gap-2">
                 <Button

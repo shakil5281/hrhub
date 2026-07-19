@@ -55,10 +55,10 @@ func (h *EmployeeHandler) ExportExcel(c *gin.Context) {
 		"Employee ID", "Name (English)", "Name (Bangla)", "Designation", "Department",
 		"Section", "Grade", "Line", "Group", "Floor", "Punch No",
 		"Phone", "Email", "NID", "Gender", "Blood Group",
-		"Marital Status", "Nationality", "Date of Birth", "Joining Date",
+		"Marital Status", "Religion", "Nationality", "Date of Birth", "Joining Date",
 		"Present Address", "Permanent Address", "Father's Name", "Mother's Name",
 		"Spouse Name", "Emergency Contact", "Emergency Phone",
-		"Gross Salary",
+		"Employee Type", "Gross Salary",
 		"Account Type", "Account Number", "Status",
 	}
 
@@ -100,28 +100,30 @@ func (h *EmployeeHandler) ExportExcel(c *gin.Context) {
 		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), emp.Gender)
 		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), emp.BloodGroup)
 		f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), emp.MaritalStatus)
-		f.SetCellValue(sheet, fmt.Sprintf("R%d", row), emp.Nationality)
+		f.SetCellValue(sheet, fmt.Sprintf("R%d", row), emp.Religion)
+		f.SetCellValue(sheet, fmt.Sprintf("S%d", row), emp.Nationality)
 		if emp.DateOfBirth != "" {
-			f.SetCellValue(sheet, fmt.Sprintf("S%d", row), emp.DateOfBirth)
+			f.SetCellValue(sheet, fmt.Sprintf("T%d", row), emp.DateOfBirth)
 		}
-		f.SetCellStyle(sheet, fmt.Sprintf("T%d", row), fmt.Sprintf("T%d", row), styleDate)
-		f.SetCellValue(sheet, fmt.Sprintf("T%d", row), emp.JoiningDate.Format("2006-01-02"))
-		f.SetCellValue(sheet, fmt.Sprintf("U%d", row), emp.PresentAddress)
-		f.SetCellValue(sheet, fmt.Sprintf("V%d", row), emp.PermanentAddress)
-		f.SetCellValue(sheet, fmt.Sprintf("W%d", row), emp.FatherName)
-		f.SetCellValue(sheet, fmt.Sprintf("X%d", row), emp.MotherName)
-		f.SetCellValue(sheet, fmt.Sprintf("Y%d", row), emp.SpouseName)
-		f.SetCellValue(sheet, fmt.Sprintf("Z%d", row), emp.EmergencyContact)
-		f.SetCellValue(sheet, fmt.Sprintf("AA%d", row), emp.EmergencyPhone)
-		f.SetCellStyle(sheet, fmt.Sprintf("AB%d", row), fmt.Sprintf("AB%d", row), styleSalary)
-		f.SetCellValue(sheet, fmt.Sprintf("AB%d", row), emp.GrossSalary)
-		f.SetCellValue(sheet, fmt.Sprintf("AC%d", row), emp.AccountType)
-		f.SetCellValue(sheet, fmt.Sprintf("AD%d", row), emp.AccountNumber)
+		f.SetCellStyle(sheet, fmt.Sprintf("U%d", row), fmt.Sprintf("U%d", row), styleDate)
+		f.SetCellValue(sheet, fmt.Sprintf("U%d", row), emp.JoiningDate.Format("2006-01-02"))
+		f.SetCellValue(sheet, fmt.Sprintf("V%d", row), emp.PresentAddress)
+		f.SetCellValue(sheet, fmt.Sprintf("W%d", row), emp.PermanentAddress)
+		f.SetCellValue(sheet, fmt.Sprintf("X%d", row), emp.FatherName)
+		f.SetCellValue(sheet, fmt.Sprintf("Y%d", row), emp.MotherName)
+		f.SetCellValue(sheet, fmt.Sprintf("Z%d", row), emp.SpouseName)
+		f.SetCellValue(sheet, fmt.Sprintf("AA%d", row), emp.EmergencyContact)
+		f.SetCellValue(sheet, fmt.Sprintf("AB%d", row), emp.EmergencyPhone)
+		f.SetCellValue(sheet, fmt.Sprintf("AC%d", row), emp.EmployeeType)
+		f.SetCellStyle(sheet, fmt.Sprintf("AD%d", row), fmt.Sprintf("AD%d", row), styleSalary)
+		f.SetCellValue(sheet, fmt.Sprintf("AD%d", row), emp.GrossSalary)
+		f.SetCellValue(sheet, fmt.Sprintf("AE%d", row), emp.AccountType)
+		f.SetCellValue(sheet, fmt.Sprintf("AF%d", row), emp.AccountNumber)
 		status := "Active"
 		if emp.Status == "inactive" {
 			status = "Inactive"
 		}
-		f.SetCellValue(sheet, fmt.Sprintf("AE%d", row), status)
+		f.SetCellValue(sheet, fmt.Sprintf("AG%d", row), status)
 	}
 
 	f.SetColWidth(sheet, "B", "B", 25)

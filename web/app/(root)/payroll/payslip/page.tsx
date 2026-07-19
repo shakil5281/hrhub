@@ -53,20 +53,12 @@ export default function PaySlipPage() {
   const [searched, setSearched] = React.useState(false)
 
   React.useEffect(() => {
-    companyApi.list().then(({data})=>{
-      if (Array.isArray(data) && data.length>0) {
-        setCompanies(data)
-        setCompanyId(data[0].id)
-      }
-    })
+    companyApi.list({ limit: "100" }).then(({data})=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); if (list.length>0) { setCompanies(list); setCompanyId(list[0].id) } })
   }, [])
 
   React.useEffect(() => {
     if (!companyId) return
-    employeeApi.list({ company_id: companyId }).then(({data}:any)=>{
-      const list = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])
-      setEmployees(list)
-    })
+    employeeApi.list({ company_id: companyId, limit: "100" }).then(({data}:any)=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); setEmployees(list) })
   }, [companyId])
 
   const handleSearch = async () => {

@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shakil5281/hrhub-api/internal/database"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
+	"gorm.io/gorm"
 )
 
 type LeaveHandler struct {
@@ -70,18 +73,21 @@ type RejectLeaveRequest struct {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        company_id query string false "Filter by company"
-// @Success      200  {array}   map[string]interface{}
+// @Param        page       query int    false "Page number (default: 1)"
+// @Param        limit      query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /leave-types [get]
 func (h *LeaveHandler) ListLeaveTypes(c *gin.Context) {
 	companyID := c.Query("company_id")
-	list, err := h.leaveRepo.ListLeaveTypes(companyID)
+	p := utils.ParsePagination(c)
+	list, total, err := h.leaveRepo.ListLeaveTypes(companyID, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 // GetLeaveType godoc
@@ -227,7 +233,9 @@ func (h *LeaveHandler) DeleteLeaveType(c *gin.Context) {
 // @Param        status        query string false "Filter by status (pending|approved|rejected|cancelled)"
 // @Param        from_date     query string false "Start date (YYYY-MM-DD)"
 // @Param        to_date       query string false "End date (YYYY-MM-DD)"
-// @Success      200  {array}   map[string]interface{}
+// @Param        page          query int    false "Page number (default: 1)"
+// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /leaves [get]
@@ -239,12 +247,13 @@ func (h *LeaveHandler) ListLeaves(c *gin.Context) {
 	fromDate := c.Query("from_date")
 	toDate := c.Query("to_date")
 
-	list, err := h.leaveRepo.ListLeaves(companyID, departmentID, employeeID, status, fromDate, toDate)
+	p := utils.ParsePagination(c)
+	list, total, err := h.leaveRepo.ListLeaves(companyID, departmentID, employeeID, status, fromDate, toDate, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(list, total, p))
 }
 
 // GetLeave godoc
@@ -327,15 +336,23 @@ func (h *LeaveHandler) ApplyLeave(c *gin.Context) {
 		CreatedBy:   &userID,
 	}
 
-	if err := h.leaveRepo.CreateLeave(l); err != nil {
+	// Wrap leave creation + allocation update in a transaction
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		leaveTx := h.leaveRepo.WithTx(tx)
+		if err := leaveTx.CreateLeave(l); err != nil {
+			return err
+		}
+		if alloc != nil {
+			alloc.PendingDays += totalDays
+			if err := leaveTx.UpsertAllocation(alloc); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	// Update allocation pending
-	if err == nil && alloc != nil {
-		alloc.PendingDays += totalDays
-		h.leaveRepo.UpsertAllocation(alloc)
 	}
 
 	c.JSON(http.StatusCreated, l)
@@ -455,22 +472,36 @@ func (h *LeaveHandler) ApproveLeave(c *gin.Context) {
 	l.ApprovedBy = &userID
 	l.ApprovedAt = &now
 
-	if err := h.leaveRepo.UpdateLeave(l); err != nil {
+	// Wrap leave approval + allocation + attendance update in a transaction
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		leaveTx := h.leaveRepo.WithTx(tx)
+		attTx := h.attendanceRepo.WithTx(tx)
+
+		if err := leaveTx.UpdateLeave(l); err != nil {
+			return err
+		}
+
+		// Move pending → used in allocation
+		year := time.Now().Year()
+		alloc, err := leaveTx.FindAllocation(l.EmployeeID, l.LeaveTypeID, year)
+		if err == nil && alloc != nil {
+			alloc.PendingDays -= l.TotalDays
+			alloc.UsedDays += l.TotalDays
+			if err := leaveTx.UpsertAllocation(alloc); err != nil {
+				return err
+			}
+		}
+
+		// Mark attendance as on_leave for the leave period
+		if err := attTx.UpdateStatusByEmployeeAndDateRange(l.EmployeeID, l.FromDate, l.ToDate, "on_leave"); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Move pending → used in allocation
-	year := time.Now().Year()
-	alloc, err := h.leaveRepo.FindAllocation(l.EmployeeID, l.LeaveTypeID, year)
-	if err == nil && alloc != nil {
-		alloc.PendingDays -= l.TotalDays
-		alloc.UsedDays += l.TotalDays
-		h.leaveRepo.UpsertAllocation(alloc)
-	}
-
-	// Mark attendance as on_leave for the leave period
-	_ = h.attendanceRepo.UpdateStatusByEmployeeAndDateRange(l.EmployeeID, l.FromDate, l.ToDate, "on_leave")
 
 	c.JSON(http.StatusOK, l)
 }
@@ -511,20 +542,30 @@ func (h *LeaveHandler) RejectLeave(c *gin.Context) {
 	l.ApprovedBy = &userID
 	l.RejectionReason = req.RejectionReason
 
-	if err := h.leaveRepo.UpdateLeave(l); err != nil {
+	// Wrap leave rejection + allocation update in a transaction
+	err = database.DB.Transaction(func(tx *gorm.DB) error {
+		leaveTx := h.leaveRepo.WithTx(tx)
+		if err := leaveTx.UpdateLeave(l); err != nil {
+			return err
+		}
+
+		// Decrement pending in allocation
+		year := time.Now().Year()
+		alloc, err := leaveTx.FindAllocation(l.EmployeeID, l.LeaveTypeID, year)
+		if err == nil && alloc != nil {
+			alloc.PendingDays -= l.TotalDays
+			if alloc.PendingDays < 0 {
+				alloc.PendingDays = 0
+			}
+			if err := leaveTx.UpsertAllocation(alloc); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	// Decrement pending in allocation
-	year := time.Now().Year()
-	alloc, err := h.leaveRepo.FindAllocation(l.EmployeeID, l.LeaveTypeID, year)
-	if err == nil && alloc != nil {
-		alloc.PendingDays -= l.TotalDays
-		if alloc.PendingDays < 0 {
-			alloc.PendingDays = 0
-		}
-		h.leaveRepo.UpsertAllocation(alloc)
 	}
 
 	c.JSON(http.StatusOK, l)
@@ -541,7 +582,9 @@ func (h *LeaveHandler) RejectLeave(c *gin.Context) {
 // @Produce      json
 // @Param        employee_id query string false "Filter by employee"
 // @Param        year        query int    false "Year (default: current)"
-// @Success      200  {array}   map[string]interface{}
+// @Param        page        query int    false "Page number (default: 1)"
+// @Param        limit       query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /leave-balance [get]
 func (h *LeaveHandler) ListLeaveBalance(c *gin.Context) {
@@ -552,7 +595,8 @@ func (h *LeaveHandler) ListLeaveBalance(c *gin.Context) {
 		year = time.Now().Year()
 	}
 
-	list, err := h.leaveRepo.ListAllocations(employeeID, year)
+	p := utils.ParsePagination(c)
+	list, total, err := h.leaveRepo.ListAllocations(employeeID, year, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -582,7 +626,7 @@ func (h *LeaveHandler) ListLeaveBalance(c *gin.Context) {
 			Remaining:   a.TotalDays - a.UsedDays - a.PendingDays,
 		})
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(result, total, p))
 }
 
 // --- Monthly Report ---

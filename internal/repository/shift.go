@@ -23,10 +23,15 @@ func (r *ShiftRepository) FindByID(id string) (*models.Shift, error) {
 	return &shift, err
 }
 
-func (r *ShiftRepository) List() ([]models.Shift, error) {
+func (r *ShiftRepository) List(page, limit int) ([]models.Shift, int64, error) {
+	base := r.db.Model(&models.Shift{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var shifts []models.Shift
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&shifts).Error
-	return shifts, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&shifts).Error
+	return shifts, total, err
 }
 
 func (r *ShiftRepository) Update(shift *models.Shift) error {

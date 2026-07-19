@@ -93,6 +93,7 @@ export const collectDataNav = [
 export const administratorNav = [
   { title: "User Management", url: "/admin/users", icon: UserCogIcon },
   { title: "Roles & Permissions", url: "/admin/roles", icon: ShieldCheckIcon },
+  { title: "Database", url: "/admin/database", icon: DatabaseIcon },
   { title: "System Settings", url: "/admin/settings", icon: Settings2Icon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 

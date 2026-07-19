@@ -4,7 +4,7 @@ import { Settings2Icon, CircleHelpIcon, SearchIcon } from "lucide-react"
 export const navSecondary = [
   {
     title: "Settings",
-    url: "/settings",
+    url: "/admin/settings",
     icon: Settings2Icon,
   },
   {

@@ -15,6 +15,11 @@ func NewLeaveRepository(db *gorm.DB) *LeaveRepository {
 	return &LeaveRepository{db: db}
 }
 
+// WithTx returns a new LeaveRepository using the provided transaction
+func (r *LeaveRepository) WithTx(tx *gorm.DB) *LeaveRepository {
+	return &LeaveRepository{db: tx}
+}
+
 // --- Leave Types ---
 
 func (r *LeaveRepository) CreateLeaveType(lt *models.LeaveType) error {
@@ -27,14 +32,18 @@ func (r *LeaveRepository) FindLeaveTypeByID(id string) (*models.LeaveType, error
 	return &lt, err
 }
 
-func (r *LeaveRepository) ListLeaveTypes(companyID string) ([]models.LeaveType, error) {
-	var list []models.LeaveType
-	q := r.db.Where("deleted_at IS NULL")
+func (r *LeaveRepository) ListLeaveTypes(companyID string, page, limit int) ([]models.LeaveType, int64, error) {
+	base := r.db.Model(&models.LeaveType{}).Where("deleted_at IS NULL")
 	if companyID != "" {
-		q = q.Where("company_id = ?", companyID)
+		base = base.Where("company_id = ?", companyID)
 	}
-	err := q.Order("name ASC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.LeaveType
+	err := base.Order("name ASC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *LeaveRepository) UpdateLeaveType(lt *models.LeaveType) error {
@@ -58,30 +67,33 @@ func (r *LeaveRepository) FindLeaveByID(id string) (*models.Leave, error) {
 	return &l, err
 }
 
-func (r *LeaveRepository) ListLeaves(companyID, departmentID, employeeID, status, fromDate, toDate string) ([]models.Leave, error) {
-	var list []models.Leave
-	q := r.db.Preload("Employee").Preload("LeaveType").
-		Where("leaves.deleted_at IS NULL")
+func (r *LeaveRepository) ListLeaves(companyID, departmentID, employeeID, status, fromDate, toDate string, page, limit int) ([]models.Leave, int64, error) {
+	base := r.db.Model(&models.Leave{}).Where("leaves.deleted_at IS NULL")
 	if companyID != "" {
-		q = q.Where("leaves.company_id = ?", companyID)
+		base = base.Where("leaves.company_id = ?", companyID)
 	}
 	if departmentID != "" {
-		q = q.Where("leaves.employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+		base = base.Where("leaves.employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
 	}
 	if employeeID != "" {
-		q = q.Where("leaves.employee_id = ?", employeeID)
+		base = base.Where("leaves.employee_id = ?", employeeID)
 	}
 	if status != "" {
-		q = q.Where("leaves.status = ?", status)
+		base = base.Where("leaves.status = ?", status)
 	}
 	if fromDate != "" {
-		q = q.Where("leaves.from_date >= ?", fromDate)
+		base = base.Where("leaves.from_date >= ?", fromDate)
 	}
 	if toDate != "" {
-		q = q.Where("leaves.to_date <= ?", toDate)
+		base = base.Where("leaves.to_date <= ?", toDate)
 	}
-	err := q.Order("leaves.created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Leave
+	err := base.Preload("Employee").Preload("LeaveType").Order("leaves.created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *LeaveRepository) FindApprovedByEmployeeAndDate(employeeID, date string) (*models.Leave, error) {
@@ -125,17 +137,21 @@ func (r *LeaveRepository) FindAllocation(employeeID, leaveTypeID string, year in
 	return &a, err
 }
 
-func (r *LeaveRepository) ListAllocations(employeeID string, year int) ([]models.LeaveAllocation, error) {
-	var list []models.LeaveAllocation
-	q := r.db.Preload("LeaveType").Where("deleted_at IS NULL")
+func (r *LeaveRepository) ListAllocations(employeeID string, year, page, limit int) ([]models.LeaveAllocation, int64, error) {
+	base := r.db.Model(&models.LeaveAllocation{}).Where("deleted_at IS NULL")
 	if employeeID != "" {
-		q = q.Where("employee_id = ?", employeeID)
+		base = base.Where("employee_id = ?", employeeID)
 	}
 	if year > 0 {
-		q = q.Where("year = ?", year)
+		base = base.Where("year = ?", year)
 	}
-	err := q.Order("created_at ASC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.LeaveAllocation
+	err := base.Preload("LeaveType").Order("created_at ASC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *LeaveRepository) ListAllocationsByEmployees(employeeIDs []string, year int) ([]models.LeaveAllocation, error) {

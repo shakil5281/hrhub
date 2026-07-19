@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type GroupHandler struct {
@@ -31,17 +32,20 @@ type UpdateGroupRequest struct {
 // @Tags         Groups
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {array}   map[string]interface{}
+// @Param        page   query int    false "Page number (default: 1)"
+// @Param        limit  query int    false "Page size (default: 20, max: 100)"
+// @Success      200  {object}  utils.PaginatedResponse
 // @Failure      401  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /groups [get]
 func (h *GroupHandler) List(c *gin.Context) {
-	groups, err := h.groupRepo.List()
+	p := utils.ParsePagination(c)
+	groups, total, err := h.groupRepo.List(p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, groups)
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(groups, total, p))
 }
 
 // GetGroup godoc

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardListIcon, PlusIcon, Loader2 } from "lucide-react"
+import { ClipboardListIcon, PlusIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -50,37 +50,53 @@ export default function RequirementsPage() {
   const [filters, setFilters] = React.useState<Record<string, string>>({})
   const [submitting, setSubmitting] = React.useState(false)
 
-  const fetchData = React.useCallback(async (f?: Record<string, string>) => {
+  const [page, setPage] = React.useState(1)
+  const [limit, setLimit] = React.useState(20)
+  const [total, setTotal] = React.useState(0)
+  const [totalPages, setTotalPages] = React.useState(0)
+
+  const fetchData = React.useCallback(async (f?: Record<string, string>, p?: number, l?: number) => {
     setLoading(true)
     try {
-      const [reqRes, deptRes] = await Promise.all([
-        requirementApi.list(f),
-        departmentApi.list(),
-      ])
-      setData(Array.isArray(reqRes.data) ? reqRes.data : [])
-      setDepartments(Array.isArray(deptRes.data) ? deptRes.data : [])
+      const params = { ...(f || {}), page: String(p ?? page), limit: String(l ?? limit) }
+      const { data: res } = await requirementApi.list(params)
+      setData(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total ?? 0)
+      setTotalPages(res.total_pages ?? 0)
     } catch {
       toast.error("Failed to load requirements")
     } finally {
       setLoading(false)
     }
+  }, [page, limit])
+
+  React.useEffect(() => {
+    departmentApi.list({ limit: "100" }).then((res) => {
+      setDepartments(Array.isArray(res.data?.data) ? res.data.data : [])
+    }).catch(() => {})
+    fetchData()
   }, [])
 
-  React.useEffect(() => { fetchData() }, [fetchData])
+  React.useEffect(() => {
+    fetchData(filters)
+  }, [page, limit])
 
   const handleApply = async () => {
+    setPage(1)
     const active: Record<string, string> = {}
     for (const [k, v] of Object.entries(filters)) {
       if (v) active[k] = v
     }
     setSubmitting(true)
-    await fetchData(active)
+    await fetchData(active, 1)
     setSubmitting(false)
   }
 
   const handleReset = () => {
+    setPage(1)
+    setLimit(20)
     setFilters({})
-    fetchData()
+    fetchData({}, 1, 20)
   }
 
   const handleChange = (key: string, value: string) => {
@@ -92,7 +108,7 @@ export default function RequirementsPage() {
     try {
       await requirementApi.delete(req.id)
       toast.success("Requirement deleted")
-      fetchData()
+      fetchData(filters)
     } catch {
       toast.error("Failed to delete requirement")
     }
@@ -104,10 +120,6 @@ export default function RequirementsPage() {
     { key: "status", label: "Status", type: "select", options: statusOptions.map((o) => ({ value: o.value, label: o.label })) },
     { key: "priority", label: "Priority", type: "select", options: priorityOptions.map((o) => ({ value: o.value, label: o.label })) },
   ]
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -136,7 +148,20 @@ export default function RequirementsPage() {
         />
       </div>
 
-      <DataTable data={data} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <DataTable
+        data={data}
+        columns={columns}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        serverSide={true}
+        page={page}
+        pageSize={limit}
+        pageCount={totalPages}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        loading={loading}
+      />
     </div>
   )
 }

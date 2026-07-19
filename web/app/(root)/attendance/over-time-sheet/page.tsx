@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { ClockIcon, Loader2 } from "lucide-react"
+import { ClockIcon } from "lucide-react"
 import { format } from "date-fns"
+import { Badge } from "@/components/ui/badge"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
@@ -17,7 +18,8 @@ interface OvertimeRecord {
   date: string
   check_in: string
   check_out: string
-  total_hours: string
+  over_time: string
+  over_time_status: boolean
 }
 
 interface Company { id: string; company_name_en: string }
@@ -35,7 +37,16 @@ const columns: ColumnDef<OvertimeRecord>[] = [
   { accessorKey: "date", header: "Date" },
   { accessorKey: "check_in", header: "Check In" },
   { accessorKey: "check_out", header: "Check Out" },
-  { accessorKey: "total_hours", header: "Total Hours" },
+  { accessorKey: "over_time", header: "Over Time" },
+  {
+    accessorKey: "over_time_status",
+    header: "OT Status",
+    cell: ({ row }) => (
+      <Badge variant={row.original.over_time_status ? "default" : "secondary"}>
+        {row.original.over_time_status ? "Enabled" : "Disabled"}
+      </Badge>
+    ),
+  },
 ]
 
 const today = new Date().toISOString().split("T")[0]
@@ -57,21 +68,21 @@ export default function OverTimeSheetPage() {
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      departmentApi.list(),
-      sectionApi.list(),
-      designationApi.list(),
-      lineApi.list(),
-      groupApi.list(),
-      shiftApi.list(),
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(undefined, { limit: "100" }),
+      designationApi.list(undefined, { limit: "100" }),
+      lineApi.list(undefined, { limit: "100" }),
+      groupApi.list({ limit: "100" }),
+      shiftApi.list({ limit: "100" }),
     ]).then(([cRes, dRes, secRes, desRes, lRes, gRes, sRes]) => {
-      setCompanies(cRes.data || [])
-      setDepartments(dRes.data || [])
-      setSections(secRes.data || [])
-      setDesignations(desRes.data || [])
-      setLines(lRes.data || [])
-      setGroups(gRes.data || [])
-      setShifts(sRes.data || [])
+      setCompanies(cRes.data?.data || [])
+      setDepartments(dRes.data?.data || [])
+      setSections(secRes.data?.data || [])
+      setDesignations(desRes.data?.data || [])
+      setLines(lRes.data?.data || [])
+      setGroups(gRes.data?.data || [])
+      setShifts(sRes.data?.data || [])
       fetchData({ date: today })
     }).catch(() => {})
   }, [])
@@ -176,15 +187,7 @@ export default function OverTimeSheetPage() {
         />
       </div>
 
-      {loading ? (
-        <div className="px-4 lg:px-6">
-          <div className="rounded-lg border bg-card p-12 flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        </div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable data={data} columns={columns} loading={loading} />
     </div>
   )
 }

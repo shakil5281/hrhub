@@ -19,10 +19,15 @@ func (r *DepartmentRepository) FindByID(id string) (*models.Department, error) {
 	return &m, err
 }
 
-func (r *DepartmentRepository) List() ([]models.Department, error) {
+func (r *DepartmentRepository) List(page, limit int) ([]models.Department, int64, error) {
+	base := r.db.Model(&models.Department{}).Where("deleted_at IS NULL")
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var list []models.Department
-	err := r.db.Where("deleted_at IS NULL").Order("created_at DESC").Find(&list).Error
-	return list, err
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *DepartmentRepository) Update(m *models.Department) error { return r.db.Save(m).Error }
@@ -45,14 +50,18 @@ func (r *SectionRepository) FindByID(id string) (*models.Section, error) {
 	return &m, err
 }
 
-func (r *SectionRepository) List(departmentID string) ([]models.Section, error) {
-	var list []models.Section
-	q := r.db.Where("deleted_at IS NULL")
+func (r *SectionRepository) List(departmentID string, page, limit int) ([]models.Section, int64, error) {
+	base := r.db.Model(&models.Section{}).Where("deleted_at IS NULL")
 	if departmentID != "" {
-		q = q.Where("department_id = ?", departmentID)
+		base = base.Where("department_id = ?", departmentID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Section
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *SectionRepository) Update(m *models.Section) error { return r.db.Save(m).Error }
@@ -75,14 +84,18 @@ func (r *DesignationRepository) FindByID(id string) (*models.Designation, error)
 	return &m, err
 }
 
-func (r *DesignationRepository) List(sectionID string) ([]models.Designation, error) {
-	var list []models.Designation
-	q := r.db.Where("deleted_at IS NULL")
+func (r *DesignationRepository) List(sectionID string, page, limit int) ([]models.Designation, int64, error) {
+	base := r.db.Model(&models.Designation{}).Where("deleted_at IS NULL")
 	if sectionID != "" {
-		q = q.Where("section_id = ?", sectionID)
+		base = base.Where("section_id = ?", sectionID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Designation
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *DesignationRepository) Update(m *models.Designation) error { return r.db.Save(m).Error }
@@ -105,14 +118,18 @@ func (r *LineRepository) FindByID(id string) (*models.Line, error) {
 	return &m, err
 }
 
-func (r *LineRepository) List(sectionID string) ([]models.Line, error) {
-	var list []models.Line
-	q := r.db.Where("deleted_at IS NULL")
+func (r *LineRepository) List(sectionID string, page, limit int) ([]models.Line, int64, error) {
+	base := r.db.Model(&models.Line{}).Where("deleted_at IS NULL")
 	if sectionID != "" {
-		q = q.Where("section_id = ?", sectionID)
+		base = base.Where("section_id = ?", sectionID)
 	}
-	err := q.Order("created_at DESC").Find(&list).Error
-	return list, err
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.Line
+	err := base.Order("created_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *LineRepository) Update(m *models.Line) error { return r.db.Save(m).Error }

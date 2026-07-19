@@ -13,6 +13,7 @@ export interface Employee {
   gender: string
   blood_group: string
   marital_status: string
+  religion: string
   nationality: string
   nid: string
   phone: string
@@ -28,11 +29,11 @@ export interface Employee {
   company_id: string
   employee_id: string
   punch_number: string
+  employee_type: string
   grade: string
   joining_date: string
   shift_id: string | null
   department_id: string | null
-  branch_id: string | null
   reports_to: string | null
   section_id: string | null
   designation_id: string | null
@@ -46,7 +47,6 @@ export interface Employee {
   line_ref?: { id: string; name: string }
   group_ref?: { id: string; name: string }
   floor_ref?: { id: string; name: string }
-  branch?: { id: string; name: string }
   shift?: { id: string; name: string }
   // Address (present)
   present_division_id: string | null
@@ -71,6 +71,7 @@ export interface Employee {
   account_number: string
   // Status & Files
   status: "active" | "inactive"
+  over_time_status: boolean
   signature_url: string
   image_url: string
 }
@@ -85,6 +86,7 @@ export const employeeSchema = z.object({
   gender: z.string().optional(),
   blood_group: z.string().optional(),
   marital_status: z.string().optional(),
+  religion: z.string().optional(),
   nationality: z.string().optional(),
   nid: z.string().optional(),
   phone: z.string().optional(),
@@ -99,12 +101,12 @@ export const employeeSchema = z.object({
   // Office
   company_id: z.string().min(1, "Company is required"),
   employee_id: z.string().min(1, "Employee ID is required"),
-  punch_number: z.string().optional(),
+  punch_number: z.string().min(1, "Punch number is required"),
+  employee_type: z.string().optional(),
   grade: z.string().optional(),
   joining_date: z.string().min(1, "Joining date is required"),
   shift_id: z.string().optional().nullable(),
   department_id: z.string().optional().nullable(),
-  branch_id: z.string().optional().nullable(),
   reports_to: z.string().optional().nullable(),
   section_id: z.string().optional().nullable(),
   designation_id: z.string().optional().nullable(),
@@ -134,6 +136,7 @@ export const employeeSchema = z.object({
   account_number: z.string().optional(),
   // Status & Files
   status: z.enum(["active", "inactive"]).optional(),
+  over_time_status: z.boolean().optional(),
   image_url: z.string().optional(),
   signature_url: z.string().optional(),
 })
@@ -163,4 +166,19 @@ export const maritalStatusOptions = [
 export const statusOptionsEmployee = [
   { value: "active" as const, label: "Active" },
   { value: "inactive" as const, label: "Inactive" },
+]
+
+export const religionOptions = [
+  { value: "Islam", label: "Islam" },
+  { value: "Hinduism", label: "Hinduism" },
+  { value: "Christianity", label: "Christianity" },
+  { value: "Buddhism", label: "Buddhism" },
+  { value: "Others", label: "Others" },
+]
+
+export const employeeTypeOptions = [
+  { value: "Regular", label: "Regular" },
+  { value: "Lefty", label: "Lefty" },
+  { value: "Close", label: "Close" },
+  { value: "Resign", label: "Resign" },
 ]

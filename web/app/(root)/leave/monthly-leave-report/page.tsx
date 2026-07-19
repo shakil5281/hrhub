@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChartColumnIcon, Loader2 } from "lucide-react"
+import { ChartColumnIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { leaveReportApi, companyApi, departmentApi } from "@/lib/api"
@@ -74,11 +74,11 @@ export default function MonthlyLeaveReportPage() {
 
   React.useEffect(() => {
     Promise.all([
-      companyApi.list(),
-      departmentApi.list(),
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
     ]).then(([cRes, dRes]) => {
-      setCompanies(Array.isArray(cRes.data) ? cRes.data : [])
-      setDepartments(Array.isArray(dRes.data) ? dRes.data : [])
+      setCompanies(Array.isArray(cRes.data?.data) ? cRes.data.data : [])
+      setDepartments(Array.isArray(dRes.data?.data) ? dRes.data.data : [])
     }).catch(() => {})
     fetchData({ month: String(thisMonth), year: String(thisYear) })
   }, [])
@@ -108,11 +108,7 @@ export default function MonthlyLeaveReportPage() {
       <div className="px-4 lg:px-6">
         <FilterBar filters={filterDefs} values={filters} onChange={handleChange} onApply={handleApply} onReset={handleReset} submitting={loading} />
       </div>
-      {loading ? (
-        <div className="px-4 lg:px-6 flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      ) : (
-        <DataTable data={data} columns={columns} />
-      )}
+      <DataTable data={data} columns={columns} loading={loading} />
     </div>
   )
 }

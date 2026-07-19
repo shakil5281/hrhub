@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { dataLogApi, attendanceApi, companyApi } from "@/lib/api"
 import type { Company } from "@/components/data/company-data"
+import { isSuperAdmin } from "@/lib/auth"
 
 export default function DailyProcessPage() {
   const [processing, setProcessing] = React.useState(false)
@@ -31,8 +32,8 @@ export default function DailyProcessPage() {
 
   const fetchCompanies = async () => {
     try {
-      const { data } = await companyApi.list()
-      setCompanies(Array.isArray(data) ? data : [])
+      const { data } = await companyApi.list({ limit: "100" })
+      setCompanies(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []))
     } catch {
       // ignore
     }
@@ -102,29 +103,31 @@ export default function DailyProcessPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-bold">{todayCount}</p>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2Icon className="mr-2 h-4 w-4" />
-                    Delete All
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete all attendance records from the database.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAll} disabled={deleting}>
-                      {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {isSuperAdmin() && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2Icon className="mr-2 h-4 w-4" />
+                      Delete All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete all attendance records from the database.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteAll} disabled={deleting}>
+                        {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </CardContent>
         </Card>

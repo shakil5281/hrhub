@@ -31,14 +31,27 @@ func (r *SalaryRepository) FindByEmployeeMonth(employeeID string, month, year in
 	return &s, err
 }
 
-func (r *SalaryRepository) ListByMonth(companyID string, month, year int, departmentID string) ([]models.Salary, error) {
+func (r *SalaryRepository) ListByMonth(companyID string, month, year int, departmentID string, page, limit int) ([]models.Salary, int64, error) {
+	base := r.db.Model(&models.Salary{}).Where("company_id = ? AND month = ? AND year = ? AND deleted_at IS NULL", companyID, month, year)
+	if departmentID != "" {
+		base = base.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+	}
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	var salaries []models.Salary
+	err := base.Preload("Employee.Department").Preload("Employee.DesignationRef").Order("created_at ASC").Offset((page - 1) * limit).Limit(limit).Find(&salaries).Error
+	return salaries, total, err
+}
+
+func (r *SalaryRepository) ListAllByMonth(companyID string, month, year int, departmentID string) ([]models.Salary, error) {
 	query := r.db.Preload("Employee.Department").Preload("Employee.DesignationRef").
-		Where("company_id = ? AND month = ? AND year = ? AND deleted_at IS NULL",
-			companyID, month, year)
+		Where("company_id = ? AND month = ? AND year = ? AND deleted_at IS NULL", companyID, month, year)
 	if departmentID != "" {
 		query = query.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
 	}
+	var salaries []models.Salary
 	err := query.Order("created_at ASC").Find(&salaries).Error
 	return salaries, err
 }

@@ -94,7 +94,7 @@ export function SiteHeader() {
             </Badge>
           </Button>
 
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.push("/settings")}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.push("/admin/settings")}>
             <SettingsIcon className="h-4 w-4" />
           </Button>
 
@@ -134,7 +134,7 @@ export function SiteHeader() {
                   <UserIcon className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
                   <SettingsIcon className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>

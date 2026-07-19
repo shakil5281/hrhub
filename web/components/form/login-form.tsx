@@ -36,7 +36,11 @@ export function LoginForm({
 
       document.cookie = `auth_token=${data.access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
 
-      router.push("/")
+      if (data.user.force_password_change) {
+        router.push("/settings?force_change=true")
+      } else {
+        router.push("/")
+      }
       router.refresh()
     } catch (err: unknown) {
       const message =

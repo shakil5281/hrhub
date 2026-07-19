@@ -9,6 +9,7 @@ export interface Employee {
     gender: string;
     blood_group: string;
     marital_status: string;
+    religion: string;
     nationality: string;
     nid: string;
     phone: string;
@@ -22,6 +23,7 @@ export interface Employee {
     company_id: string;
     employee_id: string;
     punch_number: string;
+    employee_type: string;
     designation: string;
     section: string;
     grade: string;
@@ -31,7 +33,6 @@ export interface Employee {
     joining_date: string;
     shift_id: string | null;
     department_id: string | null;
-    branch_id: string | null;
     reports_to: string | null;
     section_id: string | null;
     designation_id: string | null;
@@ -53,6 +54,7 @@ export interface Employee {
     account_type: string;
     account_number: string;
     status: "active" | "inactive";
+    over_time_status: boolean;
     signature_url: string;
     image_url: string;
 }
@@ -65,6 +67,7 @@ export declare const employeeSchema: z.ZodObject<{
     gender: z.ZodOptional<z.ZodString>;
     blood_group: z.ZodOptional<z.ZodString>;
     marital_status: z.ZodOptional<z.ZodString>;
+    religion: z.ZodOptional<z.ZodString>;
     nationality: z.ZodOptional<z.ZodString>;
     nid: z.ZodOptional<z.ZodString>;
     phone: z.ZodOptional<z.ZodString>;
@@ -77,7 +80,8 @@ export declare const employeeSchema: z.ZodObject<{
     number_of_dependents: z.ZodOptional<z.ZodNumber>;
     company_id: z.ZodString;
     employee_id: z.ZodString;
-    punch_number: z.ZodOptional<z.ZodString>;
+    punch_number: z.ZodString;
+    employee_type: z.ZodOptional<z.ZodString>;
     designation: z.ZodOptional<z.ZodString>;
     section: z.ZodOptional<z.ZodString>;
     grade: z.ZodOptional<z.ZodString>;
@@ -87,7 +91,6 @@ export declare const employeeSchema: z.ZodObject<{
     joining_date: z.ZodString;
     shift_id: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     department_id: z.ZodNullable<z.ZodOptional<z.ZodString>>;
-    branch_id: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     reports_to: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     section_id: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     designation_id: z.ZodNullable<z.ZodOptional<z.ZodString>>;
@@ -112,6 +115,7 @@ export declare const employeeSchema: z.ZodObject<{
         active: "active";
         inactive: "inactive";
     }>>;
+    over_time_status: z.ZodOptional<z.ZodBoolean>;
     image_url: z.ZodOptional<z.ZodString>;
     signature_url: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
@@ -135,3 +139,11 @@ export declare const statusOptionsEmployee: ({
     value: "inactive";
     label: string;
 })[];
+export declare const religionOptions: {
+    value: string;
+    label: string;
+}[];
+export declare const employeeTypeOptions: {
+    value: string;
+    label: string;
+}[];

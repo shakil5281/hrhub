@@ -79,6 +79,11 @@ func (r *UserRepository) UpdatePassword(userID, passwordHash string) error {
 		Update("password_hash", passwordHash).Error
 }
 
+func (r *UserRepository) SetForcePasswordChange(userID string, value bool) error {
+	return r.db.Model(&models.User{}).Where("id = ?", userID).
+		Update("force_password_change", value).Error
+}
+
 func (r *UserRepository) GetPasswordHistory(userID string, limit int) ([]models.PasswordHistory, error) {
 	var history []models.PasswordHistory
 	err := r.db.Where("user_id = ?", userID).
@@ -120,6 +125,53 @@ func (r *UserRepository) GetUserCompany(userID string) (*string, error) {
 		return nil, err
 	}
 	return &employee.CompanyID, nil
+}
+
+func (r *UserRepository) ListFiltered(page, limit int, status, search string) ([]models.User, int64, error) {
+	var users []models.User
+	var total int64
+
+	query := r.db.Model(&models.User{}).Where("deleted_at IS NULL")
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if search != "" {
+		like := "%" + search + "%"
+		query = query.Where("email ILIKE ? OR name ILIKE ?", like, like)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&users).Error
+	return users, total, err
+}
+
+func (r *UserRepository) CountByRole(roleName string) (int64, error) {
+	var count int64
+	err := r.db.Model(&models.UserRole{}).
+		Joins("JOIN roles ON roles.id = user_roles.role_id").
+		Where("roles.name = ?", roleName).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *UserRepository) ReplaceUserRoles(userID string, roleIDs []string, createdBy *string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&models.UserRole{}).Error; err != nil {
+			return err
+		}
+		for _, roleID := range roleIDs {
+			ur := models.UserRole{UserID: userID, RoleID: roleID, CreatedBy: createdBy}
+			if err := tx.Create(&ur).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *UserRepository) AssignRole(userID, roleID, createdBy string) error {

@@ -1,10 +1,8 @@
 import axios from "axios"
+import { toast } from "sonner"
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
-  headers: {
-    "Content-Type": "application/json",
-  },
 })
 
 api.interceptors.request.use((config) => {
@@ -47,6 +45,12 @@ api.interceptors.response.use(
         document.cookie = "auth_token=; path=/; max-age=0"
         window.location.href = "/login"
       }
+    }
+
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      const message = error.response?.data?.error || "You don't have permission to perform this action"
+      toast.error(message)
     }
 
     return Promise.reject(error)

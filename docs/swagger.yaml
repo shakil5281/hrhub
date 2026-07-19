@@ -60,13 +60,19 @@ definitions:
     type: object
   handlers.CreateCompanyRequest:
     properties:
-      address:
+      address_bn:
+        type: string
+      address_en:
         type: string
       company_name_bn:
         type: string
       company_name_en:
         type: string
+      email:
+        type: string
       phone:
+        type: string
+      signature:
         type: string
       status:
         type: string
@@ -75,19 +81,14 @@ definitions:
     type: object
   handlers.CreateEmployeeRequest:
     properties:
-      bank_account:
+      account_number:
         type: string
-      bank_branch:
-        type: string
-      bank_name:
-        description: Bank
+      account_type:
+        description: Account
         type: string
       basic_salary:
-        description: Salary
         type: number
       blood_group:
-        type: string
-      branch_id:
         type: string
       company_id:
         description: Office
@@ -95,8 +96,6 @@ definitions:
       date_of_birth:
         type: string
       department_id:
-        type: string
-      designation:
         type: string
       designation_id:
         type: string
@@ -106,7 +105,9 @@ definitions:
         type: string
       emergency_phone:
         type: string
-      employee_code:
+      employee_id:
+        type: string
+      employee_type:
         type: string
       father_name:
         type: string
@@ -118,15 +119,14 @@ definitions:
         type: string
       grade:
         type: string
+      gross_salary:
+        description: Salary
+        type: number
       group_id:
-        type: string
-      group_name:
         type: string
       house_rent:
         type: number
       joining_date:
-        type: string
-      line:
         type: string
       line_id:
         type: string
@@ -149,6 +149,8 @@ definitions:
         type: integer
       other_allowance:
         type: number
+      over_time_status:
+        type: boolean
       permanent_address:
         type: string
       permanent_district_id:
@@ -173,15 +175,11 @@ definitions:
         type: string
       present_upazila_id:
         type: string
-      provident_fund:
-        type: number
       punch_number:
         type: string
+      religion:
+        type: string
       reports_to:
-        type: string
-      routing_no:
-        type: string
-      section:
         type: string
       section_id:
         type: string
@@ -193,18 +191,13 @@ definitions:
       status:
         description: Status
         type: string
-      swift_code:
-        type: string
-      tax:
-        type: number
-      total_salary:
-        type: number
       transport_allowance:
         type: number
     required:
     - company_id
-    - employee_code
+    - employee_id
     - joining_date
+    - punch_number
     type: object
   handlers.CreateFloorRequest:
     properties:
@@ -320,13 +313,19 @@ definitions:
     type: object
   handlers.UpdateCompanyRequest:
     properties:
-      address:
+      address_bn:
+        type: string
+      address_en:
         type: string
       company_name_bn:
         type: string
       company_name_en:
         type: string
+      email:
+        type: string
       phone:
+        type: string
+      signature:
         type: string
       status:
         type: string
@@ -398,6 +397,198 @@ definitions:
     - name
     - start_time
     type: object
+  handlers.dashboardStats:
+    properties:
+      active_employees:
+        type: integer
+      department_counts:
+        items:
+          $ref: '#/definitions/repository.DeptCount'
+        type: array
+      gender_distribution:
+        items:
+          $ref: '#/definitions/repository.GenderCount'
+        type: array
+      monthly_attendance:
+        items:
+          $ref: '#/definitions/repository.MonthlyAttendanceCount'
+        type: array
+      new_hires_month:
+        type: integer
+      pending_leaves:
+        type: integer
+      recent_activity:
+        items:
+          $ref: '#/definitions/repository.ActivityItem'
+        type: array
+      separations_month:
+        type: integer
+      today_attendance:
+        type: integer
+      today_logs:
+        type: integer
+      total_departments:
+        type: integer
+      total_employees:
+        type: integer
+      total_sections:
+        type: integer
+    type: object
+  models.Permission:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      resource:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/models.Role'
+        type: array
+    type: object
+  models.Role:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_system:
+        type: boolean
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      deleted_by:
+        type: string
+      email:
+        type: string
+      email_verified_at:
+        type: string
+      failed_attempts:
+        type: integer
+      force_password_change:
+        type: boolean
+      id:
+        type: string
+      last_login_at:
+        type: string
+      last_login_ip:
+        type: string
+      locked_at:
+        type: string
+      locked_by:
+        type: string
+      mfa_enabled:
+        type: boolean
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/models.Role'
+        type: array
+      status:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+    type: object
+  repository.ActivityItem:
+    properties:
+      date:
+        type: string
+      description:
+        type: string
+      type:
+        type: string
+    type: object
+  repository.DeptCount:
+    properties:
+      count:
+        type: integer
+      name:
+        type: string
+    type: object
+  repository.GenderCount:
+    properties:
+      count:
+        type: integer
+      gender:
+        type: string
+    type: object
+  repository.MonthlyAttendanceCount:
+    properties:
+      absent:
+        type: integer
+      late:
+        type: integer
+      month:
+        type: string
+      present:
+        type: integer
+    type: object
+  service.AssignRolesRequest:
+    properties:
+      role_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - role_ids
+    type: object
+  service.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      role_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - email
+    - name
+    type: object
+  service.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   service.LoginRequest:
     properties:
       email:
@@ -421,16 +612,82 @@ definitions:
       user:
         $ref: '#/definitions/service.UserResponse'
     type: object
+  service.ProfileResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      force_password_change:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/service.RoleInfo'
+        type: array
+      status:
+        type: string
+    type: object
+  service.ResetPasswordRequest:
+    properties:
+      new_password:
+        minLength: 12
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
+    type: object
+  service.RoleInfo:
+    properties:
+      name:
+        type: string
+    type: object
+  service.UpdateProfileRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  service.UpdateUserRequest:
+    properties:
+      name:
+        type: string
+      status:
+        enum:
+        - active
+        - deactivated
+        - locked
+        - pending
+        type: string
+    type: object
   service.UserResponse:
     properties:
       email:
         type: string
+      force_password_change:
+        type: boolean
       id:
         type: string
       name:
         type: string
       status:
         type: string
+    type: object
+  utils.PaginatedResponse:
+    properties:
+      data: {}
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
 host: localhost:5000
 info:
@@ -488,16 +745,21 @@ paths:
         in: query
         name: employee_id
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -686,14 +948,21 @@ paths:
         in: query
         name: department_id
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/utils.PaginatedResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -842,14 +1111,21 @@ paths:
         in: query
         name: status
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/utils.PaginatedResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -878,14 +1154,21 @@ paths:
         in: query
         name: department_id
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/utils.PaginatedResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1129,6 +1412,29 @@ paths:
       summary: Change password
       tags:
       - Auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Request a password reset token (public)
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Forgot password
+      tags:
+      - Auth
   /auth/login:
     post:
       consumes:
@@ -1250,6 +1556,42 @@ paths:
       summary: Get user profile
       tags:
       - Auth
+  /auth/profile:
+    put:
+      consumes:
+      - application/json
+      description: Update current authenticated user's profile (name)
+      parameters:
+      - description: Profile update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.ProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - Auth
   /auth/refresh:
     post:
       consumes:
@@ -1319,6 +1661,36 @@ paths:
       summary: Register user
       tags:
       - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using a token (public)
+      parameters:
+      - description: Token + new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset password
+      tags:
+      - Auth
   /auth/sessions:
     get:
       description: List all active sessions for the user
@@ -1352,16 +1724,22 @@ paths:
   /companies:
     get:
       description: Get all companies
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1548,6 +1926,21 @@ paths:
       summary: Update company
       tags:
       - Companies
+  /dashboard/stats:
+    get:
+      description: Get aggregated dashboard stats
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.dashboardStats'
+      security:
+      - BearerAuth: []
+      summary: Dashboard statistics
+      tags:
+      - Dashboard
   /data-logs:
     get:
       description: Get raw punch data logs by date range
@@ -1610,7 +2003,7 @@ paths:
       - application/json
       description: Read and import raw punch data from ZKTeco Access MDB file
       parameters:
-      - description: MDB file path (defaults to C:\\\\Program Files (x86)\\\\ZKTeco\\\\att2000.mdb)
+      - description: MDB file path (defaults to C:\\Program Files (x86)\\ZKTeco\\att2000.mdb)
         in: body
         name: request
         schema:
@@ -1686,6 +2079,234 @@ paths:
       summary: Data log statistics
       tags:
       - Data Logs
+  /database/backup:
+    post:
+      description: Create a PostgreSQL dump backup file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create database backup
+      tags:
+      - Database
+  /database/backups:
+    get:
+      description: List all backup files in the backups directory
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List database backups
+      tags:
+      - Database
+  /database/export:
+    get:
+      description: Download a specific backup SQL file
+      parameters:
+      - description: Backup filename
+        in: query
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Download a backup file
+      tags:
+      - Database
+  /database/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload and execute a SQL backup file to restore the database
+      parameters:
+      - description: SQL backup file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import database from SQL file
+      tags:
+      - Database
+  /database/reset:
+    post:
+      description: Drop all tables and re-run auto-migration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset database
+      tags:
+      - Database
+  /departments:
+    get:
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List departments
+      tags:
+      - Organization
+  /designations:
+    get:
+      parameters:
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List designations
+      tags:
+      - Organization
+  /districts:
+    get:
+      parameters:
+      - description: Filter by division
+        in: query
+        name: division_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List districts
+      tags:
+      - Geo
+  /divisions:
+    get:
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List divisions
+      tags:
+      - Geo
   /employees:
     get:
       description: Get all employees with optional filters
@@ -1726,9 +2347,9 @@ paths:
         in: query
         name: status
         type: string
-      - description: Filter by employee code (partial match)
+      - description: Filter by employee ID (partial match)
         in: query
-        name: employee_code
+        name: employee_id
         type: string
       - description: Filter by gender
         in: query
@@ -1738,24 +2359,29 @@ paths:
         in: query
         name: blood_group
         type: string
-      - description: Minimum total salary
+      - description: Minimum gross salary
         in: query
         name: min_salary
         type: string
-      - description: Maximum total salary
+      - description: Maximum gross salary
         in: query
         name: max_salary
         type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1918,19 +2544,118 @@ paths:
       summary: Update employee
       tags:
       - Employees
-  /floors:
+  /employees/export/excel:
     get:
-      description: Get all floors
+      description: Export filtered employee list to Excel format
+      parameters:
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Export employees to Excel
+      tags:
+      - Employees
+  /employees/export/pdf:
+    get:
+      description: Export filtered employee list to PDF format
+      parameters:
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Export employees to PDF
+      tags:
+      - Employees
+  /employees/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Bulk import employees from uploaded Excel file. Matches on employee_id
+        for upsert.
+      parameters:
+      - description: Excel file (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import employees from Excel
+      tags:
+      - Employees
+  /floors:
+    get:
+      description: Get all floors
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2102,16 +2827,22 @@ paths:
   /groups:
     get:
       description: Get all groups
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2295,6 +3026,53 @@ paths:
       summary: Health check
       tags:
       - System
+  /id-cards:
+    get:
+      parameters:
+      - description: Filter by employee name
+        in: query
+        name: employee
+        type: string
+      - description: Filter by employee ID
+        in: query
+        name: employee_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by card number
+        in: query
+        name: card_no
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List ID cards
+      tags:
+      - ID Cards
   /leave-balance:
     get:
       description: Get leave balance for employees
@@ -2307,16 +3085,21 @@ paths:
         in: query
         name: year
         type: integer
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -2377,16 +3160,21 @@ paths:
         in: query
         name: company_id
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2555,16 +3343,21 @@ paths:
         in: query
         name: to_date
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2786,6 +3579,125 @@ paths:
       summary: Reject leave application
       tags:
       - Leaves
+  /lines:
+    get:
+      parameters:
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List lines
+      tags:
+      - Organization
+  /organization/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Bulk create/update departments, sections, designations, lines from
+        Excel with flat hierarchy columns
+      parameters:
+      - description: Excel file (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk import organization entities
+      tags:
+      - Organization
+  /organization/template:
+    get:
+      description: Download Excel template for bulk organization import with Department(En/Bn),
+        Section(En/Bn), Designation(En/Bn), Line(En/Bn)
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Download organization import template
+      tags:
+      - Organization
+  /requirements:
+    get:
+      parameters:
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by priority
+        in: query
+        name: priority
+        type: string
+      - description: Filter by position
+        in: query
+        name: position
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List requirements
+      tags:
+      - Requirements
   /salary/list:
     get:
       description: Get salary records summary (grouped by department)
@@ -2948,19 +3860,133 @@ paths:
       summary: List salary sheet
       tags:
       - Salary
-  /shifts:
+  /salary/summary:
     get:
-      description: Get all shifts
+      description: Get salary summary grouped by department with grand totals
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Salary summary by department
+      tags:
+      - Salary
+  /sections:
+    get:
+      parameters:
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List sections
+      tags:
+      - Organization
+  /separations:
+    get:
+      parameters:
+      - description: Filter by employee name
+        in: query
+        name: employee
+        type: string
+      - description: Filter by employee ID
+        in: query
+        name: employee_id
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by type
+        in: query
+        name: type
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List separations
+      tags:
+      - Separations
+  /shifts:
+    get:
+      description: Get all shifts
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -3129,6 +4155,87 @@ paths:
       summary: Update shift
       tags:
       - Shifts
+  /temporary-shifts:
+    get:
+      parameters:
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List temporary shifts
+      tags:
+      - Temporary Shifts
+  /unions:
+    get:
+      parameters:
+      - description: Filter by upazila
+        in: query
+        name: upazila_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List unions
+      tags:
+      - Geo
+  /upazilas:
+    get:
+      parameters:
+      - description: Filter by district
+        in: query
+        name: district_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+      security:
+      - BearerAuth: []
+      summary: List upazilas
+      tags:
+      - Geo
   /upload:
     post:
       consumes:
@@ -3166,6 +4273,306 @@ paths:
       summary: Upload file
       tags:
       - Upload
+  /users:
+    get:
+      description: List all users with pagination and filters
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Search by email or name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user and return the generated password
+      parameters:
+      - description: User creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Soft-delete a user (status set to deleted)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - Users
+    get:
+      description: Get a single user with assigned roles
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update user name or status
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /users/{id}/reset-password:
+    post:
+      description: Force reset a user's password and return the new one
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Admin reset password
+      tags:
+      - Users
+  /users/{id}/roles:
+    get:
+      description: Get roles assigned to a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Role'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user roles
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Replace all roles for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.AssignRolesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign roles to user
+      tags:
+      - Users
 securityDefinitions:
   BearerAuth:
     in: header

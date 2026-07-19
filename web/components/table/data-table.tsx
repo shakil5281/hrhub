@@ -29,6 +29,7 @@ import {
   type ColumnDef,
   type Row,
   type SortingState,
+  type PaginationState,
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -56,6 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
 import { GripVerticalIcon, EllipsisVerticalIcon, ChevronsLeftIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsRightIcon } from "lucide-react"
 
 function DragHandle({ id }: { id: number | string }) {
@@ -104,25 +106,59 @@ interface DataTableProps<TData extends { id: number | string }> {
   data: TData[]
   columns: ColumnDef<TData>[]
   enableDnd?: boolean
+  enableSelection?: boolean
   onEdit?: (row: TData) => void
   onDelete?: (row: TData) => void
+  // Server-side pagination props
+  serverSide?: boolean
+  pageCount?: number
+  page?: number
+  pageSize?: number
+  total?: number
+  onPageChange?: (page: number) => void
+  onPageSizeChange?: (size: number) => void
+  // Loading state with skeleton rows
+  loading?: boolean
 }
 
 export function DataTable<TData extends { id: number | string }>({
   data: initialData,
   columns,
   enableDnd = false,
+  enableSelection = true,
   onEdit,
   onDelete,
+  serverSide = false,
+  pageCount: externalPageCount,
+  page: externalPage,
+  pageSize: externalPageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
+  loading = false,
 }: DataTableProps<TData>) {
   const [data, setData] = React.useState(() => initialData)
   React.useEffect(() => { setData(initialData) }, [initialData])
   const [rowSelection, setRowSelection] = React.useState({})
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 10,
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: (externalPage ?? 1) - 1,
+    pageSize: externalPageSize ?? 20,
   })
+
+  // Sync internal pagination with external props
+  React.useEffect(() => {
+    if (serverSide && externalPage !== undefined) {
+      setPagination((prev) => ({ ...prev, pageIndex: externalPage - 1 }))
+    }
+  }, [serverSide, externalPage])
+
+  React.useEffect(() => {
+    if (serverSide && externalPageSize !== undefined) {
+      setPagination((prev) => ({ ...prev, pageSize: externalPageSize }))
+    }
+  }, [serverSide, externalPageSize])
+
   const sortableId = React.useId()
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
@@ -146,7 +182,7 @@ export function DataTable<TData extends { id: number | string }>({
       })
     }
 
-    cols.push({
+    if (enableSelection) cols.push({
       id: "select",
       header: ({ table }) => (
         <div className="flex items-center justify-center">
@@ -228,9 +264,20 @@ export function DataTable<TData extends { id: number | string }>({
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater(pagination) : updater
+      setPagination(next)
+      if (serverSide) {
+        onPageChange?.(next.pageIndex + 1)
+        if (next.pageSize !== pagination.pageSize) {
+          onPageSizeChange?.(next.pageSize)
+        }
+      }
+    },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: serverSide ? undefined : getPaginationRowModel(),
+    manualPagination: serverSide,
+    pageCount: serverSide ? externalPageCount : undefined,
     getSortedRowModel: getSortedRowModel(),
   })
 
@@ -244,6 +291,27 @@ export function DataTable<TData extends { id: number | string }>({
       })
     }
   }
+
+  const currentPage = table.getState().pagination.pageIndex + 1
+  const totalPages = serverSide ? (externalPageCount ?? 1) : table.getPageCount()
+  const canPrevious = serverSide ? currentPage > 1 : table.getCanPreviousPage()
+  const canNext = serverSide ? currentPage < totalPages : table.getCanNextPage()
+
+  const skeletonRowCount = table.getState().pagination.pageSize
+
+  const SkeletonRows = () => (
+    <>
+      {Array.from({ length: skeletonRowCount }).map((_, idx) => (
+        <TableRow key={`skeleton-${idx}`}>
+          {allColumns.map((_, colIdx) => (
+            <TableCell key={`skeleton-cell-${idx}-${colIdx}`}>
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </>
+  )
 
   return (
     <div className="w-full flex-col justify-start gap-6">
@@ -275,7 +343,9 @@ export function DataTable<TData extends { id: number | string }>({
                   ))}
                 </TableHeader>
                 <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                  {table.getRowModel().rows?.length ? (
+                  {loading ? (
+                    <SkeletonRows />
+                  ) : table.getRowModel().rows?.length ? (
                     <SortableContext
                       items={dataIds}
                       strategy={verticalListSortingStrategy}
@@ -316,7 +386,9 @@ export function DataTable<TData extends { id: number | string }>({
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {loading ? (
+                  <SkeletonRows />
+                ) : table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow
                       key={row.id}
@@ -346,8 +418,9 @@ export function DataTable<TData extends { id: number | string }>({
 
         <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {serverSide && total !== undefined
+              ? `Showing ${data.length} of ${total} records`
+              : `${table.getFilteredSelectedRowModel().rows.length} of ${table.getFilteredRowModel().rows.length} row(s) selected.`}
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
@@ -357,7 +430,11 @@ export function DataTable<TData extends { id: number | string }>({
               <Select
                 value={`${table.getState().pagination.pageSize}`}
                 onValueChange={(value) => {
-                  table.setPageSize(Number(value))
+                  const size = Number(value)
+                  table.setPageSize(size)
+                  if (serverSide) {
+                    onPageSizeChange?.(size)
+                  }
                 }}
               >
                 <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -377,15 +454,18 @@ export function DataTable<TData extends { id: number | string }>({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
+              Page {currentPage} of{" "}
+              {totalPages}
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
               <Button
                 variant="outline"
                 className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
+                onClick={() => {
+                  if (serverSide) onPageChange?.(1)
+                  else table.setPageIndex(0)
+                }}
+                disabled={!canPrevious}
               >
                 <span className="sr-only">Go to first page</span>
                 <ChevronsLeftIcon />
@@ -394,8 +474,11 @@ export function DataTable<TData extends { id: number | string }>({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                onClick={() => {
+                  if (serverSide) onPageChange?.(currentPage - 1)
+                  else table.previousPage()
+                }}
+                disabled={!canPrevious}
               >
                 <span className="sr-only">Go to previous page</span>
                 <ChevronLeftIcon />
@@ -404,8 +487,11 @@ export function DataTable<TData extends { id: number | string }>({
                 variant="outline"
                 className="size-8"
                 size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                onClick={() => {
+                  if (serverSide) onPageChange?.(currentPage + 1)
+                  else table.nextPage()
+                }}
+                disabled={!canNext}
               >
                 <span className="sr-only">Go to next page</span>
                 <ChevronRightIcon />
@@ -414,8 +500,11 @@ export function DataTable<TData extends { id: number | string }>({
                 variant="outline"
                 className="hidden size-8 lg:flex"
                 size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
+                onClick={() => {
+                  if (serverSide) onPageChange?.(totalPages)
+                  else table.setPageIndex(table.getPageCount() - 1)
+                }}
+                disabled={!canNext}
               >
                 <span className="sr-only">Go to last page</span>
                 <ChevronsRightIcon />
