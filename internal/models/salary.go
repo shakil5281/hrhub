@@ -46,6 +46,6 @@ type Salary struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 	CreatedBy *string        `json:"created_by" gorm:"type:uuid"`
 
-	Employee Employee `json:"employee" gorm:"foreignKey:EmployeeID"`
+	Employee Employee `json:"employee" gorm:"foreignKey:EmployeeID;references:EmployeeID"`
 	Company  Company  `json:"company" gorm:"foreignKey:CompanyID"`
 }

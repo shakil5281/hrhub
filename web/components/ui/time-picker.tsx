@@ -15,9 +15,8 @@ function fmt(n: number) {
 }
 
 export function TimePicker({ value, onChange, disabled, className }: TimePickerProps) {
-  const nowRef = React.useRef(new Date())
-  const initHh = value ? value.split(":")[0] || fmt(nowRef.current.getHours()) : fmt(nowRef.current.getHours())
-  const initMm = value ? value.split(":")[1] || fmt(nowRef.current.getMinutes()) : fmt(nowRef.current.getMinutes())
+  const initHh = value ? value.split(":")[0] || "" : ""
+  const initMm = value ? value.split(":")[1] || "" : ""
 
   const [hh, setHhState] = React.useState(initHh)
   const [mm, setMmState] = React.useState(initMm)
@@ -47,13 +46,10 @@ export function TimePicker({ value, onChange, disabled, className }: TimePickerP
       setHhState(h)
       setMmState(m)
     } else {
-      const n = new Date()
-      const h = fmt(n.getHours())
-      const m = fmt(n.getMinutes())
-      hhRef.current = h
-      mmRef.current = m
-      setHhState(h)
-      setMmState(m)
+      hhRef.current = ""
+      mmRef.current = ""
+      setHhState("")
+      setMmState("")
     }
   }, [value])
 

@@ -6,37 +6,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
 	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/hrhub-api/internal/service"
 	"github.com/shakil5281/hrhub-api/internal/utils"
 )
 
 type SeparationHandler struct {
-	repo *repository.SeparationRepository
+	repo    *repository.SeparationRepository
+	service *service.SeparationService
 }
 
-func NewSeparationHandler(repo *repository.SeparationRepository) *SeparationHandler {
-	return &SeparationHandler{repo: repo}
+func NewSeparationHandler(repo *repository.SeparationRepository, svc *service.SeparationService) *SeparationHandler {
+	return &SeparationHandler{repo: repo, service: svc}
 }
 
 type CreateSeparationRequest struct {
-	Employee     string `json:"employee" binding:"required"`
-	EmployeeID   string `json:"employee_id"`
-	DepartmentID string `json:"department_id" binding:"required"`
+	EmployeeID   string `json:"employee_id" binding:"required"`
+	DepartmentID string `json:"department_id"`
 	Type         string `json:"type" binding:"required"`
 	Date         string `json:"date"`
-	Status       string `json:"status"`
-	Reason       string `json:"reason"`
-}
-
-type UpdateSeparationRequest struct {
-	Employee     string `json:"employee" binding:"required"`
-	EmployeeID   string `json:"employee_id"`
-	DepartmentID string `json:"department_id" binding:"required"`
-	Type         string `json:"type" binding:"required"`
-	Date         string `json:"date"`
-	Status       string `json:"status"`
 	Reason       string `json:"reason"`
 }
 
@@ -91,6 +79,19 @@ func (h *SeparationHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
+// CreateSeparation godoc
+//
+// @Summary      Create separation
+// @Description  Create a separation record. Auto-processes if date <= today.
+// @Tags         Separations
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body CreateSeparationRequest true "Separation data"
+// @Success      201  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Failure      409  {object}  map[string]string
+// @Router       /separations [post]
 func (h *SeparationHandler) Create(c *gin.Context) {
 	var req CreateSeparationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,28 +99,45 @@ func (h *SeparationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	status := req.Status
-	if status == "" {
-		status = "Pending"
-	}
-
-	item := &models.Separation{
-		Employee:     req.Employee,
+	input := service.CreateSeparationInput{
 		EmployeeID:   req.EmployeeID,
 		DepartmentID: req.DepartmentID,
-		Type:         req.Type,
+		SepType:      req.Type,
 		Date:         req.Date,
-		Status:       status,
 		Reason:       req.Reason,
 	}
 
-	if err := h.repo.Create(item); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	sep, result, err := h.service.Create(input)
+	if err != nil {
+		switch err {
+		case service.ErrEmployeeNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "employee not found or not eligible (must be active and Regular)"})
+		case service.ErrDuplicateSeparation:
+			c.JSON(http.StatusConflict, gin.H{"error": "employee already has a pending or approved separation"})
+		case service.ErrInvalidSeparationType:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "type must be Resign, Lefty, or Close"})
+		case service.ErrSeparationBeforeJoining:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "separation date cannot be before joining date"})
+		case service.ErrDepartmentRequired:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "employee has no department assigned — department is required"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
-	result, _ := h.repo.FindByID(item.ID)
-	c.JSON(http.StatusCreated, result)
+	autoProcessed := result.NewType != ""
+	response := gin.H{
+		"id":               sep.ID,
+		"message":          "Separation created",
+		"employee_id":      result.EmployeeID,
+		"employee_name":    result.EmployeeName,
+		"auto_processed":   autoProcessed,
+		"new_employee_type": result.NewType,
+		"employee_status":  result.NewStatus,
+		"attendance_deleted": result.AttendanceDeleted,
+	}
+	c.JSON(http.StatusCreated, response)
 }
 
 func (h *SeparationHandler) Update(c *gin.Context) {
@@ -129,21 +147,28 @@ func (h *SeparationHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "separation not found"})
 		return
 	}
+	if item.Status == "Processed" || item.Status == "Cancelled" {
+		c.JSON(http.StatusConflict, gin.H{"error": "cannot edit processed or cancelled separation"})
+		return
+	}
 
-	var req UpdateSeparationRequest
+	var req CreateSeparationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	item.Employee = req.Employee
-	item.EmployeeID = req.EmployeeID
-	item.DepartmentID = req.DepartmentID
-	item.Type = req.Type
+	if req.Type != "" {
+		if _, ok := map[string]bool{"Resign": true, "Lefty": true, "Close": true}[req.Type]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "type must be Resign, Lefty, or Close"})
+			return
+		}
+		item.Type = req.Type
+	}
 	item.Date = req.Date
 	item.Reason = req.Reason
-	if req.Status != "" {
-		item.Status = req.Status
+	if req.DepartmentID != "" {
+		item.DepartmentID = req.DepartmentID
 	}
 
 	if err := h.repo.Update(item); err != nil {
@@ -157,9 +182,13 @@ func (h *SeparationHandler) Update(c *gin.Context) {
 
 func (h *SeparationHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	_, err := h.repo.FindByID(id)
+	item, err := h.repo.FindByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "separation not found"})
+		return
+	}
+	if item.Status == "Processed" {
+		c.JSON(http.StatusConflict, gin.H{"error": "cannot delete a processed separation — cancel it or reactivate the employee instead"})
 		return
 	}
 
@@ -171,55 +200,124 @@ func (h *SeparationHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "separation deleted"})
 }
 
-// ProcessSeparation godoc
+// ProcessSeparations godoc
 //
-//	@Summary      Process separations
-//	@Description  Check separations for today and update employee type (Resign/Lefty/Close)
-//	@Tags         Separations
-//	@Security     BearerAuth
-//	@Produce      json
-//	@Param        date query string false "Date to process (default: today)"
-//	@Success      200  {object}  map[string]interface{}
-//	@Router       /separations/process [post]
-func (h *SeparationHandler) Process(c *gin.Context) {
-	dateStr := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+// @Summary      Batch process separations
+// @Description  Process all pending/approved separations with date <= given date
+// @Tags         Separations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        date query string false "Process separations due on or before this date (default: today)"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /separations/process [post]
+func (h *SeparationHandler) ProcessBatch(c *gin.Context) {
+	dateStr := c.DefaultQuery("date", "")
+	if dateStr == "" {
+		dateStr = time.Now().Format("2006-01-02")
+	}
 
-	var separations []models.Separation
-	if err := database.DB.Where("date = ? AND status = ? AND deleted_at IS NULL", dateStr, "Pending").Find(&separations).Error; err != nil {
+	results, err := h.service.ProcessBatch(dateStr)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	processed := 0
-	for _, sep := range separations {
-		var emp models.Employee
-		if err := database.DB.Where("employee_id = ? AND deleted_at IS NULL", sep.EmployeeID).First(&emp).Error; err != nil {
-			continue
+	type Detail struct {
+		EmployeeID   string `json:"employee_id"`
+		EmployeeName string `json:"employee_name"`
+		NewType      string `json:"new_type"`
+		AttnDeleted  int64  `json:"attendance_deleted"`
+	}
+	details := make([]Detail, len(results))
+	for i, r := range results {
+		details[i] = Detail{
+			EmployeeID:   r.EmployeeID,
+			EmployeeName: r.EmployeeName,
+			NewType:      r.NewType,
+			AttnDeleted:  r.AttendanceDeleted,
 		}
-
-		newType := ""
-		switch sep.Type {
-		case "Resignation", "Resign":
-			newType = "Resign"
-		case "Left", "Lefty":
-			newType = "Lefty"
-		case "Termination", "Close", "Contract End":
-			newType = "Close"
-		default:
-			newType = "Close"
-		}
-
-		if newType != "" {
-			database.DB.Model(&emp).Update("employee_type", newType)
-		}
-		database.DB.Model(&sep).Update("status", "Processed")
-		processed++
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   fmt.Sprintf("Processed %d separations for %s", processed, dateStr),
+		"message":   fmt.Sprintf("Processed %d separations for date <= %s", len(results), dateStr),
 		"date":      dateStr,
-		"processed": processed,
-		"total":     len(separations),
+		"processed": len(results),
+		"details":   details,
 	})
+}
+
+// ProcessOne godoc
+//
+// @Summary      Process a single separation
+// @Description  Apply employee changes for a specific separation
+// @Tags         Separations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path string true "Separation ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]string
+// @Router       /separations/{id}/process [post]
+func (h *SeparationHandler) ProcessOne(c *gin.Context) {
+	id := c.Param("id")
+	result, err := h.service.ProcessOne(id)
+	if err != nil {
+		switch err {
+		case service.ErrAlreadyProcessed:
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		case service.ErrEmployeeNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":            "Separation processed",
+		"employee_id":        result.EmployeeID,
+		"employee_name":      result.EmployeeName,
+		"new_type":           result.NewType,
+		"employee_status":    result.NewStatus,
+		"attendance_deleted": result.AttendanceDeleted,
+	})
+}
+
+// CancelSeparation godoc
+//
+// @Summary      Cancel a separation
+// @Description  Mark a pending or approved separation as cancelled
+// @Tags         Separations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path string true "Separation ID"
+// @Success      200  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Router       /separations/{id}/cancel [post]
+func (h *SeparationHandler) Cancel(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.service.Cancel(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "separation cancelled"})
+}
+
+// ReactivateSeparation godoc
+//
+// @Summary      Reactivate a processed separation
+// @Description  Revert a processed separation, restoring employee to active/Regular status
+// @Tags         Separations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path string true "Separation ID"
+// @Success      200  {object}  map[string]string
+// @Failure      400  {object}  map[string]string
+// @Router       /separations/{id}/reactivate [post]
+func (h *SeparationHandler) Reactivate(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.service.Reactivate(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "separation reactivated, employee restored"})
 }

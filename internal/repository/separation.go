@@ -13,6 +13,10 @@ func NewSeparationRepository(db *gorm.DB) *SeparationRepository {
 	return &SeparationRepository{db: db}
 }
 
+func (r *SeparationRepository) WithTx(tx *gorm.DB) *SeparationRepository {
+	return &SeparationRepository{db: tx}
+}
+
 func (r *SeparationRepository) Create(sep *models.Separation) error {
 	return r.db.Create(sep).Error
 }
@@ -66,4 +70,31 @@ func (r *SeparationRepository) Update(sep *models.Separation) error {
 
 func (r *SeparationRepository) Delete(id string) error {
 	return r.db.Where("id = ?", id).Delete(&models.Separation{}).Error
+}
+
+// FindProcessedByEmployeeID returns the latest processed separation for an employee.
+func (r *SeparationRepository) FindProcessedByEmployeeID(employeeID string) (*models.Separation, error) {
+	var sep models.Separation
+	err := r.db.Where("employee_id = ? AND status = ? AND deleted_at IS NULL", employeeID, "Processed").
+		Order("date DESC").
+		First(&sep).Error
+	return &sep, err
+}
+
+// ExistsPendingOrApproved checks if employee has a non-final separation.
+func (r *SeparationRepository) ExistsPendingOrApproved(employeeID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Separation{}).
+		Where("employee_id = ? AND status IN ? AND deleted_at IS NULL", employeeID, []string{"Pending", "Approved"}).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// FindPendingDue returns all pending/approved separations with date <= processDate.
+func (r *SeparationRepository) FindPendingDue(processDate string) ([]models.Separation, error) {
+	var list []models.Separation
+	err := r.db.
+		Where("status IN ? AND date <= ? AND deleted_at IS NULL", []string{"Pending", "Approved"}, processDate).
+		Find(&list).Error
+	return list, err
 }

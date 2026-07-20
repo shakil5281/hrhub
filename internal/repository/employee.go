@@ -23,6 +23,10 @@ func NewEmployeeRepository(db *gorm.DB) *EmployeeRepository {
 	return &EmployeeRepository{db: db}
 }
 
+func (r *EmployeeRepository) WithTx(tx *gorm.DB) *EmployeeRepository {
+	return &EmployeeRepository{db: tx}
+}
+
 func (r *EmployeeRepository) ListFiltered(f EmployeeFilter, page, limit int) ([]models.Employee, int64, error) {
 	var employees []models.Employee
 	var total int64
@@ -74,6 +78,19 @@ func (r *EmployeeRepository) FindByPunchNumbers(punches []string) ([]models.Empl
 	return employees, err
 }
 
+// FindActiveRegularByPunchNumbers matches active Regular employees by punch_number only.
+func (r *EmployeeRepository) FindActiveRegularByPunchNumbers(punches []string) ([]models.Employee, error) {
+	var employees []models.Employee
+	if len(punches) == 0 {
+		return employees, nil
+	}
+	err := r.db.Where(
+		"punch_number IN ? AND status = ? AND LOWER(employee_type) = ?",
+		punches, "active", "regular",
+	).Find(&employees).Error
+	return employees, err
+}
+
 func (r *EmployeeRepository) ListActivePtr(companyID string) ([]*models.Employee, error) {
 	var employees []*models.Employee
 	query := r.db.Where("status = ?", "active")
@@ -115,6 +132,17 @@ func (r *EmployeeRepository) ListActive(companyID string, page, limit int) ([]mo
 func (r *EmployeeRepository) ListActiveAll(companyID string) ([]models.Employee, error) {
 	var employees []models.Employee
 	query := r.db.Where("status = ?", "active")
+	if companyID != "" {
+		query = query.Where("company_id = ?", companyID)
+	}
+	err := query.Find(&employees).Error
+	return employees, err
+}
+
+// ListActiveRegularAll returns active Regular employees for daily attendance processing.
+func (r *EmployeeRepository) ListActiveRegularAll(companyID string) ([]models.Employee, error) {
+	var employees []models.Employee
+	query := r.db.Where("status = ? AND LOWER(employee_type) = ?", "active", "regular")
 	if companyID != "" {
 		query = query.Where("company_id = ?", companyID)
 	}

@@ -8,6 +8,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
+import { formatCheck } from "@/lib/utils"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 
@@ -50,8 +51,8 @@ const columns: ColumnDef<AttendanceRecord>[] = [
     header: "Designation",
     cell: ({ row }) => row.original.employee?.designation_ref?.name || "-",
   },
-  { accessorKey: "check_in", header: "Check In", cell: ({ row }) => row.original.check_in || "-" },
-  { accessorKey: "check_out", header: "Check Out", cell: ({ row }) => row.original.check_out || "-" },
+  { accessorKey: "check_in", header: "Check In", cell: ({ row }) => formatCheck(row.original.check_in) },
+  { accessorKey: "check_out", header: "Check Out", cell: ({ row }) => formatCheck(row.original.check_out) },
   { accessorKey: "over_time", header: "Over Time", cell: ({ row }) => row.original.over_time || "-" },
   { accessorKey: "late_minutes", header: "Late (min)" },
   {

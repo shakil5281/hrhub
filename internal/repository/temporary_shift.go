@@ -68,7 +68,11 @@ func (r *TemporaryShiftRepository) Update(ts *models.TemporaryShift) error {
 
 func (r *TemporaryShiftRepository) ListByCompanyAndDateRange(companyID, startDate, endDate string) ([]models.TemporaryShift, error) {
 	var list []models.TemporaryShift
-	err := r.db.Preload("Shift").Where("company_id = ? AND date BETWEEN ? AND ?", companyID, startDate, endDate).Find(&list).Error
+	q := r.db.Preload("Shift").Where("date BETWEEN ? AND ?", startDate, endDate)
+	if companyID != "" {
+		q = q.Where("company_id = ?", companyID)
+	}
+	err := q.Find(&list).Error
 	return list, err
 }
 

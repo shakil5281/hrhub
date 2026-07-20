@@ -314,12 +314,15 @@ func Setup(
 	separation := api.Group("/separations")
 	separation.Use(middleware.AuthMiddleware(jwtSecret))
 	{
-		separation.POST("/process", separationHandler.Process)
+		separation.POST("/process", separationHandler.ProcessBatch)
 		separation.GET("", separationHandler.List)
 		separation.GET("/:id", separationHandler.GetByID)
 		separation.POST("", separationHandler.Create)
 		separation.PUT("/:id", separationHandler.Update)
 		separation.DELETE("/:id", separationHandler.Delete)
+		separation.POST("/:id/process", separationHandler.ProcessOne)
+		separation.POST("/:id/cancel", separationHandler.Cancel)
+		separation.POST("/:id/reactivate", separationHandler.Reactivate)
 	}
 
 	// Protected id-card routes

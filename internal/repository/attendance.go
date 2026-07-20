@@ -15,7 +15,6 @@ func NewAttendanceRepository(db *gorm.DB) *AttendanceRepository {
 	return &AttendanceRepository{db: db}
 }
 
-// WithTx returns a new AttendanceRepository using the provided transaction
 func (r *AttendanceRepository) WithTx(tx *gorm.DB) *AttendanceRepository {
 	return &AttendanceRepository{db: tx}
 }
@@ -367,13 +366,16 @@ func (r *AttendanceRepository) ListJobCard(startDate, endDate, companyID, employ
 	return attendances, total, err
 }
 
-func (r *AttendanceRepository) ListJobCardEmployees(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status string) ([]models.Employee, error) {
+func (r *AttendanceRepository) ListJobCardEmployees(startDate, endDate, companyID, employeeID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status string) ([]models.Employee, error) {
 	subQuery := r.db.Table("attendances a").
 		Select("DISTINCT a.employee_id").
 		Where("a.date BETWEEN ? AND ? AND a.deleted_at IS NULL", startDate, endDate)
 
 	if companyID != "" {
 		subQuery = subQuery.Where("a.company_id = ?", companyID)
+	}
+	if employeeID != "" {
+		subQuery = subQuery.Where("a.employee_id = ?", employeeID)
 	}
 	if departmentID != "" {
 		subQuery = subQuery.Where("a.employee_id IN (SELECT employee_id FROM employees WHERE department_id = ?)", departmentID)
@@ -413,6 +415,7 @@ func (r *AttendanceRepository) MonthlyReport(startDate, endDate, companyID, depa
 			employees.name_en as employee_name,
 			COALESCE(designations.name, '') as designation_name,
 			COALESCE(departments.name, '') as department_name,
+			COALESCE(shifts.name, '') as shift_name,
 			COALESCE(SUM(CASE WHEN attendances.status = 'present' THEN 1 ELSE 0 END), 0) as present,
 			COALESCE(SUM(CASE WHEN attendances.status = 'absent' THEN 1 ELSE 0 END), 0) as absent,
 			COALESCE(SUM(CASE WHEN attendances.status = 'late' THEN 1 ELSE 0 END), 0) as late,
@@ -424,6 +427,7 @@ func (r *AttendanceRepository) MonthlyReport(startDate, endDate, companyID, depa
 		Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
 		Joins("LEFT JOIN departments ON departments.id = employees.department_id").
 		Joins("LEFT JOIN designations ON designations.id = employees.designation_id").
+		Joins("LEFT JOIN shifts ON shifts.id = employees.shift_id").
 		Where("attendances.date BETWEEN ? AND ? AND attendances.deleted_at IS NULL", startDate, endDate)
 	if companyID != "" {
 		query = query.Where("attendances.company_id = ?", companyID)
@@ -444,7 +448,7 @@ func (r *AttendanceRepository) MonthlyReport(startDate, endDate, companyID, depa
 		query = query.Where("employees.group_id = ?", groupID)
 	}
 	var results []map[string]interface{}
-	err := query.Group("attendances.employee_id, employees.employee_id, employees.name_en, designations.name, departments.name").
+	err := query.Group("attendances.employee_id, employees.employee_id, employees.name_en, designations.name, departments.name, shifts.name").
 		Order("employees.name_en ASC").
 		Find(&results).Error
 	return results, err
@@ -522,4 +526,47 @@ func (r *AttendanceRepository) GetMonthlyOvertimeHours(companyID, startDate, end
 		result[r.EmployeeID] = r.OtHours
 	}
 	return result, nil
+}
+
+// ListMissing finds attendance records where check_in OR check_out is null within a date range.
+func (r *AttendanceRepository) ListMissing(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status string, page, limit int) ([]models.Attendance, int64, error) {
+	base := r.db.Model(&models.Attendance{}).
+		Where("(check_in IS NULL AND check_out IS NOT NULL OR check_in IS NOT NULL AND check_out IS NULL) AND date BETWEEN ? AND ? AND deleted_at IS NULL", startDate, endDate)
+	if companyID != "" {
+		base = base.Where("company_id = ?", companyID)
+	}
+	if departmentID != "" {
+		base = base.Where("employee_id IN (SELECT employee_id FROM employees WHERE department_id = ?)", departmentID)
+	}
+	if sectionID != "" {
+		base = base.Where("employee_id IN (SELECT employee_id FROM employees WHERE section_id = ?)", sectionID)
+	}
+	if designationID != "" {
+		base = base.Where("employee_id IN (SELECT employee_id FROM employees WHERE designation_id = ?)", designationID)
+	}
+	if lineID != "" {
+		base = base.Where("employee_id IN (SELECT employee_id FROM employees WHERE line_id = ?)", lineID)
+	}
+	if groupID != "" {
+		base = base.Where("employee_id IN (SELECT employee_id FROM employees WHERE group_id = ?)", groupID)
+	}
+	if shiftID != "" {
+		base = base.Where("shift_id = ?", shiftID)
+	}
+	if status != "" {
+		base = base.Where("status = ?", status)
+	}
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var attendances []models.Attendance
+	err := base.Preload("Employee.DesignationRef").Preload("Employee").Preload("Shift").Order("date ASC, created_at ASC").Offset((page - 1) * limit).Limit(limit).Find(&attendances).Error
+	return attendances, total, err
+}
+
+// DeleteAfterDate soft-deletes attendance records after the given date for an employee.
+func (r *AttendanceRepository) DeleteAfterDate(employeeID, date string) (int64, error) {
+	res := r.db.Where("employee_id = ? AND date > ? AND deleted_at IS NULL", employeeID, date).Delete(&models.Attendance{})
+	return res.RowsAffected, res.Error
 }

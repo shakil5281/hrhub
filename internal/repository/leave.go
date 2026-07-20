@@ -73,7 +73,7 @@ func (r *LeaveRepository) ListLeaves(companyID, departmentID, employeeID, status
 		base = base.Where("leaves.company_id = ?", companyID)
 	}
 	if departmentID != "" {
-		base = base.Where("leaves.employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+		base = base.Where("leaves.employee_id IN (SELECT employee_id FROM employees WHERE department_id = ?)", departmentID)
 	}
 	if employeeID != "" {
 		base = base.Where("leaves.employee_id = ?", employeeID)
@@ -177,7 +177,7 @@ func (r *LeaveRepository) MonthlyReport(month, year int, companyID, departmentID
 
 	q := r.db.Table("leaves").
 		Select("departments.id as department_id, departments.name as department_name, COUNT(*) as total, SUM(CASE WHEN leaves.status = 'approved' THEN 1 ELSE 0 END) as approved, SUM(CASE WHEN leaves.status = 'rejected' THEN 1 ELSE 0 END) as rejected, SUM(CASE WHEN leaves.status = 'pending' THEN 1 ELSE 0 END) as pending").
-		Joins("JOIN employees ON employees.id = leaves.employee_id").
+		Joins("JOIN employees ON employees.employee_id = leaves.employee_id").
 		Joins("JOIN departments ON departments.id = employees.department_id").
 		Where("leaves.deleted_at IS NULL AND leaves.from_date >= ? AND leaves.from_date <= ?", startStr, endStr)
 	if companyID != "" {

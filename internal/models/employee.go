@@ -106,8 +106,8 @@ type Employee struct {
 	PermanentDistrict *District   `json:"permanent_district,omitempty" gorm:"foreignKey:PermanentDistrictID"`
 	PermanentUpazila  *Upazila    `json:"permanent_upazila,omitempty" gorm:"foreignKey:PermanentUpazilaID"`
 	PermanentUnion    *Union      `json:"permanent_union,omitempty" gorm:"foreignKey:PermanentUnionID"`
-	Attendances       []Attendance       `gorm:"foreignKey:EmployeeID;references:ID"`
-	Leaves            []Leave            `gorm:"foreignKey:EmployeeID;references:ID"`
-	LeaveAllocations  []LeaveAllocation  `gorm:"foreignKey:EmployeeID;references:ID"`
-	Salaries          []Salary           `gorm:"foreignKey:EmployeeID;references:ID"`
+	Attendances       []Attendance       `gorm:"foreignKey:EmployeeID;references:EmployeeID"`
+	Leaves            []Leave            `gorm:"foreignKey:EmployeeID;references:EmployeeID"`
+	LeaveAllocations  []LeaveAllocation  `gorm:"foreignKey:EmployeeID;references:EmployeeID"`
+	Salaries          []Salary           `gorm:"foreignKey:EmployeeID;references:EmployeeID"`
 }

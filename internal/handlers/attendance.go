@@ -18,10 +18,11 @@ type AttendanceHandler struct {
 	attendanceRepo *repository.AttendanceRepository
 	employeeRepo   *repository.EmployeeRepository
 	dataLogRepo    *repository.DataLogRepository
+	separationRepo *repository.SeparationRepository
 }
 
-func NewAttendanceHandler(attendanceRepo *repository.AttendanceRepository, employeeRepo *repository.EmployeeRepository, dataLogRepo *repository.DataLogRepository) *AttendanceHandler {
-	return &AttendanceHandler{attendanceRepo: attendanceRepo, employeeRepo: employeeRepo, dataLogRepo: dataLogRepo}
+func NewAttendanceHandler(attendanceRepo *repository.AttendanceRepository, employeeRepo *repository.EmployeeRepository, dataLogRepo *repository.DataLogRepository, separationRepo *repository.SeparationRepository) *AttendanceHandler {
+	return &AttendanceHandler{attendanceRepo: attendanceRepo, employeeRepo: employeeRepo, dataLogRepo: dataLogRepo, separationRepo: separationRepo}
 }
 
 type CreateAttendanceRequest struct {
@@ -41,6 +42,24 @@ type ClockInRequest struct {
 
 type ClockOutRequest struct {
 	EmployeeID string `json:"employee_id" binding:"required"`
+}
+
+// parseDateTime parses a check_in/check_out string into time.Time.
+// Accepts "HH:mm" (uses the given date), "yyyy-MM-ddTHH:mm" or "yyyy-MM-dd HH:mm:ss" (full datetime).
+func parseDateTime(val, date string) (time.Time, error) {
+	if val == "" {
+		return time.Time{}, fmt.Errorf("empty time value")
+	}
+	if len(val) == 5 && val[2] == ':' {
+		return time.Parse("2006-01-02 15:04:05", date+" "+val+":00")
+	}
+	if len(val) >= 16 && val[10] == 'T' {
+		return time.Parse("2006-01-02T15:04", val)
+	}
+	if len(val) == 19 && val[10] == ' ' && val[4] == '-' {
+		return time.Parse("2006-01-02 15:04:05", val)
+	}
+	return time.Parse("2006-01-02 15:04:05", val)
 }
 
 // ListAttendances godoc
@@ -147,12 +166,16 @@ func (h *AttendanceHandler) Create(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	var checkIn, checkOut *string
+	var checkIn, checkOut *time.Time
 	if req.CheckIn != "" {
-		checkIn = &req.CheckIn
+		if t, err := parseDateTime(req.CheckIn, req.Date); err == nil {
+			checkIn = &t
+		}
 	}
 	if req.CheckOut != "" {
-		checkOut = &req.CheckOut
+		if t, err := parseDateTime(req.CheckOut, req.Date); err == nil {
+			checkOut = &t
+		}
 	}
 
 	attendance := &models.Attendance{
@@ -232,10 +255,14 @@ func (h *AttendanceHandler) Update(c *gin.Context) {
 	attendance.UpdatedBy = &userID
 
 	if req.CheckIn != "" {
-		attendance.CheckIn = &req.CheckIn
+		if t, err := parseDateTime(req.CheckIn, req.Date); err == nil {
+			attendance.CheckIn = &t
+		}
 	}
 	if req.CheckOut != "" {
-		attendance.CheckOut = &req.CheckOut
+		if t, err := parseDateTime(req.CheckOut, req.Date); err == nil {
+			attendance.CheckOut = &t
+		}
 	}
 	if req.ShiftID != "" {
 		attendance.ShiftID = &req.ShiftID
@@ -319,9 +346,24 @@ func (h *AttendanceHandler) ListJobCard(c *gin.Context) {
 		}
 	}
 
+	// Cap end_date to separation date if employee has been separated
+	if employeeID != "" {
+		sep, err := h.separationRepo.FindProcessedByEmployeeID(employeeID)
+		if err == nil && sep != nil && sep.Date != "" {
+			sepDate, parseErr := time.Parse("2006-01-02", sep.Date)
+			endDateParsed, endParseErr := time.Parse("2006-01-02", endDate)
+			if parseErr == nil && endParseErr == nil {
+				dayBeforeSep := sepDate.AddDate(0, 0, -1)
+				if dayBeforeSep.Before(endDateParsed) {
+					endDate = dayBeforeSep.Format("2006-01-02")
+				}
+			}
+		}
+	}
+
 	// List mode: return only distinct employee IDs/names for navigation
 	if listMode == "true" {
-		employees, err := h.attendanceRepo.ListJobCardEmployees(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status)
+		employees, err := h.attendanceRepo.ListJobCardEmployees(startDate, endDate, companyID, employeeID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -385,8 +427,8 @@ func (h *AttendanceHandler) ClockIn(c *gin.Context) {
 		return
 	}
 
-	today := time.Now().Format("2006-01-02")
-	now := time.Now().Format("15:04")
+	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	existing, err := h.attendanceRepo.FindByEmployeeAndDate(req.EmployeeID, today)
 	if err == nil && existing != nil && existing.ID != "" {
@@ -429,15 +471,15 @@ func (h *AttendanceHandler) ClockIn(c *gin.Context) {
 // @Failure      401  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Router       /attendance/clock-out [post]
-func (h *AttendanceHandler) ClockOut(c *gin.Context) {
+func (h *AttendanceHandler) 	ClockOut(c *gin.Context) {
 	var req ClockOutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	today := time.Now().Format("2006-01-02")
-	now := time.Now().Format("15:04")
+	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	attendance, err := h.attendanceRepo.FindByEmployeeAndDate(req.EmployeeID, today)
 	if err != nil {
@@ -456,9 +498,7 @@ func (h *AttendanceHandler) ClockOut(c *gin.Context) {
 
 	// Calculate total hours
 	if attendance.CheckIn != nil {
-		checkInTime, _ := time.Parse("15:04", *attendance.CheckIn)
-		checkOutTime, _ := time.Parse("15:04", now)
-		duration := checkOutTime.Sub(checkInTime)
+		duration := now.Sub(*attendance.CheckIn)
 		hours := int(duration.Hours())
 		minutes := int(duration.Minutes()) % 60
 		totalHours := fmt.Sprintf("%02d:%02d", hours, minutes)
@@ -641,97 +681,107 @@ func (h *AttendanceHandler) OvertimeSummary(c *gin.Context) {
 // MissingAttendance godoc
 //
 // @Summary      Missing attendance
-// @Description  Find employees with punch data logs but no attendance record
+// @Description  Find attendance records where check_in or check_out is missing
 // @Tags         Attendance
 // @Security     BearerAuth
 // @Produce      json
-// @Param        date   query string true  "Date (YYYY-MM-DD)"
+// @Param        start_date    query string false "Start date (YYYY-MM-DD, default: today)"
+// @Param        end_date      query string false "End date (YYYY-MM-DD, default: today)"
 // @Param        company_id    query string false "Filter by company"
 // @Param        department_id query string false "Filter by department"
+// @Param        section_id    query string false "Filter by section"
+// @Param        designation_id query string false "Filter by designation"
+// @Param        line_id       query string false "Filter by line"
+// @Param        group_id      query string false "Filter by group"
+// @Param        shift_id      query string false "Filter by shift"
+// @Param        status        query string false "Filter by status"
 // @Param        page          query int    false "Page number (default: 1)"
 // @Param        limit         query int    false "Page size (default: 20, max: 100)"
 // @Success      200  {object}  utils.PaginatedResponse
 // @Failure      500  {object}  map[string]string
 // @Router       /attendance/missing [get]
 func (h *AttendanceHandler) MissingAttendance(c *gin.Context) {
-	date := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+	startDate := c.DefaultQuery("start_date", time.Now().Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", time.Now().Format("2006-01-02"))
 	companyID := c.Query("company_id")
 	departmentID := c.Query("department_id")
 	sectionID := c.Query("section_id")
 	designationID := c.Query("designation_id")
 	lineID := c.Query("line_id")
 	groupID := c.Query("group_id")
+	shiftID := c.Query("shift_id")
+	status := c.Query("status")
 
-	logs, err := h.dataLogRepo.ListByDateRange(date, date)
+	p := utils.ParsePagination(c)
+
+	attendances, total, err := h.attendanceRepo.ListMissing(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, status, p.Page, p.Limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	badgeMap := make(map[string]string)
-	for _, log := range logs {
-		if log.BadgeNumber != "" {
-			badgeMap[log.BadgeNumber] = log.EmployeeName
-		}
-	}
-
-	attendances, _ := h.attendanceRepo.ListAllByDate(date)
-	attendedBadges := make(map[string]bool)
+	badgeNumbers := make([]string, 0, len(attendances))
+	empBadgeMap := make(map[string]string)
 	for _, a := range attendances {
-		if a.PunchNumber != nil {
-			attendedBadges[*a.PunchNumber] = true
+		if a.Employee.PunchNumber != "" {
+			badgeNumbers = append(badgeNumbers, a.Employee.PunchNumber)
+			empBadgeMap[a.EmployeeID] = a.Employee.PunchNumber
 		}
 	}
 
-	var missing []map[string]interface{}
-	for badge, name := range badgeMap {
-		if !attendedBadges[badge] {
-			emp, err := h.employeeRepo.FindByPunchNumber(badge)
-			if err != nil {
-				emp, err = h.employeeRepo.FindByEmployeeID(badge)
+	punchLogs := make(map[string][]map[string]string)
+	if len(badgeNumbers) > 0 {
+		logs, err := h.dataLogRepo.ListByBadgeAndDateRange(badgeNumbers, startDate, endDate)
+		if err == nil {
+			for _, l := range logs {
+				t := l.PunchTime.Format("2006-01-02 15:04:05")
+				pt := "I"
+				if l.PunchType == "O" {
+					pt = "O"
+				}
+				punchLogs[l.BadgeNumber] = append(punchLogs[l.BadgeNumber], map[string]string{
+					"time": t,
+					"type": pt,
+				})
 			}
-			if err == nil {
-				database.DB.Preload("DesignationRef").Preload("SectionRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Department").Preload("Shift").First(emp, "id = ?", emp.ID)
-				if companyID != "" && emp.CompanyID != companyID {
-					continue
-				}
-				if departmentID != "" && (emp.DepartmentID == nil || *emp.DepartmentID != departmentID) {
-					continue
-				}
-				if sectionID != "" && (emp.SectionID == nil || *emp.SectionID != sectionID) {
-					continue
-				}
-				if designationID != "" && (emp.DesignationID == nil || *emp.DesignationID != designationID) {
-					continue
-				}
-				if lineID != "" && (emp.LineID == nil || *emp.LineID != lineID) {
-					continue
-				}
-				if groupID != "" && (emp.GroupID == nil || *emp.GroupID != groupID) {
-					continue
-				}
-			}
-			entry := map[string]interface{}{
-				"badge_number": badge,
-				"employee_name": name,
-			}
-			if emp != nil {
-				entry["id"] = emp.ID
-				entry["employee_id"] = emp.EmployeeID
-				entry["name_en"] = emp.NameEn
-				if emp.DesignationRef != nil {
-					entry["designation"] = emp.DesignationRef.Name
-				}
-			}
-			missing = append(missing, entry)
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"date":    date,
-		"missing": missing,
-		"total":   len(missing),
-	})
+	var result []map[string]interface{}
+	for _, a := range attendances {
+		desig := ""
+		if a.Employee.DesignationRef != nil {
+			desig = a.Employee.DesignationRef.Name
+		}
+		shiftName := ""
+		if a.Shift != nil {
+			shiftName = a.Shift.Name
+		}
+		inTime := ""
+		if a.CheckIn != nil {
+			inTime = a.CheckIn.Format("2006-01-02 15:04:05")
+		}
+		outTime := ""
+		if a.CheckOut != nil {
+			outTime = a.CheckOut.Format("2006-01-02 15:04:05")
+		}
+		punches := punchLogs[empBadgeMap[a.EmployeeID]]
+		result = append(result, map[string]interface{}{
+			"id":            a.ID,
+			"employee_id":   a.EmployeeID,
+			"employee_name": a.Employee.NameEn,
+			"designation":   desig,
+			"shift_name":    shiftName,
+			"check_in":      inTime,
+			"check_out":     outTime,
+			"status":        a.Status,
+			"date":          a.Date,
+			"company_id":    a.CompanyID,
+			"punches":       punches,
+		})
+	}
+
+	c.JSON(http.StatusOK, utils.NewPaginatedResponse(result, total, p))
 }
 
 // MonthlyReport godoc
@@ -1015,13 +1065,13 @@ func addGroupedSheet(f *excelize.File, sheetName, companyName, companyAddress, d
 
 			checkIn := ""
 			if a.CheckIn != nil {
-				checkIn = *a.CheckIn
+				checkIn = a.CheckIn.Format("2006-01-02 15:04:05")
 			}
 			svc(4, checkIn)
 
 			checkOut := ""
 			if a.CheckOut != nil {
-				checkOut = *a.CheckOut
+				checkOut = a.CheckOut.Format("2006-01-02 15:04:05")
 			}
 			svc(5, checkOut)
 
@@ -1234,13 +1284,13 @@ func (h *AttendanceHandler) ExportExcel(c *gin.Context) {
 
 		checkIn := ""
 		if att.CheckIn != nil {
-			checkIn = *att.CheckIn
+			checkIn = att.CheckIn.Format("2006-01-02 15:04:05")
 		}
 		svc(4, checkIn)
 
 		checkOut := ""
 		if att.CheckOut != nil {
-			checkOut = *att.CheckOut
+			checkOut = att.CheckOut.Format("2006-01-02 15:04:05")
 		}
 		svc(5, checkOut)
 
@@ -1388,38 +1438,58 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		endDate = startDate
 	}
 
+	companyFilter := c.Query("company_id")
+	departmentFilter := c.Query("department_id")
+	sectionFilter := c.Query("section_id")
+	designationFilter := c.Query("designation_id")
+	lineFilter := c.Query("line_id")
+	groupFilter := c.Query("group_id")
+
 	var company models.Company
 	database.DB.First(&company)
 
-	var attendances []models.Attendance
-	if err := database.DB.
+	baseQuery := database.DB.Model(&models.Attendance{}).
 		Preload("Employee.DesignationRef").
 		Preload("Employee.Department").
 		Preload("Employee.SectionRef").
 		Preload("Employee.LineRef").
 		Preload("Employee").
-		Where("date BETWEEN ? AND ? AND status = ? AND deleted_at IS NULL", startDate, endDate, "absent").
-		Order("date ASC, created_at ASC").
+		Where("attendances.date BETWEEN ? AND ? AND attendances.status = ? AND attendances.deleted_at IS NULL", startDate, endDate, "absent")
+
+	if companyFilter != "" {
+		baseQuery = baseQuery.Where("attendances.company_id = ?", companyFilter)
+	}
+	if departmentFilter != "" {
+		baseQuery = baseQuery.Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
+			Where("employees.department_id = ?", departmentFilter)
+	}
+	if sectionFilter != "" {
+		baseQuery = baseQuery.Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
+			Where("employees.section_id = ?", sectionFilter)
+	}
+	if designationFilter != "" {
+		baseQuery = baseQuery.Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
+			Where("employees.designation_id = ?", designationFilter)
+	}
+	if lineFilter != "" {
+		baseQuery = baseQuery.Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
+			Where("employees.line_id = ?", lineFilter)
+	}
+	if groupFilter != "" {
+		baseQuery = baseQuery.Joins("JOIN employees ON employees.employee_id = attendances.employee_id").
+			Where("employees.group_id = ?", groupFilter)
+	}
+
+	var attendances []models.Attendance
+	if err := baseQuery.Order("attendances.date ASC, attendances.created_at ASC").
 		Find(&attendances).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	type absentCount struct {
-		EmployeeID string
-		Count      int
-	}
-	var totalAbsentCounts []absentCount
-	database.DB.Model(&models.Attendance{}).
-		Select("employee_id, count(*) as count").
-		Where("status = ? AND deleted_at IS NULL", "absent").
-		Group("employee_id").
-		Find(&totalAbsentCounts)
-
-	totalAbsentMap := make(map[string]int)
-	for _, ac := range totalAbsentCounts {
-		totalAbsentMap[ac.EmployeeID] = ac.Count
-	}
+	// Build last continuous absent count per employee:
+	// Starting from the latest date in the range, count consecutive absent days backwards.
+	lastContAbsentMap := h.buildLastContinuousAbsentMap(startDate, endDate, companyFilter)
 
 	f := excelize.NewFile()
 	sheet := "Absent Report"
@@ -1435,7 +1505,7 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		{"Employee ID", 16},
 		{"Name", 32},
 		{"Designation", 20},
-		{"Total Absent", 14},
+		{"Last Cont. Absent", 16},
 		{"Status", 12},
 	}
 
@@ -1539,7 +1609,7 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		}
 		svl(3, designation)
 
-		svc(4, fmt.Sprintf("%d", totalAbsentMap[a.EmployeeID]))
+		svc(4, fmt.Sprintf("%d", lastContAbsentMap[a.EmployeeID]))
 
 		f.SetCellValue(sheet, colNameAttendance(5)+strconv.Itoa(row), "A")
 		f.SetCellStyle(sheet, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyle)
@@ -1554,25 +1624,26 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
 		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
 	})
-	f.SetCellValue(sheet, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total Absent: %d Employees", len(attendances)))
+	uniqueCount := len(lastContAbsentMap)
+	f.SetCellValue(sheet, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total Absent: %d Employees", uniqueCount))
 	f.MergeCell(sheet, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow))
 	f.SetCellStyle(sheet, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow), footerStyle)
 	f.SetRowHeight(sheet, footerRow, 22)
 
 	// --- Grouped Sheets ---
-	addGroupedAbsentSheet(f, "Department Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Department Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.Department != nil { return a.Employee.Department.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Section Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Section Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.SectionRef != nil { return a.Employee.SectionRef.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Designation Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Designation Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.DesignationRef != nil { return a.Employee.DesignationRef.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Line Wise", companyName, companyAddress, dateRange, attendances, totalAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Line Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.LineRef != nil { return a.Employee.LineRef.Name }
 		return "-"
 	})
@@ -1605,7 +1676,55 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 	f.Write(c.Writer)
 }
 
-func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddress, dateRange string, attendances []models.Attendance, totalAbsentMap map[string]int, groupFn func(models.Attendance) string) {
+// buildLastContinuousAbsentMap counts the consecutive absent days extending backward
+// from endDate for each employee. It finds each employee's last present date (any date <= endDate)
+// and counts absent days after that date up to endDate. The search is unbounded backward — if
+// the employee has no present date in the record, ALL absent days up to endDate are counted.
+// If companyID is non-empty, only employees of that company are considered.
+//
+// The key difference from using a BETWEEN-bound approach: this correctly handles single-day
+// ranges (e.g., today-only reports) by looking at ALL absent days after the last present,
+// not just those within an arbitrary start/end window.
+func (h *AttendanceHandler) buildLastContinuousAbsentMap(startDate, endDate, companyID string) map[string]int {
+	type countRow struct {
+		EmployeeID string `gorm:"column:employee_id"`
+		Count      int    `gorm:"column:count"`
+	}
+	var counts []countRow
+
+	query := `
+		SELECT a.employee_id, COUNT(*)::int AS count
+		FROM attendances a
+		LEFT JOIN LATERAL (
+			SELECT MAX(date) AS last_present
+			FROM attendances
+			WHERE employee_id = a.employee_id
+			  AND date <= ?
+			  AND status IN ('present','late','half_day')
+			  AND deleted_at IS NULL
+		) lp ON true
+		WHERE a.date <= ?
+		  AND a.status = 'absent'
+		  AND a.deleted_at IS NULL
+		  AND (lp.last_present IS NULL OR a.date > lp.last_present)
+	`
+	args := []interface{}{endDate, endDate}
+	if companyID != "" {
+		query += ` AND a.company_id = ?`
+		args = append(args, companyID)
+	}
+	query += ` GROUP BY a.employee_id`
+
+	database.DB.Raw(query, args...).Scan(&counts)
+
+	result := make(map[string]int, len(counts))
+	for _, c := range counts {
+		result[c.EmployeeID] = c.Count
+	}
+	return result
+}
+
+func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddress, dateRange string, attendances []models.Attendance, lastContAbsentMap map[string]int, groupFn func(models.Attendance) string) {
 	f.NewSheet(sheetName)
 
 	nCols := 5
@@ -1616,7 +1735,7 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 		{"Employee ID", 16},
 		{"Name", 32},
 		{"Designation", 20},
-		{"Total Absent", 14},
+		{"Last Cont. Absent", 16},
 		{"Status", 12},
 	}
 
@@ -1697,7 +1816,7 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 			d := ""
 			if a.Employee.DesignationRef != nil { d = a.Employee.DesignationRef.Name }
 			svl(3, d)
-			svc(4, fmt.Sprintf("%d", totalAbsentMap[a.EmployeeID]))
+			svc(4, fmt.Sprintf("%d", lastContAbsentMap[a.EmployeeID]))
 			f.SetCellValue(sheetName, colNameAttendance(5)+strconv.Itoa(row), "A")
 			f.SetCellStyle(sheetName, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyleG)
 

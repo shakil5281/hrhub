@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UserXIcon, PlusIcon, RotateCcwIcon, Loader2 } from "lucide-react"
+import { UserXIcon, PlusIcon, RotateCcwIcon, Loader2, CheckCircleIcon, XCircleIcon } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -9,32 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { Separation, separationTypeOptions, separationStatusOptions } from "@/components/data/separation-data"
-import { separationApi, departmentApi, employeeApi } from "@/lib/api"
+import { separationApi, departmentApi } from "@/lib/api"
 import type { Department } from "@/components/data/organization-data"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 
-const columns: ColumnDef<Separation>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "employee_id", header: "Emp. ID" },
-  {
-    accessorKey: "department",
-    header: "Department",
-    cell: ({ row }) => <span>{row.original.department?.name || row.original.department_id}</span>,
-  },
-  { accessorKey: "type", header: "Separation Type" },
-  { accessorKey: "date", header: "Separation Date" },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-        Approved: "default", Pending: "secondary", Rejected: "destructive", Processed: "outline",
-      }
-      return <Badge variant={map[row.original.status] || "secondary"}>{row.original.status}</Badge>
-    },
-  },
-]
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  Approved: "default", Pending: "secondary", Rejected: "destructive", Processed: "outline", Cancelled: "outline",
+}
 
 export default function SeperationPage() {
   const router = useRouter()
@@ -42,6 +24,7 @@ export default function SeperationPage() {
   const [departments, setDepartments] = React.useState<Department[]>([])
   const [loading, setLoading] = React.useState(true)
   const [processing, setProcessing] = React.useState(false)
+  const [processingId, setProcessingId] = React.useState<string | null>(null)
   const [filters, setFilters] = React.useState<Record<string, string>>({})
   const [submitting, setSubmitting] = React.useState(false)
 
@@ -99,22 +82,23 @@ export default function SeperationPage() {
   }
 
   const handleEdit = (s: Separation) => router.push(`/hr/seperation/${s.id}/edit`)
+
   const handleDelete = async (s: Separation) => {
     try {
       await separationApi.delete(s.id)
       toast.success("Separation deleted")
       fetchData(filters)
-    } catch {
-      toast.error("Failed to delete separation")
+    } catch (err: unknown) {
+      const msg = extractError(err)
+      toast.error(msg || "Failed to delete separation")
     }
   }
 
-  const handleProcess = async () => {
+  const handleProcessBatch = async () => {
     setProcessing(true)
     try {
-      const today = new Date().toISOString().split("T")[0]
-      const { data: res } = await separationApi.process(today)
-      toast.success(res.message || "Separations processed")
+      const { data: res } = await separationApi.process()
+      toast.success(res.processed === 0 ? "No pending separations due" : (res.message || `Processed ${res.processed} separation(s)`))
       fetchData(filters)
     } catch {
       toast.error("Failed to process separations")
@@ -123,15 +107,81 @@ export default function SeperationPage() {
     }
   }
 
+  const handleProcessOne = async (s: Separation) => {
+    setProcessingId(s.id)
+    try {
+      const { data: res } = await separationApi.processOne(s.id)
+      toast.success(res.message || `Processed ${s.employee}`)
+      fetchData(filters)
+    } catch (err: unknown) {
+      toast.error(extractError(err) || "Failed to process")
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleCancel = async (s: Separation) => {
+    setProcessingId(s.id)
+    try {
+      await separationApi.cancel(s.id)
+      toast.success(`Cancelled separation for ${s.employee}`)
+      fetchData(filters)
+    } catch (err: unknown) {
+      toast.error(extractError(err) || "Failed to cancel")
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const columns: ColumnDef<Separation>[] = React.useMemo(() => [
+    { accessorKey: "employee", header: "Employee" },
+    { accessorKey: "employee_id", header: "Emp. ID" },
+    {
+      accessorKey: "department",
+      header: "Department",
+      cell: ({ row }) => <span>{row.original.department?.name || row.original.department_id}</span>,
+    },
+    { accessorKey: "type", header: "Separation Type" },
+    { accessorKey: "date", header: "Separation Date" },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const s = row.original.status
+        return <Badge variant={statusVariant[s] || "secondary"}>{s}</Badge>
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => {
+        const s = row.original
+        const busy = processingId === s.id
+        if (busy) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        return (
+          <div className="flex items-center gap-1">
+            {(s.status === "Pending" || s.status === "Approved") && (
+              <>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleProcessOne(s) }} title="Process now">
+                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleCancel(s) }} title="Cancel">
+                  <XCircleIcon className="h-4 w-4 text-amber-600" />
+                </Button>
+              </>
+            )}
+          </div>
+        )
+      },
+    },
+  ], [processingId])
+
   const filterDefs: FilterDef[] = [
     { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
     { key: "employee_id", label: "Code", type: "text", placeholder: "Filter by code..." },
     { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
     { key: "type", label: "Type", type: "select", options: separationTypeOptions.map((o) => ({ value: o.value, label: o.label })) },
-    { key: "status", label: "Status", type: "select", options: [
-      ...separationStatusOptions.map((o) => ({ value: o.value, label: o.label })),
-      { value: "Processed", label: "Processed" },
-    ] },
+    { key: "status", label: "Status", type: "select", options: separationStatusOptions.map((o) => ({ value: o.value, label: o.label })) },
   ]
 
   return (
@@ -145,9 +195,9 @@ export default function SeperationPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleProcess} disabled={processing} variant="outline">
+          <Button onClick={handleProcessBatch} disabled={processing} variant="outline">
             {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcwIcon className="mr-2 h-4 w-4" />}
-            {processing ? "Processing..." : "Daily Process"}
+            {processing ? "Processing..." : "Process Due"}
           </Button>
           <Button onClick={() => router.push("/hr/seperation/create")}>
             <PlusIcon className="mr-2 h-4 w-4" />
@@ -183,4 +233,12 @@ export default function SeperationPage() {
       />
     </div>
   )
+}
+
+function extractError(err: unknown): string {
+  if (typeof err === "object" && err !== null && "response" in err) {
+    const ae = err as { response?: { data?: { error?: string } } }
+    return ae.response?.data?.error || ""
+  }
+  return ""
 }

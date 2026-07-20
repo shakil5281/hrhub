@@ -47,6 +47,24 @@ func Connect(cfg *config.Config) {
 	_ = db.Exec("ALTER TABLE salaries ALTER COLUMN employee_id TYPE varchar(50) USING employee_id::varchar(50)")
 	_ = db.Exec("ALTER TABLE temporary_shifts ALTER COLUMN employee_id TYPE varchar(50) USING employee_id::varchar(50)")
 
+	// Migrate check_in/check_out from varchar to timestamp.
+	// Existing data may be "HH:mm" (time-only, length=5) or already a full datetime string.
+	// Uses length() via ::text which works on both varchar and already-altered timestamp columns.
+	_ = db.Exec(`
+		ALTER TABLE attendances ALTER COLUMN check_in TYPE timestamp USING CASE
+			WHEN check_in IS NOT NULL AND length(check_in::text) <= 5 THEN (date || ' ' || check_in)::timestamp
+			WHEN check_in IS NOT NULL THEN check_in::timestamp
+			ELSE NULL
+		END
+	`)
+	_ = db.Exec(`
+		ALTER TABLE attendances ALTER COLUMN check_out TYPE timestamp USING CASE
+			WHEN check_out IS NOT NULL AND length(check_out::text) <= 5 THEN (date || ' ' || check_out)::timestamp
+			WHEN check_out IS NOT NULL THEN check_out::timestamp
+			ELSE NULL
+		END
+	`)
+
 	// Add performance indexes for high-frequency queries
 	_ = db.Exec("CREATE INDEX IF NOT EXISTS idx_salaries_company_month_year ON salaries(company_id, year, month)")
 	_ = db.Exec("CREATE INDEX IF NOT EXISTS idx_employees_company_status ON employees(company_id, status) WHERE deleted_at IS NULL")

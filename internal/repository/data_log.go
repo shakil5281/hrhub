@@ -43,6 +43,13 @@ func (r *DataLogRepository) ListUnprocessedByDate(date string) ([]models.DataLog
 	return logs, err
 }
 
+func (r *DataLogRepository) ListByDate(date string) ([]models.DataLog, error) {
+	var logs []models.DataLog
+	err := r.db.Where("date = ? AND deleted_at IS NULL", date).
+		Order("user_id ASC, punch_time ASC").Find(&logs).Error
+	return logs, err
+}
+
 func (r *DataLogRepository) ListUnprocessedByDateRange(start, end string) ([]models.DataLog, error) {
 	var logs []models.DataLog
 	err := r.db.Where("date >= ? AND date <= ? AND processed = false AND deleted_at IS NULL", start, end).
@@ -81,6 +88,13 @@ func (r *DataLogRepository) DeleteOlderThan(t time.Time) error {
 
 func (r *DataLogRepository) DeleteAll() error {
 	return r.db.Unscoped().Where("1 = 1").Delete(&models.DataLog{}).Error
+}
+
+func (r *DataLogRepository) ListByBadgeAndDateRange(badgeNumbers []string, start, end string) ([]models.DataLog, error) {
+	var logs []models.DataLog
+	err := r.db.Where("badge_number IN ? AND date >= ? AND date <= ? AND deleted_at IS NULL", badgeNumbers, start, end).
+		Order("badge_number ASC, punch_time ASC").Find(&logs).Error
+	return logs, err
 }
 
 func (r *DataLogRepository) ExistsByBadgeAndPunchTime(badgeNumber string, punchTime time.Time) bool {

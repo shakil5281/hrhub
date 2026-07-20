@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
+import { formatCheck } from "@/lib/utils"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -35,8 +36,8 @@ const columns: ColumnDef<OvertimeRecord>[] = [
   { accessorKey: "employee_name", header: "Employee Name" },
   { accessorKey: "emp_id", header: "Emp. ID" },
   { accessorKey: "date", header: "Date" },
-  { accessorKey: "check_in", header: "Check In" },
-  { accessorKey: "check_out", header: "Check Out" },
+  { accessorKey: "check_in", header: "Check In", cell: ({ row }) => formatCheck(row.original.check_in) },
+  { accessorKey: "check_out", header: "Check Out", cell: ({ row }) => formatCheck(row.original.check_out) },
   { accessorKey: "over_time", header: "Over Time" },
   {
     accessorKey: "over_time_status",

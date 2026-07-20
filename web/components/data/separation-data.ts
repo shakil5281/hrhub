@@ -8,9 +8,9 @@ export interface Separation {
   employee: string
   employee_id: string
   department_id: string
-  type: "Resignation" | "Termination" | "Retirement" | "Contract End" | "Other"
+  type: "Resign" | "Lefty" | "Close"
   date: string
-  status: "Approved" | "Pending" | "Rejected"
+  status: "Approved" | "Pending" | "Rejected" | "Processed" | "Cancelled"
   reason: string
   created_at: string
   updated_at: string
@@ -21,24 +21,24 @@ export const separationSchema = z.object({
   employee: z.string().min(2, "Employee name is required"),
   employee_id: z.string().min(1, "Employee code is required"),
   department_id: z.string().min(1, "Department is required"),
-  type: z.enum(["Resignation", "Termination", "Retirement", "Contract End", "Other"]),
+  type: z.enum(["Resign", "Lefty", "Close"]),
   date: z.string().min(1, "Date is required"),
-  status: z.enum(["Approved", "Pending", "Rejected"]),
+  status: z.enum(["Approved", "Pending", "Rejected", "Processed", "Cancelled"]),
   reason: z.string().optional(),
 })
 
 export type SeparationFormData = z.infer<typeof separationSchema>
 
 export const separationTypeOptions = [
-  { value: "Resignation" as const, label: "Resignation" },
-  { value: "Termination" as const, label: "Termination" },
-  { value: "Retirement" as const, label: "Retirement" },
-  { value: "Contract End" as const, label: "Contract End" },
-  { value: "Other" as const, label: "Other" },
+  { value: "Resign" as const, label: "Resign" },
+  { value: "Lefty" as const, label: "Lefty" },
+  { value: "Close" as const, label: "Close" },
 ]
 
 export const separationStatusOptions = [
   { value: "Approved" as const, label: "Approved" },
   { value: "Pending" as const, label: "Pending" },
   { value: "Rejected" as const, label: "Rejected" },
+  { value: "Processed" as const, label: "Processed" },
+  { value: "Cancelled" as const, label: "Cancelled" },
 ]

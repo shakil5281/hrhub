@@ -46,6 +46,7 @@ func New(cfg *config.Config) *gin.Engine {
 	employeeRepo := repository.NewEmployeeRepository(database.DB)
 	requirementRepo := repository.NewRequirementRepository(database.DB)
 	separationRepo := repository.NewSeparationRepository(database.DB)
+	separationService := service.NewSeparationService(database.DB, separationRepo, employeeRepo, attendanceRepo)
 	idCardRepo := repository.NewIdCardRepository(database.DB)
 
 	authService := service.NewAuthService(userRepo, authRepo, jwtCfg)
@@ -60,13 +61,13 @@ func New(cfg *config.Config) *gin.Engine {
 	desigHandler := handlers.NewDesignationHandler(desigRepo)
 	lineHandler := handlers.NewLineHandler(lineRepo)
 	requirementHandler := handlers.NewRequirementHandler(requirementRepo)
-	separationHandler := handlers.NewSeparationHandler(separationRepo)
+	separationHandler := handlers.NewSeparationHandler(separationRepo, separationService)
 	idCardHandler := handlers.NewIdCardHandler(idCardRepo)
 	divisionHandler := handlers.NewDivisionHandler(divisionRepo)
 	districtHandler := handlers.NewDistrictHandler(districtRepo)
 	upazilaHandler := handlers.NewUpazilaHandler(upazilaRepo)
 	unionHandler := handlers.NewUnionHandler(unionRepo)
-	attendanceHandler := handlers.NewAttendanceHandler(attendanceRepo, employeeRepo, dataLogRepo)
+	attendanceHandler := handlers.NewAttendanceHandler(attendanceRepo, employeeRepo, dataLogRepo, separationRepo)
 
 	roleRepo := repository.NewRoleRepository(database.DB)
 	roleHandler := handlers.NewRoleHandler(roleRepo)

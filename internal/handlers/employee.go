@@ -438,8 +438,10 @@ func (h *EmployeeHandler) GetEmployeeByCode(c *gin.Context) {
 	code := c.Param("code")
 	var emp models.Employee
 	if err := database.DB.Preload("Department").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Shift").Preload("Company").Where("employee_id = ?", code).First(&emp).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
-		return
+		if err2 := database.DB.Preload("Department").Preload("SectionRef").Preload("DesignationRef").Preload("LineRef").Preload("GroupRef").Preload("FloorRef").Preload("Shift").Preload("Company").Where("punch_number = ?", code).First(&emp).Error; err2 != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "employee not found"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, emp)
 }

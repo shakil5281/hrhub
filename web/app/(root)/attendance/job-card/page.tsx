@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 import { attendanceApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi, shiftApi } from "@/lib/api"
+import { formatCheck } from "@/lib/utils"
+
+interface ShiftInfo {
+  id: string
+  name: string
+}
 
 interface JobCardRecord {
   id: string
@@ -15,8 +21,10 @@ interface JobCardRecord {
   check_in: string | null
   check_out: string | null
   total_hours: string | null
+  over_time: string | null
   status: string
   late_minutes: number
+  shift?: ShiftInfo | null
   employee?: {
     employee_id: string
     name_en: string
@@ -111,6 +119,7 @@ export default function JobCardPage() {
     if (params.group_id) active.group_id = params.group_id
     if (params.shift_id) active.shift_id = params.shift_id
     if (params.status) active.status = params.status
+    if (params.employee_id) active.employee_id = params.employee_id
     return active
   }
 
@@ -254,30 +263,34 @@ export default function JobCardPage() {
                 <tr className="border-b">
                   <th className="px-3 py-2.5 text-left font-semibold w-10">#</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Date</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Shift</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Day</th>
                   <th className="px-3 py-2.5 text-left font-semibold">In Time</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Out Time</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Hours</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">OT</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Late (min)</th>
                   <th className="px-3 py-2.5 text-left font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="px-3 py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>
+                  <tr><td colSpan={10} className="px-3 py-12 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></td></tr>
                 ) : error ? (
-                  <tr><td colSpan={8} className="px-3 py-8 text-center text-destructive">{error}</td></tr>
+                  <tr><td colSpan={10} className="px-3 py-8 text-center text-destructive">{error}</td></tr>
                 ) : data.length === 0 ? (
-                  <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No records found</td></tr>
+                  <tr><td colSpan={10} className="px-3 py-8 text-center text-muted-foreground">No records found</td></tr>
                 ) : (
                   data.map((row, i) => (
                     <tr key={row.id} className="border-b last:border-0">
                       <td className="px-3 py-2">{i + 1}</td>
                       <td className="px-3 py-2">{format(new Date(row.date), "dd MMM yyyy")}</td>
+                      <td className="px-3 py-2">{row.shift?.name || "-"}</td>
                       <td className="px-3 py-2">{format(new Date(row.date), "EEE")}</td>
-                      <td className="px-3 py-2">{row.check_in || "-"}</td>
-                      <td className="px-3 py-2">{row.check_out || "-"}</td>
+                      <td className="px-3 py-2">{formatCheck(row.check_in)}</td>
+                      <td className="px-3 py-2">{formatCheck(row.check_out)}</td>
                       <td className="px-3 py-2">{row.total_hours || "-"}</td>
+                      <td className="px-3 py-2">{row.over_time || "-"}</td>
                       <td className="px-3 py-2">{row.late_minutes > 0 ? row.late_minutes : "-"}</td>
                       <td className="px-3 py-2 font-semibold">
                         {row.status === "absent" ? (

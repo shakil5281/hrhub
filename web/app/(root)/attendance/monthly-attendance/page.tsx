@@ -18,6 +18,7 @@ interface MonthlyRecord {
   employee_name: string
   designation_name: string
   department_name: string
+  shift_name: string
   present: number
   absent: number
   late: number
@@ -50,6 +51,7 @@ const columns: ColumnDef<MonthlyRecord>[] = [
   { accessorKey: "employee_name", header: "Name" },
   { accessorKey: "designation_name", header: "Designation" },
   { accessorKey: "department_name", header: "Department" },
+  { accessorKey: "shift_name", header: "Shift" },
   { accessorKey: "present", header: "Present" },
   { accessorKey: "absent", header: "Absent" },
   { accessorKey: "late", header: "Late" },

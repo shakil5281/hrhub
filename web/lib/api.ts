@@ -264,7 +264,9 @@ export const separationApi = {
   create: (data: Record<string, unknown>) => api.post("/separations", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/separations/${id}`, data),
   delete: (id: string) => api.delete(`/separations/${id}`),
-  process: (date: string) => api.post(`/separations/process?date=${date}`),
+  process: (date?: string) => api.post("/separations/process" + (date ? `?date=${date}` : "")),
+  processOne: (id: string) => api.post(`/separations/${id}/process`),
+  cancel: (id: string) => api.post(`/separations/${id}/cancel`),
 }
 
 export const idCardApi = {
