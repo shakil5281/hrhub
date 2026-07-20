@@ -7,7 +7,6 @@ import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
 
 interface Company { id: string; company_name_en: string }
 interface Department { id: string; name: string }
@@ -19,6 +18,7 @@ interface Shift { id: string; name: string }
 
 interface SummaryRecord {
   id: string
+  entity_id?: string
   date?: string
   name?: string
   present: number
@@ -37,19 +37,10 @@ const groupTabs = [
   { value: "section", label: "Section" },
   { value: "designation", label: "Designation" },
   { value: "line", label: "Line" },
-  { value: "group", label: "Custom Group" },
+  { value: "group", label: "Group" },
 ]
 
-const statusLabels = [
-  { key: "present", label: "Present", color: "text-green-600" },
-  { key: "late", label: "Late", color: "text-orange-600" },
-  { key: "absent", label: "Absent", color: "text-red-600" },
-  { key: "half_day", label: "Half Day", color: "text-yellow-600" },
-  { key: "on_leave", label: "On Leave", color: "text-indigo-600" },
-  { key: "weekend", label: "Weekend", color: "text-purple-600" },
-]
-
-function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boolean }) {
+function SummaryTable({ data, loading, title }: { data: SummaryRecord[]; loading: boolean; title?: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -67,57 +58,60 @@ function SummaryTable({ data, loading }: { data: SummaryRecord[]; loading: boole
     )
   }
 
+  const toOthers = (r: SummaryRecord) => (r.late || 0) + (r.half_day || 0) + (r.weekend || 0)
+  const toLeave = (r: SummaryRecord) => r.on_leave || 0
+
   const grandTotal = data.reduce((s, r) => ({
     present: s.present + r.present,
-    late: s.late + r.late,
     absent: s.absent + r.absent,
-    half_day: s.half_day + r.half_day,
-    on_leave: s.on_leave! + (r.on_leave || 0),
-    weekend: s.weekend! + (r.weekend || 0),
+    leave: s.leave + toLeave(r),
+    others: s.others + toOthers(r),
     total: s.total + r.total,
-  }), { present: 0, late: 0, absent: 0, half_day: 0, on_leave: 0, weekend: 0, total: 0 })
+  }), { present: 0, absent: 0, leave: 0, others: 0, total: 0 })
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b">
-            <th className="text-left py-3 px-4 font-semibold text-muted-foreground w-12">#</th>
-            <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Name</th>
-            {statusLabels.map((s) => (
-              <th key={s.key} className="text-center py-3 px-3 font-semibold text-muted-foreground whitespace-nowrap">{s.label}</th>
-            ))}
-            <th className="text-center py-3 px-3 font-semibold text-muted-foreground whitespace-nowrap">Total</th>
+          <tr className="border-b bg-muted/30">
+            <th className="text-left py-3 px-4 font-semibold text-muted-foreground w-10">#</th>
+            <th className="text-left py-3 px-4 font-semibold text-muted-foreground">{title || "Section"}</th>
+            <th className="text-center py-3 px-4 font-semibold text-green-700 bg-green-50/50">Present</th>
+            <th className="text-center py-3 px-4 font-semibold text-red-700 bg-red-50/50">Absent</th>
+            <th className="text-center py-3 px-4 font-semibold text-indigo-700 bg-indigo-50/50">Leave</th>
+            <th className="text-center py-3 px-4 font-semibold text-orange-700 bg-orange-50/50">Others</th>
+            <th className="text-center py-3 px-4 font-semibold text-muted-foreground">Total</th>
+            <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Remarks</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((row, i) => (
-            <tr key={row.id} className="border-b last:border-0">
-              <td className="py-2.5 px-4 text-muted-foreground">{i + 1}</td>
-              <td className="py-2.5 px-4 font-medium">{row.name}</td>
-              {statusLabels.map((s) => (
-                <td key={s.key} className="py-2.5 px-3 text-center">
-                  <span className={cn("inline-block min-w-[28px] px-2 py-0.5 rounded text-xs font-semibold", s.color)}>
-                    {(row as any)[s.key] ?? 0}
-                  </span>
-                </td>
-              ))}
-              <td className="py-2.5 px-3 text-center font-semibold">{row.total}</td>
-            </tr>
-          ))}
+          {data.map((row, i) => {
+            const others = toOthers(row)
+            const leave = toLeave(row)
+            return (
+              <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20">
+                <td className="py-2.5 px-4 text-muted-foreground text-xs">{i + 1}</td>
+                <td className="py-2.5 px-4 font-medium">{row.name || "-"}</td>
+                <td className="py-2.5 px-4 text-center font-semibold text-green-700">{row.present}</td>
+                <td className="py-2.5 px-4 text-center font-semibold text-red-700">{row.absent}</td>
+                <td className="py-2.5 px-4 text-center font-semibold text-indigo-700">{leave || "-"}</td>
+                <td className="py-2.5 px-4 text-center font-semibold text-orange-700">{others || "-"}</td>
+                <td className="py-2.5 px-4 text-center font-semibold">{row.total}</td>
+                <td className="py-2.5 px-4 text-muted-foreground text-xs"></td>
+              </tr>
+            )
+          })}
         </tbody>
         <tfoot>
-          <tr className="border-t-2 border-muted font-semibold">
+          <tr className="border-t-2 border-muted bg-muted/40 font-semibold">
             <td className="py-3 px-4 text-muted-foreground" colSpan={1}></td>
-            <td className="py-3 px-4">Grand Total</td>
-            {statusLabels.map((s) => (
-              <td key={s.key} className="py-3 px-3 text-center">
-                <span className={cn("inline-block min-w-[28px] px-2 py-0.5 rounded text-xs", s.color)}>
-                  {(grandTotal as any)[s.key]}
-                </span>
-              </td>
-            ))}
-            <td className="py-3 px-3 text-center">{grandTotal.total}</td>
+            <td className="py-3 px-4 text-base">Grand Total</td>
+            <td className="py-3 px-4 text-center text-green-700 text-base">{grandTotal.present}</td>
+            <td className="py-3 px-4 text-center text-red-700 text-base">{grandTotal.absent}</td>
+            <td className="py-3 px-4 text-center text-indigo-700 text-base">{grandTotal.leave}</td>
+            <td className="py-3 px-4 text-center text-orange-700 text-base">{grandTotal.others}</td>
+            <td className="py-3 px-4 text-center text-base">{grandTotal.total}</td>
+            <td className="py-3 px-4"></td>
           </tr>
         </tfoot>
       </table>
@@ -161,6 +155,7 @@ export default function DailySummaryPage() {
     setError("")
     try {
       const apiParams: Record<string, string> = { start_date: params.date || today, end_date: params.date || today }
+
       if (gb) apiParams.group_by = gb
       ;["company_id", "department_id", "section_id", "designation_id", "line_id", "group_id", "shift_id", "status"].forEach((k) => { if (params[k]) apiParams[k] = params[k] })
       const { data: res } = await attendanceApi.summary(apiParams)
@@ -265,22 +260,20 @@ export default function DailySummaryPage() {
 
       <div className="px-4 lg:px-6">
         <div className="rounded-lg border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
-            <h2 className="text-base font-semibold">
-              {tabLabel} Summary
-            </h2>
-            <Tabs value={groupBy} onValueChange={handleTabChange}>
+          <Tabs value={groupBy} onValueChange={handleTabChange}>
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+              <h2 className="text-base font-semibold">{tabLabel} Summary</h2>
               <TabsList className="h-8">
                 {groupTabs.map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value} className="h-7 px-3 text-xs">{tab.label}</TabsTrigger>
                 ))}
               </TabsList>
-            </Tabs>
-          </div>
-          <Tabs value={groupBy}>
-            <TabsContent value={groupBy} className="mt-0">
-              <SummaryTable data={data} loading={loading} />
-            </TabsContent>
+            </div>
+            {groupTabs.map((tab) => (
+              <TabsContent key={tab.value} value={tab.value} className="mt-0">
+                <SummaryTable data={data} loading={loading} title={tab.label} />
+              </TabsContent>
+            ))}
           </Tabs>
         </div>
       </div>

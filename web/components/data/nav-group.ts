@@ -31,6 +31,11 @@ import {
   UserCogIcon,
   ShieldCheckIcon,
   Settings2Icon,
+  Trash2Icon,
+  AlertTriangleIcon,
+  CalendarIcon,
+  MoonIcon,
+  CoffeeIcon,
 } from "lucide-react"
 
 export const monthlyReportNav = [
@@ -53,6 +58,8 @@ export const hrNav = [
   { title: "Requirements", url: "/hr/requirements", icon: ClipboardListIcon },
   { title: "Seperation", url: "/hr/seperation", icon: UserXIcon },
   { title: "Id Card", url: "/hr/id-card", icon: IdCardIcon },
+  { title: "Punishment", url: "/hr/punishment", icon: AlertTriangleIcon },
+  { title: "Daily Schedule", url: "/hr/daily-schedule", icon: CalendarIcon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 export const attendanceNav = [
@@ -65,6 +72,7 @@ export const attendanceNav = [
   { title: "Manual Attendance", url: "/attendance/manual-attendance", icon: ClipboardCheckIcon },
   { title: "Missing Attendance", url: "/attendance/missing-attendance", icon: UserXIcon },
   { title: "Absent Status", url: "/attendance/absent-status", icon: UserXIcon },
+  { title: "Remove Attendance", url: "/attendance/remove-attendance", icon: Trash2Icon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 
@@ -82,6 +90,8 @@ export const payrollNav = [
   { title: "Increment", url: "/payroll/increment", icon: TrendingUpIcon },
   { title: "PaySlip", url: "/payroll/payslip", icon: ReceiptIcon },
   { title: "Daily Salary Sheet", url: "/payroll/daily-salary-sheet", icon: CalendarRangeIcon },
+  { title: "Night Bill", url: "/payroll/night-bill", icon: MoonIcon },
+  { title: "Tiffin Bill", url: "/payroll/tiffin-bill", icon: CoffeeIcon },
 ] as const satisfies { title: string; url: string; icon: LucideIcon }[]
 
 export const collectDataNav = [

@@ -79,6 +79,17 @@ export default function DatabasePage() {
     }
   }
 
+  const handleDeleteBackup = async (filename: string) => {
+    if (!window.confirm(`Delete backup "${filename}"? This cannot be undone.`)) return
+    try {
+      const { data } = await databaseApi.deleteBackup(filename)
+      toast.success(data.message || "Backup deleted")
+      fetchBackups()
+    } catch {
+      toast.error("Failed to delete backup")
+    }
+  }
+
   const handleImport = async () => {
     if (!importFile) { toast.error("Select a file first"); return }
     setImporting(true)
@@ -167,6 +178,11 @@ export default function DatabasePage() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleExport(b.name)} title="Download">
                           <DownloadIcon className="h-3.5 w-3.5" />
                         </Button>
+                        {isSuperAdmin() && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteBackup(b.name)} title="Delete">
+                            <Trash2Icon className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

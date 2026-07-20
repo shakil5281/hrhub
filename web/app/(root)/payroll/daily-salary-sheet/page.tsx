@@ -1,33 +1,123 @@
 "use client"
 
-import { CalendarRangeIcon } from "lucide-react"
+import * as React from "react"
+import { CalendarRangeIcon, Loader2 } from "lucide-react"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import { salaryApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi } from "@/lib/api"
+import { FilterBar } from "@/components/filter-bar"
+import type { FilterDef } from "@/components/filter-bar"
+import { Card } from "@/components/ui/card"
 
-const dailySalaries = [
-  { id: 1, employee: "Rafiqul Islam", code: "EMP001", date: "2026-07-13", present: "Yes", dailyRate: 1380, overtime: 345, total: 1725 },
-  { id: 2, employee: "Shamima Akter", code: "EMP002", date: "2026-07-13", present: "Yes", dailyRate: 1667, overtime: 0, total: 1667 },
-  { id: 3, employee: "Kamal Hossain", code: "EMP003", date: "2026-07-13", present: "Yes", dailyRate: 2500, overtime: 375, total: 2875 },
-  { id: 4, employee: "Jahangir Alam", code: "EMP005", date: "2026-07-13", present: "Yes", dailyRate: 1223, overtime: 183, total: 1406 },
-  { id: 5, employee: "Farida Begum", code: "EMP006", date: "2026-07-13", present: "No", dailyRate: 800, overtime: 0, total: 0 },
-  { id: 6, employee: "Abdur Rahman", code: "EMP007", date: "2026-07-13", present: "Yes", dailyRate: 993, overtime: 248, total: 1241 },
-  { id: 7, employee: "Maksuda Khatun", code: "EMP008", date: "2026-07-13", present: "Yes", dailyRate: 1560, overtime: 0, total: 1560 },
-  { id: 8, employee: "Shahidul Islam", code: "EMP009", date: "2026-07-13", present: "Yes", dailyRate: 1117, overtime: 168, total: 1285 },
-]
+interface DailySalaryRecord {
+  id: string
+  employee_id: string
+  employee_name: string
+  designation: string
+  department_name: string
+  date: string
+  status: string
+  check_in: string
+  check_out: string
+  total_hours: string
+  over_time: string
+  gross_salary: number
+  daily_rate: number
+  ot_hours: number
+  ot_amount: number
+  total_pay: number
+}
 
-type DailySalary = (typeof dailySalaries)[number]
+interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
+interface Section { id: string; name: string }
+interface Designation { id: string; name: string }
+interface Line { id: string; name: string }
+interface Group { id: string; name: string }
 
-const columns: ColumnDef<DailySalary>[] = [
-  { accessorKey: "employee", header: "Employee" },
-  { accessorKey: "code", header: "Code" },
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "present", header: "Present" },
-  { accessorKey: "dailyRate", header: "Daily Rate" },
-  { accessorKey: "overtime", header: "Overtime" },
-  { accessorKey: "total", header: "Total" },
+const today = new Date().toISOString().split("T")[0]
+
+const columns: ColumnDef<DailySalaryRecord>[] = [
+  { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
+  { accessorKey: "employee_id", header: "Code" },
+  { accessorKey: "employee_name", header: "Employee" },
+  { accessorKey: "designation", header: "Designation" },
+  { accessorKey: "department_name", header: "Department" },
+  { accessorKey: "status", header: "Status" },
+  { accessorKey: "check_in", header: "In" },
+  { accessorKey: "check_out", header: "Out" },
+  { accessorKey: "total_hours", header: "Hours" },
+  { accessorKey: "over_time", header: "OT" },
+  { accessorKey: "daily_rate", header: "Rate", cell: ({ row }) => `TK ${row.original.daily_rate.toFixed(0)}` },
+  { accessorKey: "ot_amount", header: "OT Amt", cell: ({ row }) => `TK ${row.original.ot_amount.toFixed(0)}` },
+  { accessorKey: "total_pay", header: "Total", cell: ({ row }) => `TK ${row.original.total_pay.toFixed(0)}` },
 ]
 
 export default function DailySalarySheetPage() {
+  const [data, setData] = React.useState<DailySalaryRecord[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [totals, setTotals] = React.useState<Record<string, number>>({})
+  const [filters, setFilters] = React.useState<Record<string, string>>({ date: today })
+  const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
+
+  React.useEffect(() => {
+    Promise.all([
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(undefined, { limit: "100" }),
+      designationApi.list(undefined, { limit: "100" }),
+      lineApi.list(undefined, { limit: "100" }),
+      groupApi.list({ limit: "100" }),
+    ]).then(([c, d, sec, des, l, g]) => {
+      if (Array.isArray(c.data?.data)) setCompanies(c.data.data)
+      if (Array.isArray(d.data?.data)) setDepartments(d.data.data)
+      if (Array.isArray(sec.data?.data)) setSections(sec.data.data)
+      if (Array.isArray(des.data?.data)) setDesignations(des.data.data)
+      if (Array.isArray(l.data?.data)) setLines(l.data.data)
+      if (Array.isArray(g.data?.data)) setGroups(g.data.data)
+    })
+  }, [])
+
+  const filterDefs: FilterDef[] = React.useMemo(() => [
+    { key: "date", label: "Date", type: "datepicker" },
+    { key: "company_id", label: "Company", type: "select", options: companies.map((c) => ({ value: c.id, label: c.company_name_en })) },
+    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "section_id", label: "Section", type: "select", options: sections.map((s) => ({ value: s.id, label: s.name })) },
+    { key: "designation_id", label: "Designation", type: "select", options: designations.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "line_id", label: "Line", type: "select", options: lines.map((l) => ({ value: l.id, label: l.name })) },
+    { key: "group_id", label: "Group", type: "select", options: groups.map((g) => ({ value: g.id, label: g.name })) },
+  ], [companies, departments, sections, designations, lines, groups])
+
+  const fetchData = async (params: Record<string, string>) => {
+    setLoading(true)
+    try {
+      const date = params.date || today
+      const active: Record<string, string> = { date, company_id: params.company_id || "" }
+      if (params.department_id) active.department_id = params.department_id
+      if (params.section_id) active.section_id = params.section_id
+      if (params.designation_id) active.designation_id = params.designation_id
+      if (params.line_id) active.line_id = params.line_id
+      if (params.group_id) active.group_id = params.group_id
+      const { data: res } = await salaryApi.dailySheet(active)
+      setData(res.records || [])
+      setTotals(res.totals || {})
+    } catch {
+      setData([])
+      setTotals({})
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApply = () => { fetchData(filters) }
+  const handleReset = () => { setFilters({ date: today }); setData([]); setTotals({}) }
+  const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div className="px-4 lg:px-6">
@@ -37,7 +127,34 @@ export default function DailySalarySheetPage() {
         </div>
         <p className="text-muted-foreground mt-1">Daily salary calculation sheet</p>
       </div>
-      <DataTable data={dailySalaries} columns={columns} />
+
+      <div className="px-4 lg:px-6">
+        <FilterBar
+          filters={filterDefs}
+          values={filters}
+          onChange={handleChange}
+          onApply={handleApply}
+          onReset={handleReset}
+          submitting={loading}
+        />
+      </div>
+
+      {totals.employees > 0 && (
+        <div className="px-4 lg:px-6">
+          <Card className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+              <div><span className="text-muted-foreground">Employees:</span> <strong>{totals.employees}</strong></div>
+              <div><span className="text-muted-foreground">Gross Salary:</span> <strong>TK {totals.gross_salary?.toFixed(0)}</strong></div>
+              <div><span className="text-muted-foreground">Daily Rate:</span> <strong>TK {totals.daily_rate?.toFixed(0)}</strong></div>
+              <div><span className="text-muted-foreground">OT Hours:</span> <strong>{totals.ot_hours?.toFixed(1)}</strong></div>
+              <div><span className="text-muted-foreground">OT Amount:</span> <strong>TK {totals.ot_amount?.toFixed(0)}</strong></div>
+              <div><span className="text-muted-foreground">Total Pay:</span> <strong>TK {totals.total_pay?.toFixed(0)}</strong></div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <DataTable data={data} columns={columns} loading={loading} enableSelection={false} />
     </div>
   )
 }

@@ -21,6 +21,13 @@ definitions:
     - leave_type_id
     - to_date
     type: object
+  handlers.ApproveIncrementRequest:
+    properties:
+      effective_date:
+        type: string
+      increment_amount:
+        type: number
+    type: object
   handlers.ClockInRequest:
     properties:
       employee_id:
@@ -78,6 +85,28 @@ definitions:
         type: string
     required:
     - company_name_en
+    type: object
+  handlers.CreateDailyScheduleRequest:
+    properties:
+      company_id:
+        type: string
+      date:
+        type: string
+      employee_id:
+        type: string
+      end_time:
+        type: string
+      remarks:
+        type: string
+      schedule_type:
+        type: string
+      start_time:
+        type: string
+    required:
+    - company_id
+    - date
+    - employee_id
+    - schedule_type
     type: object
   handlers.CreateEmployeeRequest:
     properties:
@@ -213,6 +242,25 @@ definitions:
     required:
     - name
     type: object
+  handlers.CreateIncrementRequest:
+    properties:
+      company_id:
+        type: string
+      effective_date:
+        type: string
+      employee_id:
+        type: string
+      increment_amount:
+        minimum: 1
+        type: number
+      remarks:
+        type: string
+    required:
+    - company_id
+    - effective_date
+    - employee_id
+    - increment_amount
+    type: object
   handlers.CreateLeaveTypeRequest:
     properties:
       applicable_gender:
@@ -232,6 +280,65 @@ definitions:
     - company_id
     - name
     - total_days
+    type: object
+  handlers.CreateNightBillRequest:
+    properties:
+      amount:
+        type: number
+      companyID:
+        type: string
+      date:
+        type: string
+      employeeID:
+        type: string
+      month:
+        type: integer
+      nightHours:
+        type: number
+      rate:
+        type: number
+      remarks:
+        type: string
+      year:
+        type: integer
+    type: object
+  handlers.CreatePunishmentRequest:
+    properties:
+      amount:
+        type: number
+      company_id:
+        type: string
+      date:
+        type: string
+      employee_id:
+        type: string
+      reason:
+        type: string
+      remarks:
+        type: string
+      type:
+        type: string
+    required:
+    - company_id
+    - date
+    - employee_id
+    - type
+    type: object
+  handlers.CreateSeparationRequest:
+    properties:
+      date:
+        type: string
+      department_id:
+        type: string
+      employee_id:
+        type: string
+      reason:
+        type: string
+      type:
+        type: string
+    required:
+    - employee_id
+    - type
     type: object
   handlers.CreateShiftRequest:
     properties:
@@ -254,6 +361,32 @@ definitions:
     - end_time
     - name
     - start_time
+    type: object
+  handlers.CreateTiffinBillRequest:
+    properties:
+      amount:
+        type: number
+      companyID:
+        type: string
+      date:
+        type: string
+      employeeID:
+        type: string
+      month:
+        type: integer
+      remarks:
+        type: string
+      year:
+        type: integer
+    type: object
+  handlers.GenerateIdCardRequest:
+    properties:
+      employee_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - employee_ids
     type: object
   handlers.ImportRequest:
     properties:
@@ -374,6 +507,15 @@ definitions:
     required:
     - name
     - total_days
+    type: object
+  handlers.UpdateSettingsRequest:
+    properties:
+      settings:
+        additionalProperties:
+          type: string
+        type: object
+    required:
+    - settings
     type: object
   handlers.UpdateShiftRequest:
     properties:
@@ -532,6 +674,36 @@ definitions:
       description:
         type: string
       type:
+        type: string
+    type: object
+  repository.CustomSectionFilter:
+    properties:
+      department_names:
+        items:
+          type: string
+        type: array
+      designation_names:
+        items:
+          type: string
+        type: array
+      group_by_line:
+        type: boolean
+      group_names:
+        items:
+          type: string
+        type: array
+      line_names:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      section_names:
+        items:
+          type: string
+        type: array
+      type:
+        description: section_group, section_line, department, etc.
         type: string
     type: object
   repository.DeptCount:
@@ -974,6 +1146,33 @@ paths:
       summary: Absent attendance
       tags:
       - Attendance
+  /attendance/absent/export/excel:
+    get:
+      description: Export absent employee attendance data to Excel with company header,
+        report info, and summary footer
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Export absent attendance to Excel
+      tags:
+      - Attendance
   /attendance/clock-in:
     post:
       consumes:
@@ -1060,6 +1259,53 @@ paths:
       summary: Clock out
       tags:
       - Attendance
+  /attendance/custom-summary:
+    post:
+      consumes:
+      - application/json
+      description: Generate a custom mixed summary report with configurable sections
+      parameters:
+      - description: Filter params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/repository.CustomSectionFilter'
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Custom summary report
+      tags:
+      - Attendance
   /attendance/delete-all:
     delete:
       description: Permanently delete all attendance records
@@ -1081,6 +1327,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete all attendances
+      tags:
+      - Attendance
+  /attendance/export/excel:
+    get:
+      description: Export attendance data to Excel with company header, report info,
+        and summary footer
+      parameters:
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Export attendances to Excel
       tags:
       - Attendance
   /attendance/job-card:
@@ -1119,6 +1387,10 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Set to 'true' to get employee list only
+        in: query
+        name: list_mode
+        type: string
       produces:
       - application/json
       responses:
@@ -1139,12 +1411,15 @@ paths:
       - Attendance
   /attendance/missing:
     get:
-      description: Find employees with punch data logs but no attendance record
+      description: Find attendance records where check_in or check_out is missing
       parameters:
-      - description: Date (YYYY-MM-DD)
+      - description: 'Start date (YYYY-MM-DD, default: today)'
         in: query
-        name: date
-        required: true
+        name: start_date
+        type: string
+      - description: 'End date (YYYY-MM-DD, default: today)'
+        in: query
+        name: end_date
         type: string
       - description: Filter by company
         in: query
@@ -1153,6 +1428,30 @@ paths:
       - description: Filter by department
         in: query
         name: department_id
+        type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by shift
+        in: query
+        name: shift_id
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
         type: string
       - description: 'Page number (default: 1)'
         in: query
@@ -1372,6 +1671,32 @@ paths:
       security:
       - BearerAuth: []
       summary: Daily attendance summary
+      tags:
+      - Attendance
+  /attendance/summary/export/excel:
+    get:
+      description: Export attendance summary grouped by Department, Section, Designation,
+        and Line
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
       tags:
       - Attendance
   /auth/change-password:
@@ -1926,6 +2251,148 @@ paths:
       summary: Update company
       tags:
       - Companies
+  /daily-schedules:
+    get:
+      description: Get all daily schedules for a company, optionally filtered by date
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List daily schedules
+      tags:
+      - HR
+    post:
+      consumes:
+      - application/json
+      description: Create a new daily schedule for an employee
+      parameters:
+      - description: Schedule details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateDailyScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create daily schedule
+      tags:
+      - HR
+  /daily-schedules/{id}:
+    delete:
+      description: Soft delete a daily schedule
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete daily schedule
+      tags:
+      - HR
+    put:
+      consumes:
+      - application/json
+      description: Update an existing daily schedule
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated fields
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.CreateDailyScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update daily schedule
+      tags:
+      - HR
   /dashboard/stats:
     get:
       description: Get aggregated dashboard stats
@@ -2359,6 +2826,10 @@ paths:
         in: query
         name: blood_group
         type: string
+      - description: Filter by employee type
+        in: query
+        name: employee_type
+        type: string
       - description: Minimum gross salary
         in: query
         name: min_salary
@@ -2544,9 +3015,37 @@ paths:
       summary: Update employee
       tags:
       - Employees
+  /employees/by-code/{code}:
+    get:
+      description: Get a single employee by their business employee_id (e.g. "2857")
+      parameters:
+      - description: Employee business code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get employee by employee code
+      tags:
+      - Employees
   /employees/export/excel:
     get:
-      description: Export filtered employee list to Excel format
+      description: Export filtered employee list to Excel with complete details
       parameters:
       - description: Filter by company
         in: query
@@ -2556,9 +3055,53 @@ paths:
         in: query
         name: department_id
         type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by shift
+        in: query
+        name: shift_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by floor
+        in: query
+        name: floor_id
+        type: string
       - description: Filter by status
         in: query
         name: status
+        type: string
+      - description: Search by employee ID
+        in: query
+        name: employee_id
+        type: string
+      - description: Filter by gender
+        in: query
+        name: gender
+        type: string
+      - description: Filter by blood group
+        in: query
+        name: blood_group
+        type: string
+      - description: Minimum gross salary
+        in: query
+        name: min_salary
+        type: string
+      - description: Maximum gross salary
+        in: query
+        name: max_salary
         type: string
       produces:
       - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
@@ -3071,6 +3614,43 @@ paths:
       security:
       - BearerAuth: []
       summary: List ID cards
+      tags:
+      - ID Cards
+  /id-cards/generate:
+    post:
+      consumes:
+      - application/json
+      description: Generate printable ID cards (front + back) for selected employees,
+        6 per A4 page
+      parameters:
+      - description: Employee IDs (business keys)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.GenerateIdCardRequest'
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Generate ID cards PDF
       tags:
       - ID Cards
   /leave-balance:
@@ -3606,12 +4186,159 @@ paths:
       summary: List lines
       tags:
       - Organization
+  /night-bills:
+    get:
+      description: Get all night bills for a company, optionally filtered by month/year
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List night bills
+      tags:
+      - Payroll
+    post:
+      consumes:
+      - application/json
+      description: Create a new night bill entry for an employee
+      parameters:
+      - description: Night bill details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateNightBillRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create night bill
+      tags:
+      - Payroll
+  /night-bills/{id}:
+    delete:
+      description: Soft delete a night bill
+      parameters:
+      - description: Night Bill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete night bill
+      tags:
+      - Payroll
+    put:
+      consumes:
+      - application/json
+      description: Update an existing night bill
+      parameters:
+      - description: Night Bill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated fields
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.CreateNightBillRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update night bill
+      tags:
+      - Payroll
   /organization/import:
     post:
       consumes:
       - multipart/form-data
-      description: Bulk create/update departments, sections, designations, lines from
-        Excel with flat hierarchy columns
+      description: Bulk create/update companies, departments, sections, designations,
+        lines from Excel with flat hierarchy columns. Companies are looked up by name
+        or auto-created.
       parameters:
       - description: Excel file (.xlsx)
         in: formData
@@ -3645,8 +4372,8 @@ paths:
       - Organization
   /organization/template:
     get:
-      description: Download Excel template for bulk organization import with Department(En/Bn),
-        Section(En/Bn), Designation(En/Bn), Line(En/Bn)
+      description: Download Excel template for bulk organization import with Company(En/Bn),
+        Department(En/Bn), Section(En/Bn), Designation(En/Bn), Line(En/Bn)
       produces:
       - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
       responses:
@@ -3659,6 +4386,144 @@ paths:
       summary: Download organization import template
       tags:
       - Organization
+  /punishments:
+    get:
+      description: Get all punishments for a company
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List punishments
+      tags:
+      - HR
+    post:
+      consumes:
+      - application/json
+      description: Add a new punishment record for an employee
+      parameters:
+      - description: Punishment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreatePunishmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create punishment
+      tags:
+      - HR
+  /punishments/{id}:
+    delete:
+      description: Soft delete a punishment record
+      parameters:
+      - description: Punishment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete punishment
+      tags:
+      - HR
+    put:
+      consumes:
+      - application/json
+      description: Update an existing punishment record
+      parameters:
+      - description: Punishment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated fields
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.CreatePunishmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update punishment
+      tags:
+      - HR
   /requirements:
     get:
       parameters:
@@ -3698,6 +4563,300 @@ paths:
       summary: List requirements
       tags:
       - Requirements
+  /salary/bank-sheet:
+    get:
+      description: Get salary records filtered by account type and group for bank
+        transfer
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Filter by group ID
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by account type (mCash/Card/Bank)
+        in: query
+        name: account_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Bank sheet (salary bank transfer)
+      tags:
+      - Salary
+  /salary/bank-sheet/export-all:
+    get:
+      description: Download salary bank transfer data as multi-sheet Excel with Summary,
+        Staff-mCash, Staff-Card, Worker-mCash, Worker-Card tabs
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Staff group ID
+        in: query
+        name: staff_group_id
+        type: string
+      - description: Worker group ID
+        in: query
+        name: worker_group_id
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Export bank sheet (all tabs) to Excel
+      tags:
+      - Salary
+  /salary/daily-sheet:
+    get:
+      description: Get daily salary calculations for a specific date
+      parameters:
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Daily salary sheet
+      tags:
+      - Salary
+  /salary/increments:
+    get:
+      description: Get all salary increments for a company
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List salary increments
+      tags:
+      - Salary
+    post:
+      consumes:
+      - application/json
+      description: Apply a salary increment for an employee
+      parameters:
+      - description: Increment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateIncrementRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create salary increment
+      tags:
+      - Salary
+  /salary/increments/{id}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Approve a pending increment and update employee salary
+      parameters:
+      - description: Increment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Optional override values
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.ApproveIncrementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve salary increment
+      tags:
+      - Salary
+  /salary/increments/{id}/reject:
+    put:
+      consumes:
+      - application/json
+      description: Reject a pending increment request
+      parameters:
+      - description: Increment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: request
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject salary increment
+      tags:
+      - Salary
   /salary/list:
     get:
       description: Get salary records summary (grouped by department)
@@ -3862,7 +5021,7 @@ paths:
       - Salary
   /salary/summary:
     get:
-      description: Get salary summary grouped by department with grand totals
+      description: Get salary summary grouped by specified level with grand totals
       parameters:
       - description: Company ID
         in: query
@@ -3879,6 +5038,30 @@ paths:
         name: year
         required: true
         type: integer
+      - description: 'Group by: department|section|designation|line (default: department)'
+        in: query
+        name: group_by
+        type: string
+      - description: Filter by department
+        in: query
+        name: department_id
+        type: string
+      - description: Filter by section
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group
+        in: query
+        name: group_id
+        type: string
       produces:
       - application/json
       responses:
@@ -3895,7 +5078,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Salary summary by department
+      summary: Salary summary by department/section/designation/line
       tags:
       - Salary
   /sections:
@@ -3948,6 +5131,34 @@ paths:
         in: query
         name: status
         type: string
+      - description: Filter by company
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by section (via employee)
+        in: query
+        name: section_id
+        type: string
+      - description: Filter by designation (via employee)
+        in: query
+        name: designation_id
+        type: string
+      - description: Filter by line (via employee)
+        in: query
+        name: line_id
+        type: string
+      - description: Filter by group (via employee)
+        in: query
+        name: group_id
+        type: string
+      - description: Filter by separation start date (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: Filter by separation end date (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
       - description: 'Page number (default: 1)'
         in: query
         name: page
@@ -3968,6 +5179,209 @@ paths:
       summary: List separations
       tags:
       - Separations
+    post:
+      consumes:
+      - application/json
+      description: Create a separation record. Auto-processes if date <= today.
+      parameters:
+      - description: Separation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateSeparationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create separation
+      tags:
+      - Separations
+  /separations/{id}/cancel:
+    post:
+      description: Mark a pending or approved separation as cancelled
+      parameters:
+      - description: Separation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel a separation
+      tags:
+      - Separations
+  /separations/{id}/process:
+    post:
+      description: Apply employee changes for a specific separation
+      parameters:
+      - description: Separation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Process a single separation
+      tags:
+      - Separations
+  /separations/{id}/reactivate:
+    post:
+      description: Revert a processed separation, restoring employee to active/Regular
+        status
+      parameters:
+      - description: Separation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reactivate a processed separation
+      tags:
+      - Separations
+  /separations/process:
+    post:
+      description: Process all pending/approved separations with date <= given date
+      parameters:
+      - description: 'Process separations due on or before this date (default: today)'
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Batch process separations
+      tags:
+      - Separations
+  /settings:
+    get:
+      description: Get all system settings as key-value pairs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all system settings
+      tags:
+      - Settings
+    put:
+      consumes:
+      - application/json
+      description: Bulk update system settings (key-value pairs)
+      parameters:
+      - description: Settings map
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update system settings
+      tags:
+      - Settings
   /shifts:
     get:
       description: Get all shifts
@@ -4182,6 +5596,152 @@ paths:
       summary: List temporary shifts
       tags:
       - Temporary Shifts
+  /tiffin-bills:
+    get:
+      description: Get all tiffin bills for a company, optionally filtered by month/year
+      parameters:
+      - description: Company ID
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (1-12)
+        in: query
+        name: month
+        type: integer
+      - description: Year
+        in: query
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List tiffin bills
+      tags:
+      - Payroll
+    post:
+      consumes:
+      - application/json
+      description: Create a new tiffin bill entry for an employee
+      parameters:
+      - description: Tiffin bill details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateTiffinBillRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create tiffin bill
+      tags:
+      - Payroll
+  /tiffin-bills/{id}:
+    delete:
+      description: Soft delete a tiffin bill
+      parameters:
+      - description: Tiffin Bill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete tiffin bill
+      tags:
+      - Payroll
+    put:
+      consumes:
+      - application/json
+      description: Update an existing tiffin bill
+      parameters:
+      - description: Tiffin Bill ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated fields
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.CreateTiffinBillRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update tiffin bill
+      tags:
+      - Payroll
   /unions:
     get:
       parameters:

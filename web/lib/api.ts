@@ -159,6 +159,7 @@ export const databaseApi = {
   backup: () => api.post("/database/backup"),
   listBackups: () => api.get("/database/backups"),
   export: (filename: string) => api.get("/database/export", { params: { filename }, responseType: "blob" }),
+  deleteBackup: (filename: string) => api.delete("/database/backups", { params: { filename } }),
   importSql: (file: File) => {
     const formData = new FormData()
     formData.append("file", file)
@@ -207,6 +208,7 @@ export const attendanceApi = {
   overtime: (params?: Record<string, string>) => api.get("/attendance/overtime", { params }),
   overtimeSummary: (params?: Record<string, string>) => api.get("/attendance/overtime-summary", { params }),
   monthlyReport: (params?: Record<string, string>) => api.get("/attendance/monthly-report", { params }),
+  customSummary: (data: { company_id: string; date: string; sections: Record<string, unknown>[] }) => api.post("/attendance/custom-summary?company_id=" + data.company_id + "&date=" + data.date, data.sections),
   exportExcel: (params?: Record<string, string>) => api.get("/attendance/export/excel", { params, responseType: "blob" }),
 }
 
@@ -310,6 +312,44 @@ export const salaryApi = {
   payslip: (params?: Record<string, string>) => api.get("/salary/payslip", { params }),
   list: (params?: Record<string, string>) => api.get("/salary/list", { params }),
   summary: (params?: Record<string, string>) => api.get("/salary/summary", { params }),
+  dailySheet: (params?: Record<string, string>) => api.get("/salary/daily-sheet", { params }),
+  bankSheet: (params?: Record<string, string>) => api.get("/salary/bank-sheet", { params }),
+  bankSheetExport: (params: Record<string, string>) => api.get("/salary/bank-sheet/export", { params, responseType: "blob" }),
+}
+
+export const salaryIncrementApi = {
+  list: (params?: Record<string, string>) => api.get("/salary/increments", { params }),
+  create: (data: Record<string, unknown>) => api.post("/salary/increments", data),
+  approve: (id: string, data?: Record<string, unknown>) => api.put(`/salary/increments/${id}/approve`, data || {}),
+  reject: (id: string, data?: { reason: string }) => api.put(`/salary/increments/${id}/reject`, data || {}),
+}
+
+export const punishmentApi = {
+  list: (params?: Record<string, string>) => api.get("/punishments", { params }),
+  create: (data: Record<string, unknown>) => api.post("/punishments", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/punishments/${id}`, data),
+  delete: (id: string) => api.delete(`/punishments/${id}`),
+}
+
+export const dailyScheduleApi = {
+  list: (params?: Record<string, string>) => api.get("/daily-schedules", { params }),
+  create: (data: Record<string, unknown>) => api.post("/daily-schedules", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/daily-schedules/${id}`, data),
+  delete: (id: string) => api.delete(`/daily-schedules/${id}`),
+}
+
+export const nightBillApi = {
+  list: (params?: Record<string, string>) => api.get("/night-bills", { params }),
+  create: (data: Record<string, unknown>) => api.post("/night-bills", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/night-bills/${id}`, data),
+  delete: (id: string) => api.delete(`/night-bills/${id}`),
+}
+
+export const tiffinBillApi = {
+  list: (params?: Record<string, string>) => api.get("/tiffin-bills", { params }),
+  create: (data: Record<string, unknown>) => api.post("/tiffin-bills", data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/tiffin-bills/${id}`, data),
+  delete: (id: string) => api.delete(`/tiffin-bills/${id}`),
 }
 
 export const temporaryShiftApi = {

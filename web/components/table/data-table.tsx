@@ -262,7 +262,7 @@ export function DataTable<TData extends { id: number | string }>({
       rowSelection,
       pagination,
     },
-    getRowId: (row) => (row.id ?? "").toString(),
+    getRowId: (row, index) => (row.id ?? index).toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,

@@ -6,21 +6,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
-import { salaryApi, companyApi } from "@/lib/api"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { salaryApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi } from "@/lib/api"
 import { toast } from "sonner"
 
 interface Company { id: string; company_name_en: string }
+interface Department { id: string; name: string }
+interface Section { id: string; name: string }
+interface Designation { id: string; name: string }
+interface Line { id: string; name: string }
+interface Group { id: string; name: string }
 
-interface DeptSummary extends Record<string, unknown> {
+interface SummaryRow {
   id: string
-  department: string
+  group_key: string
   employees: number
+  basic_salary: number
   house_rent: number
   medical: number
   transport: number
   gross_salary: number
   deductions: number
   net_salary: number
+}
+
+interface SummaryResponse {
+  summaries: SummaryRow[]
+  total: number
+  total_employees: number
+  grand_totals: Record<string, number>
 }
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"]
@@ -30,44 +44,95 @@ const YEARS = Array.from({length:10},(_,i)=>currentYear-5+i)
 
 const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-const columns: ColumnDef<DeptSummary>[] = [
-  { accessorKey: "department", header: "Department" },
-  { accessorKey: "employees", header: "Employees" },
-  { accessorKey: "gross_salary", header: "Basic Total", cell: ({row}) => fmt(row.original.gross_salary) },
-  { accessorKey: "house_rent", header: "House Rent", cell: ({row}) => fmt(row.original.house_rent) },
-  { accessorKey: "medical", header: "Medical", cell: ({row}) => fmt(row.original.medical) },
-  { accessorKey: "transport", header: "Transport", cell: ({row}) => fmt(row.original.transport) },
-  { accessorKey: "deductions", header: "Deductions", cell: ({row}) => fmt(row.original.deductions) },
-  { accessorKey: "net_salary", header: "Net Total", cell: ({row}) => fmt(row.original.net_salary) },
+const TABS = [
+  { value: "department", label: "Department" },
+  { value: "section", label: "Section" },
+  { value: "designation", label: "Designation" },
+  { value: "line", label: "Line" },
 ]
 
 export default function SalarySummaryPage() {
   const [companies, setCompanies] = React.useState<Company[]>([])
+  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
+
   const [companyId, setCompanyId] = React.useState("")
+  const [departmentId, setDepartmentId] = React.useState("")
+  const [sectionId, setSectionId] = React.useState("")
+  const [designationId, setDesignationId] = React.useState("")
+  const [lineId, setLineId] = React.useState("")
+  const [groupId, setGroupId] = React.useState("")
   const [month, setMonth] = React.useState(currentMonth)
   const [year, setYear] = React.useState(currentYear)
-  const [data, setData] = React.useState<{
-    summaries: DeptSummary[]
-    total_employees: number
-    grand_totals: Record<string, number>
-  } | null>(null)
+  const [tab, setTab] = React.useState("department")
+
+  const [data, setData] = React.useState<SummaryResponse | null>(null)
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
-    companyApi.list({ limit: "100" }).then(({data})=>{ const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []); if (list.length>0) { setCompanies(list); setCompanyId(list[0].id) } })
+    Promise.all([
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(undefined, { limit: "100" }),
+      designationApi.list(undefined, { limit: "100" }),
+      lineApi.list(undefined, { limit: "100" }),
+      groupApi.list({ limit: "100" }),
+    ]).then(([cRes, dRes, secRes, desRes, lRes, gRes]) => {
+      const clist = Array.isArray(cRes.data?.data) ? cRes.data.data : (Array.isArray(cRes.data) ? cRes.data : [])
+      if (clist.length > 0) { setCompanies(clist); setCompanyId(clist[0].id) }
+      if (Array.isArray(dRes.data?.data)) setDepartments(dRes.data.data)
+      if (Array.isArray(secRes.data?.data)) setSections(secRes.data.data)
+      if (Array.isArray(desRes.data?.data)) setDesignations(desRes.data.data)
+      if (Array.isArray(lRes.data?.data)) setLines(lRes.data.data)
+      if (Array.isArray(gRes.data?.data)) setGroups(gRes.data.data)
+    }).catch(() => {})
   }, [])
 
-  const handleLoad = async () => {
+  const buildParams = React.useCallback(() => {
+    const p: Record<string, string> = {
+      company_id: companyId,
+      month: String(month + 1),
+      year: String(year),
+      group_by: tab,
+    }
+    if (departmentId) p.department_id = departmentId
+    if (sectionId) p.section_id = sectionId
+    if (designationId) p.designation_id = designationId
+    if (lineId) p.line_id = lineId
+    if (groupId) p.group_id = groupId
+    return p
+  }, [companyId, month, year, tab, departmentId, sectionId, designationId, lineId, groupId])
+
+  const handleLoad = React.useCallback(async () => {
     if (!companyId) { toast.error("Select a company"); return }
     setLoading(true)
     try {
-      const { data: res } = await salaryApi.summary({ company_id: companyId, month: String(month+1), year: String(year) })
-      setData({...res, summaries: res.summaries.map((s: DeptSummary, i: number) => ({...s, id: `s-${i}`}))})
+      const { data: res } = await salaryApi.summary(buildParams())
+      const rows = Array.isArray(res.summaries) ? res.summaries.map((s: SummaryRow, i: number) => ({ ...s, id: `s-${i}` })) : []
+      setData({ ...res, summaries: rows })
     } catch { toast.error("Failed to load summary") }
     finally { setLoading(false) }
-  }
+  }, [buildParams, companyId])
 
-  React.useEffect(() => { if (companyId) handleLoad() }, [companyId, month, year])
+  React.useEffect(() => { if (companyId) handleLoad() }, [companyId, month, year, tab])
+
+  const columns: ColumnDef<SummaryRow>[] = React.useMemo(() => {
+    const labelMap: Record<string, string> = { department: "Department", section: "Section", designation: "Designation", line: "Line" }
+    return [
+      { accessorKey: "group_key", header: labelMap[tab] || "Group" },
+      { accessorKey: "employees", header: "Employees" },
+      { accessorKey: "gross_salary", header: "Gross Total", cell: ({ row }) => fmt(row.original.gross_salary) },
+      { accessorKey: "basic_salary", header: "Basic Total", cell: ({ row }) => fmt(row.original.basic_salary) },
+      { accessorKey: "house_rent", header: "House Rent", cell: ({ row }) => fmt(row.original.house_rent) },
+      { accessorKey: "medical", header: "Medical", cell: ({ row }) => fmt(row.original.medical) },
+      { accessorKey: "transport", header: "Transport", cell: ({ row }) => fmt(row.original.transport) },
+      { accessorKey: "deductions", header: "Deductions", cell: ({ row }) => fmt(row.original.deductions) },
+      { accessorKey: "net_salary", header: "Net Total", cell: ({ row }) => fmt(row.original.net_salary) },
+    ]
+  }, [tab])
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -76,7 +141,7 @@ export default function SalarySummaryPage() {
           <FileBarChartIcon className="h-6 w-6 text-muted-foreground" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Salary Summary</h1>
-            <p className="text-muted-foreground mt-1">Salary summary by department</p>
+            <p className="text-muted-foreground mt-1">Salary summary grouped by department, section, designation, or line</p>
           </div>
         </div>
       </div>
@@ -85,30 +150,67 @@ export default function SalarySummaryPage() {
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Filters</CardTitle></CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Company</label>
-                <select value={companyId} onChange={e=>setCompanyId(e.target.value)} className="flex h-10 w-60 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <select value={companyId} onChange={e => setCompanyId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="">Select</option>
-                  {companies.map(c=><option key={c.id} value={c.id}>{c.company_name_en}</option>)}
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.company_name_en}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Department</label>
+                <select value={departmentId} onChange={e => setDepartmentId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Section</label>
+                <select value={sectionId} onChange={e => setSectionId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Designation</label>
+                <select value={designationId} onChange={e => setDesignationId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  {designations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Line</label>
+                <select value={lineId} onChange={e => setLineId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  {lines.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Group</label>
+                <select value={groupId} onChange={e => setGroupId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">All</option>
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Month</label>
-                <select value={month} onChange={e=>setMonth(Number(e.target.value))} className="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  {MONTHS.map((n,i)=><option key={n} value={i}>{n}</option>)}
+                <select value={month} onChange={e => setMonth(Number(e.target.value))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {MONTHS.map((n, i) => <option key={n} value={i}>{n}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Year</label>
-                <select value={year} onChange={e=>setYear(Number(e.target.value))} className="flex h-10 w-28 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+                <select value={year} onChange={e => setYear(Number(e.target.value))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
-              <Button onClick={handleLoad} disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileBarChartIcon className="mr-2 h-4 w-4" />}
-                Load
-              </Button>
+              <div className="lg:col-span-4 flex justify-end">
+                <Button onClick={handleLoad} disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileBarChartIcon className="mr-2 h-4 w-4" />}
+                  Load
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -116,12 +218,32 @@ export default function SalarySummaryPage() {
 
       {data ? (
         <div className="px-4 lg:px-6">
-          <h2 className="text-lg font-semibold mb-2">{MONTHS[month]} {year} - Salary Summary</h2>
-          <DataTable data={data.summaries} columns={columns} loading={loading} />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">{MONTHS[month]} {year} - Salary Summary</h2>
+            <span className="text-sm text-muted-foreground">Total Employees: <b>{data.total_employees}</b></span>
+          </div>
+
+          <Tabs value={tab} onValueChange={v => { setTab(v); setData(null) }}>
+            <TabsList className="mb-4">
+              {TABS.map(t => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
+            </TabsList>
+
+            {TABS.map(t => (
+              <TabsContent key={t.value} value={t.value}>
+                <DataTable
+                  data={tab === t.value ? data.summaries : []}
+                  columns={columns}
+                  loading={loading}
+                  serverSide={false}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
+
           <div className="mt-4 rounded-md border bg-muted/30 p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
-              <div><span className="text-muted-foreground">Total Employees</span><p className="font-semibold">{data.total_employees}</p></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 text-sm">
               <div><span className="text-muted-foreground">Gross Total</span><p className="font-semibold">{fmt(data.grand_totals.gross_salary)}</p></div>
+              <div><span className="text-muted-foreground">Basic Total</span><p className="font-semibold">{fmt(data.grand_totals.basic_salary)}</p></div>
               <div><span className="text-muted-foreground">House Rent</span><p className="font-semibold">{fmt(data.grand_totals.house_rent)}</p></div>
               <div><span className="text-muted-foreground">Medical</span><p className="font-semibold">{fmt(data.grand_totals.medical)}</p></div>
               <div><span className="text-muted-foreground">Transport</span><p className="font-semibold">{fmt(data.grand_totals.transport)}</p></div>

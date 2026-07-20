@@ -34,13 +34,20 @@ type CreateSeparationRequest struct {
 // @Tags         Separations
 // @Security     BearerAuth
 // @Produce      json
-// @Param        employee      query string false "Filter by employee name"
-// @Param        employee_id   query string false "Filter by employee ID"
-// @Param        department_id query string false "Filter by department"
-// @Param        type          query string false "Filter by type"
-// @Param        status        query string false "Filter by status"
-// @Param        page          query int    false "Page number (default: 1)"
-// @Param        limit         query int    false "Page size (default: 20, max: 100)"
+// @Param        employee       query string false "Filter by employee name"
+// @Param        employee_id    query string false "Filter by employee ID"
+// @Param        department_id  query string false "Filter by department"
+// @Param        type           query string false "Filter by type"
+// @Param        status         query string false "Filter by status"
+// @Param        company_id     query string false "Filter by company"
+// @Param        section_id     query string false "Filter by section (via employee)"
+// @Param        designation_id query string false "Filter by designation (via employee)"
+// @Param        line_id        query string false "Filter by line (via employee)"
+// @Param        group_id       query string false "Filter by group (via employee)"
+// @Param        date_from      query string false "Filter by separation start date (YYYY-MM-DD)"
+// @Param        date_to        query string false "Filter by separation end date (YYYY-MM-DD)"
+// @Param        page           query int    false "Page number (default: 1)"
+// @Param        limit          query int    false "Page size (default: 20, max: 100)"
 // @Success      200  {object}  utils.PaginatedResponse
 // @Router       /separations [get]
 func (h *SeparationHandler) List(c *gin.Context) {
@@ -49,10 +56,22 @@ func (h *SeparationHandler) List(c *gin.Context) {
 	departmentID := c.Query("department_id")
 	sepType := c.Query("type")
 	status := c.Query("status")
+	companyID := c.Query("company_id")
+	sectionID := c.Query("section_id")
+	designationID := c.Query("designation_id")
+	lineID := c.Query("line_id")
+	groupID := c.Query("group_id")
+	dateFrom := c.Query("date_from")
+	dateTo := c.Query("date_to")
 
 	p := utils.ParsePagination(c)
-	if employee != "" || employeeID != "" || departmentID != "" || sepType != "" || status != "" {
-		items, total, err := h.repo.ListFiltered(employee, employeeID, departmentID, sepType, status, p.Page, p.Limit)
+
+	hasFilters := employee != "" || employeeID != "" || departmentID != "" || sepType != "" || status != "" ||
+		companyID != "" || sectionID != "" || designationID != "" || lineID != "" || groupID != "" ||
+		dateFrom != "" || dateTo != ""
+
+	if hasFilters {
+		items, total, err := h.repo.ListFiltered(employee, employeeID, departmentID, sepType, status, companyID, sectionID, designationID, lineID, groupID, dateFrom, dateTo, p.Page, p.Limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

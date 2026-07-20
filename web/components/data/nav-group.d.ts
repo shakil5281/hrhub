@@ -76,6 +76,10 @@ export declare const attendanceNav: [{
     readonly title: "Absent Status";
     readonly url: "/attendance/absent-status";
     readonly icon: import("react").ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & import("react").RefAttributes<SVGSVGElement>>;
+}, {
+    readonly title: "Remove Attendance";
+    readonly url: "/attendance/remove-attendance";
+    readonly icon: import("react").ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & import("react").RefAttributes<SVGSVGElement>>;
 }];
 export declare const leaveNav: [{
     readonly title: "Leave Type";
@@ -149,8 +153,8 @@ export declare const navGroup: [{
     readonly icon: import("react").ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & import("react").RefAttributes<SVGSVGElement>>;
     readonly url: "#";
     readonly items: {
-        title: "Daily Attendance" | "Daily Summary" | "Job Card" | "Over Time Sheet" | "Over Time Summary" | "Manual Attendance" | "Missing Attendance" | "Absent Status";
-        url: "/attendance/daily-attendance" | "/attendance/daily-summary" | "/attendance/job-card" | "/attendance/over-time-sheet" | "/attendance/over-time-summary" | "/attendance/manual-attendance" | "/attendance/missing-attendance" | "/attendance/absent-status";
+        title: "Daily Attendance" | "Daily Summary" | "Job Card" | "Over Time Sheet" | "Over Time Summary" | "Manual Attendance" | "Missing Attendance" | "Absent Status" | "Remove Attendance";
+        url: "/attendance/daily-attendance" | "/attendance/daily-summary" | "/attendance/job-card" | "/attendance/over-time-sheet" | "/attendance/over-time-summary" | "/attendance/manual-attendance" | "/attendance/missing-attendance" | "/attendance/absent-status" | "/attendance/remove-attendance";
     }[];
 }, {
     readonly title: "Leave";

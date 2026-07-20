@@ -229,6 +229,48 @@ func (h *DatabaseHandler) Import(c *gin.Context) {
 	})
 }
 
+// DeleteBackup godoc
+//
+//	@Summary      Delete a backup file
+//	@Description  Delete a specific backup SQL file from the backups directory
+//	@Tags         Database
+//	@Security     BearerAuth
+//	@Produce      json
+//	@Param        filename query string true "Backup filename to delete"
+//	@Success      200  {object}  map[string]string
+//	@Failure      400  {object}  map[string]string
+//	@Failure      404  {object}  map[string]string
+//	@Failure      500  {object}  map[string]string
+//	@Router       /database/backups [delete]
+func (h *DatabaseHandler) DeleteBackup(c *gin.Context) {
+	filename := c.Query("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "filename is required"})
+		return
+	}
+
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid filename"})
+		return
+	}
+
+	filepath := filepath.Join("backups", filename)
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "backup file not found"})
+		return
+	}
+
+	if err := os.Remove(filepath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete backup: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Backup deleted successfully",
+		"filename": filename,
+	})
+}
+
 // Reset godoc
 //
 //	@Summary      Reset database

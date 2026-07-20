@@ -32,11 +32,16 @@ func Setup(
 	idCardHandler *handlers.IdCardHandler,
 	leaveHandler *handlers.LeaveHandler,
 	salaryHandler *handlers.SalaryHandler,
+	salaryIncrementHandler *handlers.SalaryIncrementHandler,
 	employeeImportHandler *handlers.EmployeeImportHandler,
 	tempShiftHandler *handlers.TemporaryShiftHandler,
 	userHandler *handlers.UserHandler,
 	roleHandler *handlers.RoleHandler,
 	settingsHandler *handlers.SettingsHandler,
+	punishmentHandler *handlers.PunishmentHandler,
+	dailyScheduleHandler *handlers.DailyScheduleHandler,
+	nightBillHandler *handlers.NightBillHandler,
+	tiffinBillHandler *handlers.TiffinBillHandler,
 	jwtSecret string,
 ) {
 	r.GET("/health", handlers.HealthCheck)
@@ -184,6 +189,7 @@ func Setup(
 			databaseAdmin.POST("/backup", databaseHandler.Backup)
 			databaseAdmin.POST("/import", databaseHandler.Import)
 			databaseAdmin.POST("/reset", databaseHandler.Reset)
+			databaseAdmin.DELETE("/backups", databaseHandler.DeleteBackup)
 		}
 	}
 
@@ -280,6 +286,7 @@ func Setup(
 
 		attendance.POST("/clock-in", attendanceHandler.ClockIn)
 		attendance.POST("/clock-out", attendanceHandler.ClockOut)
+		attendance.POST("/custom-summary", attendanceHandler.CustomSummaryReport)
 	}
 
 	// Protected data log routes
@@ -337,6 +344,26 @@ func Setup(
 		idCard.DELETE("/:id", idCardHandler.Delete)
 	}
 
+	// Protected punishment routes
+	punishment := api.Group("/punishments")
+	punishment.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		punishment.GET("", punishmentHandler.List)
+		punishment.POST("", punishmentHandler.Create)
+		punishment.PUT("/:id", punishmentHandler.Update)
+		punishment.DELETE("/:id", punishmentHandler.Delete)
+	}
+
+	// Protected daily-schedule routes
+	dailySchedule := api.Group("/daily-schedules")
+	dailySchedule.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		dailySchedule.GET("", dailyScheduleHandler.List)
+		dailySchedule.POST("", dailyScheduleHandler.Create)
+		dailySchedule.PUT("/:id", dailyScheduleHandler.Update)
+		dailySchedule.DELETE("/:id", dailyScheduleHandler.Delete)
+	}
+
 	// Protected leave-type routes
 	leaveType := api.Group("/leave-types")
 	leaveType.Use(middleware.AuthMiddleware(jwtSecret))
@@ -384,6 +411,33 @@ func Setup(
 		salary.GET("/payslip", salaryHandler.Payslip)
 		salary.GET("/list", salaryHandler.List)
 		salary.GET("/summary", salaryHandler.Summary)
+		salary.GET("/daily-sheet", salaryHandler.DailySheet)
+		salary.GET("/bank-sheet", salaryHandler.BankSheet)
+		salary.GET("/bank-sheet/export", salaryHandler.BankSheetExportAll)
+		salary.GET("/increments", salaryIncrementHandler.List)
+		salary.POST("/increments", salaryIncrementHandler.Create)
+		salary.PUT("/increments/:id/approve", salaryIncrementHandler.Approve)
+		salary.PUT("/increments/:id/reject", salaryIncrementHandler.Reject)
+	}
+
+	// Protected night-bill routes
+	nightBill := api.Group("/night-bills")
+	nightBill.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		nightBill.GET("", nightBillHandler.List)
+		nightBill.POST("", nightBillHandler.Create)
+		nightBill.PUT("/:id", nightBillHandler.Update)
+		nightBill.DELETE("/:id", nightBillHandler.Delete)
+	}
+
+	// Protected tiffin-bill routes
+	tiffinBill := api.Group("/tiffin-bills")
+	tiffinBill.Use(middleware.AuthMiddleware(jwtSecret))
+	{
+		tiffinBill.GET("", tiffinBillHandler.List)
+		tiffinBill.POST("", tiffinBillHandler.Create)
+		tiffinBill.PUT("/:id", tiffinBillHandler.Update)
+		tiffinBill.DELETE("/:id", tiffinBillHandler.Delete)
 	}
 
 	// Protected upload routes

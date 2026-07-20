@@ -1837,6 +1837,106 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 // ExportSummaryExcel godoc
 //
 //	@Summary      Export daily summary to Excel
+// CustomSummaryReport godoc
+//
+// @Summary      Custom summary report
+// @Description  Generate a custom mixed summary report with configurable sections
+// @Tags         Attendance
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body repository.CustomSectionFilter true "Filter params"
+// @Param        company_id query string true "Company ID"
+// @Param        date query string true "Date (YYYY-MM-DD)"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /attendance/custom-summary [post]
+func (h *AttendanceHandler) CustomSummaryReport(c *gin.Context) {
+	companyID := c.Query("company_id")
+	date := c.Query("date")
+	if companyID == "" || date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id and date are required"})
+		return
+	}
+
+	var sections []repository.CustomSectionFilter
+	if err := c.ShouldBindJSON(&sections); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	type sectionResult struct {
+		Name     string                   `json:"name"`
+		Type     string                   `json:"type"`
+		SubRows  []map[string]interface{} `json:"sub_rows"`
+		Present  int64                    `json:"present"`
+		Absent   int64                    `json:"absent"`
+		Leave    int64                    `json:"leave"`
+		Others   int64                    `json:"others"`
+		Total    int64                    `json:"total"`
+	}
+
+	var report []sectionResult
+	var grandPresent, grandAbsent, grandLeave, grandOthers, grandTotal int64
+
+	for _, sec := range sections {
+		rows, err := h.attendanceRepo.CustomSummarySection(companyID, date, date, sec)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var secPresent, secAbsent, secLeave, secOthers, secTotal int64
+		var subRows []map[string]interface{}
+
+		for _, row := range rows {
+			name := ""
+			if n, ok := row["name"]; ok {
+				name = fmt.Sprintf("%v", n)
+			}
+			p := toInt64(row["present"])
+			a := toInt64(row["absent"])
+			l := toInt64(row["on_leave"])
+			o := toInt64(row["others"])
+			t := toInt64(row["total"])
+
+			if sec.GroupByLine && name != "" && name != "Total" {
+				subRows = append(subRows, map[string]interface{}{
+					"name":    name,
+					"present": p, "absent": a, "leave": l, "others": o, "total": t,
+				})
+			}
+			secPresent += p
+			secAbsent += a
+			secLeave += l
+			secOthers += o
+			secTotal += t
+		}
+
+		report = append(report, sectionResult{
+			Name:    sec.Name,
+			Type:    sec.Type,
+			SubRows: subRows,
+			Present: secPresent, Absent: secAbsent,
+			Leave: secLeave, Others: secOthers, Total: secTotal,
+		})
+		grandPresent += secPresent
+		grandAbsent += secAbsent
+		grandLeave += secLeave
+		grandOthers += secOthers
+		grandTotal += secTotal
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sections": report,
+		"grand_totals": map[string]int64{
+			"present": grandPresent, "absent": grandAbsent,
+			"leave": grandLeave, "others": grandOthers, "total": grandTotal,
+		},
+	})
+}
+
 //	@Description  Export attendance summary grouped by Department, Section, Designation, and Line
 //	@Tags         Attendance
 //	@Security     BearerAuth
@@ -1970,4 +2070,20 @@ func addDailySummarySheet(f *excelize.File, sheetName, companyName, companyAddre
 	f.MergeCell(sheetName, "A"+strconv.Itoa(fr), endCol+strconv.Itoa(fr))
 	f.SetCellStyle(sheetName, "A"+strconv.Itoa(fr), endCol+strconv.Itoa(fr), ftStyle)
 	f.SetRowHeight(sheetName, fr, 22)
+}
+
+func toInt64(v interface{}) int64 {
+	if v == nil {
+		return 0
+	}
+	switch x := v.(type) {
+	case int64:
+		return x
+	case float64:
+		return int64(x)
+	case int:
+		return int64(x)
+	default:
+		return 0
+	}
 }

@@ -225,6 +225,13 @@ func (r *EmployeeRepository) BulkUpdateByID(updates []models.Employee) error {
 	})
 }
 
+func (r *EmployeeRepository) Update(emp *models.Employee) error {
+	return r.db.Model(&models.Employee{}).
+		Where("employee_id = ? AND company_id = ? AND deleted_at IS NULL", emp.EmployeeID, emp.CompanyID).
+		Select("GrossSalary", "BasicSalary", "HouseRent", "MedicalAllowance").
+		Updates(emp).Error
+}
+
 func (r *EmployeeRepository) MapByID(companyID string) (map[string]models.Employee, error) {
 	var employees []models.Employee
 	if err := r.db.Where("company_id = ?", companyID).Find(&employees).Error; err != nil {

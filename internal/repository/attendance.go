@@ -502,9 +502,9 @@ func (r *AttendanceRepository) GetMonthlyOvertimeHours(companyID, startDate, end
 					WHEN e.over_time_status = false THEN 0
 					WHEN a.check_out IS NOT NULL AND s.end_time IS NOT NULL THEN
 						CASE
-							WHEN s.start_time < s.end_time AND a.check_out > s.end_time
-								THEN EXTRACT(EPOCH FROM (a.check_out::time - s.end_time::time)) / 3600
-							WHEN s.start_time > s.end_time AND a.check_out < s.start_time AND a.check_out > s.end_time
+					WHEN s.start_time < s.end_time AND a.check_out::time > s.end_time::time
+							THEN EXTRACT(EPOCH FROM (a.check_out::time - s.end_time::time)) / 3600
+						WHEN s.start_time > s.end_time AND a.check_out::time < s.start_time::time AND a.check_out::time > s.end_time::time
 								THEN EXTRACT(EPOCH FROM (a.check_out::time - s.end_time::time)) / 3600
 							ELSE 0
 						END
@@ -569,4 +569,67 @@ func (r *AttendanceRepository) ListMissing(startDate, endDate, companyID, depart
 func (r *AttendanceRepository) DeleteAfterDate(employeeID, date string) (int64, error) {
 	res := r.db.Where("employee_id = ? AND date > ? AND deleted_at IS NULL", employeeID, date).Delete(&models.Attendance{})
 	return res.RowsAffected, res.Error
+}
+
+// CustomSummarySection queries attendance summary for a single report section with flexible filters.
+// Filters are applied as AND conditions on employee org relations.
+type CustomSectionFilter struct {
+	Name              string   `json:"name"`
+	Type              string   `json:"type"` // section_group, section_line, department, etc.
+	SectionNames      []string `json:"section_names"`
+	DepartmentNames   []string `json:"department_names"`
+	GroupNames        []string `json:"group_names"`
+	DesignationNames  []string `json:"designation_names"`
+	LineNames         []string `json:"line_names"`
+	GroupByLine       bool     `json:"group_by_line"`
+}
+
+func (r *AttendanceRepository) CustomSummarySection(companyID, startDate, endDate string, filter CustomSectionFilter) ([]map[string]interface{}, error) {
+	selectCols := "SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present, SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent, SUM(CASE WHEN a.status = 'on_leave' THEN 1 ELSE 0 END) as on_leave, SUM(CASE WHEN a.status IN ('late','half_day','weekend') THEN 1 ELSE 0 END) as others, COUNT(*) as total"
+	joinClause := "JOIN employees e ON e.employee_id = a.employee_id"
+
+	if filter.GroupByLine || len(filter.LineNames) > 0 {
+		joinClause = "JOIN employees e ON e.employee_id = a.employee_id LEFT JOIN lines l ON l.id = e.line_id"
+	}
+	groupByLine := filter.GroupByLine
+
+	query := r.db.Table("attendances a").
+		Select(selectCols).
+		Joins(joinClause).
+		Where("a.company_id = ? AND a.date BETWEEN ? AND ? AND a.deleted_at IS NULL", companyID, startDate, endDate)
+
+	if len(filter.SectionNames) > 0 {
+		query = query.Where("e.section_id IN (SELECT id FROM sections WHERE name IN ?)", filter.SectionNames)
+	}
+	if len(filter.DepartmentNames) > 0 {
+		query = query.Where("e.department_id IN (SELECT id FROM departments WHERE name IN ?)", filter.DepartmentNames)
+	}
+	if len(filter.GroupNames) > 0 {
+		query = query.Where("e.group_id IN (SELECT id FROM \"groups\" WHERE name IN ?)", filter.GroupNames)
+	}
+	if len(filter.DesignationNames) > 0 {
+		query = query.Where("e.designation_id IN (SELECT id FROM designations WHERE name IN ?)", filter.DesignationNames)
+	}
+	if len(filter.LineNames) > 0 {
+		query = query.Where("l.name IN ?", filter.LineNames)
+	}
+
+	if groupByLine {
+		query = query.Select("COALESCE(l.name, 'No Line') as name, " + selectCols).Group("l.name").Order("l.name ASC")
+	}
+
+	var results []map[string]interface{}
+	err := query.Find(&results).Error
+
+	if err == nil && !groupByLine {
+		results = prefixName(results)
+	}
+	return results, err
+}
+
+func prefixName(results []map[string]interface{}) []map[string]interface{} {
+	for _, r := range results {
+		r["name"] = "Total"
+	}
+	return results
 }

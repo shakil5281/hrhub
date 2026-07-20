@@ -9,10 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { Separation, separationTypeOptions, separationStatusOptions } from "@/components/data/separation-data"
-import { separationApi, departmentApi } from "@/lib/api"
-import type { Department } from "@/components/data/organization-data"
+import { separationApi, companyApi, departmentApi, sectionApi, designationApi, lineApi, groupApi } from "@/lib/api"
+import type { Department, Section, Designation, Line } from "@/components/data/organization-data"
+import type { Company } from "@/components/data/company-data"
+import type { Group } from "@/components/data/group-data"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
+
+const today = new Date().toISOString().split("T")[0]
+const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   Approved: "default", Pending: "secondary", Rejected: "destructive", Processed: "outline", Cancelled: "outline",
@@ -21,11 +26,19 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
 export default function SeperationPage() {
   const router = useRouter()
   const [data, setData] = React.useState<Separation[]>([])
+  const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
+  const [lines, setLines] = React.useState<Line[]>([])
+  const [groups, setGroups] = React.useState<Group[]>([])
   const [loading, setLoading] = React.useState(true)
   const [processing, setProcessing] = React.useState(false)
   const [processingId, setProcessingId] = React.useState<string | null>(null)
-  const [filters, setFilters] = React.useState<Record<string, string>>({})
+  const [filters, setFilters] = React.useState<Record<string, string>>({
+    date_from: firstOfMonth,
+    date_to: today,
+  })
   const [submitting, setSubmitting] = React.useState(false)
 
   const [page, setPage] = React.useState(1)
@@ -49,10 +62,22 @@ export default function SeperationPage() {
   }, [page, limit])
 
   React.useEffect(() => {
-    departmentApi.list({ limit: "100" }).then((res) => {
-      setDepartments(Array.isArray(res.data?.data) ? res.data.data : [])
+    Promise.all([
+      companyApi.list({ limit: "100" }),
+      departmentApi.list({ limit: "100" }),
+      sectionApi.list(),
+      designationApi.list(),
+      lineApi.list(),
+      groupApi.list(),
+    ]).then(([cRes, dRes, sRes, desRes, lRes, gRes]) => {
+      setCompanies(Array.isArray(cRes.data?.data) ? cRes.data.data : [])
+      setDepartments(Array.isArray(dRes.data?.data) ? dRes.data.data : [])
+      setSections(Array.isArray(sRes.data?.data) ? sRes.data.data : [])
+      setDesignations(Array.isArray(desRes.data?.data) ? desRes.data.data : [])
+      setLines(Array.isArray(lRes.data?.data) ? lRes.data.data : [])
+      setGroups(Array.isArray(gRes.data?.data) ? gRes.data.data : [])
     }).catch(() => {})
-    fetchData()
+    fetchData(filters)
   }, [])
 
   React.useEffect(() => {
@@ -73,8 +98,8 @@ export default function SeperationPage() {
   const handleReset = () => {
     setPage(1)
     setLimit(20)
-    setFilters({})
-    fetchData({}, 1, 20)
+    setFilters({ date_from: firstOfMonth, date_to: today })
+    fetchData({ date_from: firstOfMonth, date_to: today }, 1, 20)
   }
 
   const handleChange = (key: string, value: string) => {
@@ -177,10 +202,17 @@ export default function SeperationPage() {
   ], [processingId])
 
   const filterDefs: FilterDef[] = [
+    { key: "date_from", label: "Separation Start Date", type: "datepicker" },
+    { key: "date_to", label: "Separation End Date", type: "datepicker" },
+    { key: "company_id", label: "Company", type: "select", options: companies.map((c) => ({ value: c.id, label: c.company_name_en })) },
+    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "section_id", label: "Section", type: "select", options: sections.map((s) => ({ value: s.id, label: s.name })) },
+    { key: "designation_id", label: "Designation", type: "select", options: designations.map((d) => ({ value: d.id, label: d.name })) },
+    { key: "line_id", label: "Line", type: "select", options: lines.map((l) => ({ value: l.id, label: l.name })) },
+    { key: "group_id", label: "Group", type: "select", options: groups.map((g) => ({ value: g.id, label: g.name })) },
     { key: "employee", label: "Employee", type: "text", placeholder: "Filter by employee..." },
     { key: "employee_id", label: "Code", type: "text", placeholder: "Filter by code..." },
-    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
-    { key: "type", label: "Type", type: "select", options: separationTypeOptions.map((o) => ({ value: o.value, label: o.label })) },
+    { key: "type", label: "Separation Type", type: "select", options: separationTypeOptions.map((o) => ({ value: o.value, label: o.label })) },
     { key: "status", label: "Status", type: "select", options: separationStatusOptions.map((o) => ({ value: o.value, label: o.label })) },
   ]
 

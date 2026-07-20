@@ -135,9 +135,10 @@ func (s *SeparationService) Create(input CreateSeparationInput) (*models.Separat
 
 	var created *models.Separation
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		sep := &models.Separation{
+			sep := &models.Separation{
 			Employee:     employeeName,
 			EmployeeID:   emp.EmployeeID,
+			CompanyID:    emp.CompanyID,
 			DepartmentID: deptID,
 			Type:         sepType,
 			Date:         input.Date,

@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { FileSpreadsheetIcon } from "lucide-react"
+import { FileSpreadsheetIcon, LandmarkIcon } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { salaryApi, companyApi } from "@/lib/api"
@@ -101,7 +103,7 @@ export default function SalarySheetPage() {
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <div className="px-4 lg:px-6">
+      <div className="px-4 lg:px-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileSpreadsheetIcon className="h-6 w-6 text-muted-foreground" />
           <div>
@@ -109,6 +111,12 @@ export default function SalarySheetPage() {
             <p className="text-muted-foreground mt-1">Employee attendance breakdown</p>
           </div>
         </div>
+        <Link href="/payroll/bank-sheet">
+          <Button variant="outline" size="sm">
+            <LandmarkIcon className="mr-2 h-4 w-4" />
+            Bank Sheet
+          </Button>
+        </Link>
       </div>
 
       <div className="px-4 lg:px-6">
