@@ -1,21 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${DB_USER:-shakil}
-      POSTGRES_PASSWORD: ${DB_PASS:-123456}
-      POSTGRES_DB: ${DB_NAME:-hrhub}
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-shakil} -d ${DB_NAME:-hrhub}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   backend:
     build:
       context: .
@@ -24,7 +7,7 @@ services:
       - "${API_PORT:-5000}:5000"
     environment:
       PORT: ${API_PORT:-5000}
-      DB_HOST: db
+      DB_HOST: host.docker.internal
       DB_PORT: "5432"
       DB_USER: ${DB_USER:-shakil}
       DB_PASS: ${DB_PASS:-123456}
@@ -33,9 +16,6 @@ services:
       JWT_SECRET: ${JWT_SECRET:-hrhub-secret-key-change-in-production-2024}
     volumes:
       - uploads:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -43,7 +23,7 @@ services:
       context: ./web
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
     depends_on:
@@ -51,5 +31,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
   uploads:
