@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { requirementSchema, RequirementFormData, statusOptions, priorityOptions, positionOptions } from "../data/requirement-data"
-import { requirementApi, departmentApi } from "@/lib/api"
-import type { Department } from "@/components/data/organization-data"
+import { requirementSchema, RequirementFormData, statusOptions, priorityOptions, groupTypeOptions, positionOptions } from "../data/requirement-data"
+import { requirementApi, sectionApi, designationApi } from "@/lib/api"
+import type { Section, Designation } from "@/components/data/organization-data"
 
 interface RequirementFormProps {
   initialData?: Partial<RequirementFormData>
@@ -25,13 +25,17 @@ interface RequirementFormProps {
 export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = false, requirementId }: RequirementFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
-  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [sections, setSections] = React.useState<Section[]>([])
+  const [designations, setDesignations] = React.useState<Designation[]>([])
 
   const { handleSubmit, formState: { errors }, setValue, watch, register } = useForm<RequirementFormData>({
     resolver: zodResolver(requirementSchema),
     defaultValues: {
       position: "",
       department_id: "",
+      section_id: "",
+      designation_id: "",
+      group_type: "Worker",
       vacancies: 1,
       applicants: 0,
       status: "Open",
@@ -41,16 +45,28 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
     },
   })
 
+  const sectionId = watch("section_id")
   const position = watch("position")
-  const departmentId = watch("department_id")
+  const groupType = watch("group_type")
   const statusVal = watch("status")
   const priorityVal = watch("priority")
 
   React.useEffect(() => {
-    departmentApi.list().then(({ data }) => {
-      setDepartments(Array.isArray(data) ? data : [])
+    sectionApi.list(undefined, { limit: "200" }).then(({ data }) => {
+      setSections(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [])
     }).catch(() => {})
   }, [])
+
+  React.useEffect(() => {
+    if (sectionId) {
+      designationApi.list(sectionId).then(({ data }) => {
+        setDesignations(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [])
+      }).catch(() => setDesignations([]))
+      if (!isEditing) setValue("designation_id", "")
+    } else {
+      setDesignations([])
+    }
+  }, [sectionId, setValue, isEditing])
 
   const onSubmit = async (data: RequirementFormData) => {
     setIsSubmitting(true)
@@ -88,7 +104,7 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="position">Position *</Label>
+              <Label htmlFor="position">Designation / Position *</Label>
               <Select value={position} onValueChange={(val) => setValue("position", val)}>
                 <SelectTrigger id="position"><SelectValue placeholder="Select position" /></SelectTrigger>
                 <SelectContent>
@@ -98,19 +114,40 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
               {errors.position && <p className="text-sm text-destructive">{errors.position.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department_id">Department *</Label>
-              <Select value={departmentId} onValueChange={(val) => setValue("department_id", val)}>
-                <SelectTrigger id="department_id"><SelectValue placeholder="Select department" /></SelectTrigger>
+              <Label htmlFor="section_id">Section *</Label>
+              <Select value={sectionId} onValueChange={(val) => setValue("section_id", val)}>
+                <SelectTrigger id="section_id"><SelectValue placeholder="Select section" /></SelectTrigger>
                 <SelectContent>
-                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  {sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {errors.department_id && <p className="text-sm text-destructive">{errors.department_id.message}</p>}
+              {errors.section_id && <p className="text-sm text-destructive">{errors.section_id.message}</p>}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="designation_id">Designation Ref *</Label>
+              <Select value={watch("designation_id")} onValueChange={(val) => setValue("designation_id", val)} disabled={!sectionId}>
+                <SelectTrigger id="designation_id"><SelectValue placeholder={sectionId ? "Select designation" : "Select section first"} /></SelectTrigger>
+                <SelectContent>
+                  {designations.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {errors.designation_id && <p className="text-sm text-destructive">{errors.designation_id.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group_type">Group *</Label>
+              <Select value={groupType} onValueChange={(val) => setValue("group_type", val as "Staff" | "Worker")}>
+                <SelectTrigger id="group_type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {groupTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="vacancies">Vacancies *</Label>
+              <Label htmlFor="vacancies">Required *</Label>
               <Input id="vacancies" type="number" min={1} {...register("vacancies", { valueAsNumber: true })} aria-invalid={!!errors.vacancies} />
               {errors.vacancies && <p className="text-sm text-destructive">{errors.vacancies.message}</p>}
             </div>

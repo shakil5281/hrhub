@@ -1,125 +1,61 @@
 "use client"
 
 import * as React from "react"
-import { ClipboardListIcon, PlusIcon } from "lucide-react"
-import { DataTable } from "@/components/table/data-table"
-import type { ColumnDef } from "@tanstack/react-table"
-import { toast } from "sonner"
+import { ClipboardListIcon, PlusIcon, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useRouter } from "next/navigation"
-import { Requirement, statusOptions, priorityOptions } from "@/components/data/requirement-data"
-import { requirementApi, departmentApi } from "@/lib/api"
-import type { Department } from "@/components/data/organization-data"
-import { FilterBar } from "@/components/filter-bar"
-import type { FilterDef } from "@/components/filter-bar"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { sectionTabOptions } from "@/components/data/requirement-data"
+import { requirementApi } from "@/lib/api"
 
-const columns: ColumnDef<Requirement>[] = [
-  { accessorKey: "position", header: "Position" },
-  {
-    accessorKey: "department",
-    header: "Department",
-    cell: ({ row }) => <span>{row.original.department?.name || row.original.department_id}</span>,
-  },
-  { accessorKey: "vacancies", header: "Vacancies" },
-  { accessorKey: "applicants", header: "Applicants" },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <Badge variant={row.original.status === "Open" ? "default" : "secondary"} className="capitalize">
-        {row.original.status}
-      </Badge>
-    ),
-  },
-  {
-    accessorKey: "priority",
-    header: "Priority",
-    cell: ({ row }) => {
-      const map: Record<string, "default" | "secondary" | "destructive"> = { High: "destructive", Medium: "default", Low: "secondary" }
-      return <Badge variant={map[row.original.priority]}>{row.original.priority}</Badge>
-    },
-  },
-]
+interface SectionRow {
+  section_name: string
+  group_type: string
+  designation: string
+  required: number
+  present: number
+  net: number
+}
 
 export default function RequirementsPage() {
   const router = useRouter()
-  const [data, setData] = React.useState<Requirement[]>([])
-  const [departments, setDepartments] = React.useState<Department[]>([])
+  const [allData, setAllData] = React.useState<SectionRow[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [filters, setFilters] = React.useState<Record<string, string>>({})
-  const [submitting, setSubmitting] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState("Summary")
 
-  const [page, setPage] = React.useState(1)
-  const [limit, setLimit] = React.useState(20)
-  const [total, setTotal] = React.useState(0)
-  const [totalPages, setTotalPages] = React.useState(0)
-
-  const fetchData = React.useCallback(async (f?: Record<string, string>, p?: number, l?: number) => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true)
     try {
-      const params = { ...(f || {}), page: String(p ?? page), limit: String(l ?? limit) }
-      const { data: res } = await requirementApi.list(params)
-      setData(Array.isArray(res.data) ? res.data : [])
-      setTotal(res.total ?? 0)
-      setTotalPages(res.total_pages ?? 0)
+      const { data: res } = await requirementApi.sectionSummary()
+      setAllData(Array.isArray(res.data) ? res.data : [])
     } catch {
-      toast.error("Failed to load requirements")
+      setAllData([])
     } finally {
       setLoading(false)
     }
-  }, [page, limit])
-
-  React.useEffect(() => {
-    departmentApi.list({ limit: "100" }).then((res) => {
-      setDepartments(Array.isArray(res.data?.data) ? res.data.data : [])
-    }).catch(() => {})
-    fetchData()
   }, [])
 
-  React.useEffect(() => {
-    fetchData(filters)
-  }, [page, limit])
+  React.useEffect(() => { fetchData() }, [fetchData])
 
-  const handleApply = async () => {
-    setPage(1)
-    const active: Record<string, string> = {}
-    for (const [k, v] of Object.entries(filters)) {
-      if (v) active[k] = v
+  const filteredData = React.useMemo(() => {
+    if (activeTab === "Summary") return allData
+    return allData.filter((r) => r.section_name === activeTab)
+  }, [allData, activeTab])
+
+  const groupedData = React.useMemo(() => {
+    const groups: Record<string, SectionRow[]> = { Staff: [], Worker: [] }
+    for (const row of filteredData) {
+      const g = row.group_type === "Staff" ? "Staff" : "Worker"
+      if (!groups[g]) groups[g] = []
+      groups[g].push(row)
     }
-    setSubmitting(true)
-    await fetchData(active, 1)
-    setSubmitting(false)
-  }
+    return groups
+  }, [filteredData])
 
-  const handleReset = () => {
-    setPage(1)
-    setLimit(20)
-    setFilters({})
-    fetchData({}, 1, 20)
-  }
-
-  const handleChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const handleEdit = (req: Requirement) => router.push(`/hr/requirements/${req.id}/edit`)
-  const handleDelete = async (req: Requirement) => {
-    try {
-      await requirementApi.delete(req.id)
-      toast.success("Requirement deleted")
-      fetchData(filters)
-    } catch {
-      toast.error("Failed to delete requirement")
-    }
-  }
-
-  const filterDefs: FilterDef[] = [
-    { key: "position", label: "Position", type: "text", placeholder: "Filter by position..." },
-    { key: "department_id", label: "Department", type: "select", options: departments.map((d) => ({ value: d.id, label: d.name })) },
-    { key: "status", label: "Status", type: "select", options: statusOptions.map((o) => ({ value: o.value, label: o.label })) },
-    { key: "priority", label: "Priority", type: "select", options: priorityOptions.map((o) => ({ value: o.value, label: o.label })) },
-  ]
+  const totals = React.useMemo(() => {
+    return { Staff: [], Worker: [] } as Record<string, SectionRow[]>
+  }, [])
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -128,7 +64,7 @@ export default function RequirementsPage() {
           <ClipboardListIcon className="h-6 w-6 text-muted-foreground" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Requirements</h1>
-            <p className="text-muted-foreground mt-1">Manage recruitment requirements</p>
+            <p className="text-muted-foreground mt-1">Staffing requirements by section</p>
           </div>
         </div>
         <Button onClick={() => router.push("/hr/requirements/create")}>
@@ -138,30 +74,90 @@ export default function RequirementsPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <FilterBar
-          filters={filterDefs}
-          values={filters}
-          onChange={handleChange}
-          onApply={handleApply}
-          onReset={handleReset}
-          submitting={submitting}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-9 flex-wrap">
+            {sectionTabOptions.map((tab) => (
+              <TabsTrigger key={tab} value={tab} className="h-8 px-4 text-sm">{tab}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
-      <DataTable
-        data={data}
-        columns={columns}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        serverSide={true}
-        page={page}
-        pageSize={limit}
-        pageCount={totalPages}
-        total={total}
-        onPageChange={setPage}
-        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
-        loading={loading}
-      />
+      <div className="px-4 lg:px-6 space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Loading...
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            No requirements found for this section
+          </div>
+        ) : (
+          ["Staff", "Worker"].map((group) => {
+            const rows = groupedData[group] || []
+            if (rows.length === 0) return null
+            const totalRequired = rows.reduce((s, r) => s + r.required, 0)
+            const totalPresent = rows.reduce((s, r) => s + r.present, 0)
+            const totalNet = rows.reduce((s, r) => s + r.net, 0)
+            return (
+              <div key={group} className="rounded-lg border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b bg-muted/30 font-semibold text-base flex items-center gap-2">
+                  {group}
+                  <Badge variant="outline" className="text-xs">{rows.length}</Badge>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-muted-foreground bg-muted/10">
+                        <th className="py-3 px-4 font-semibold w-10">Sl</th>
+                        <th className="py-3 px-4 font-semibold">Designation</th>
+                        <th className="py-3 px-4 font-semibold text-right">Required</th>
+                        <th className="py-3 px-4 font-semibold text-right">Present</th>
+                        <th className="py-3 px-4 font-semibold text-right">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                          <td className="py-2.5 px-4 text-muted-foreground text-xs">{i + 1}</td>
+                          <td className="py-2.5 px-4 font-medium">{row.designation}</td>
+                          <td className="py-2.5 px-4 text-right">{row.required}</td>
+                          <td className="py-2.5 px-4 text-right">{row.present}</td>
+                          <td className="py-2.5 px-4 text-right">
+                            <span className={
+                              row.net > 0 ? "text-destructive font-semibold" :
+                              row.net < 0 ? "text-green-600 font-semibold" : ""
+                            }>
+                              {row.net > 0 ? `+${row.net}` : row.net}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-muted bg-muted/40 font-semibold">
+                        <td className="py-3 px-4" colSpan={1}></td>
+                        <td className="py-3 px-4 text-base">Total</td>
+                        <td className="py-3 px-4 text-right text-base">{totalRequired}</td>
+                        <td className="py-3 px-4 text-right text-base">{totalPresent}</td>
+                        <td className="py-3 px-4 text-right text-base">
+                          <span className={
+                            totalNet > 0 ? "text-destructive" :
+                            totalNet < 0 ? "text-green-600" : ""
+                          }>
+                            {totalNet > 0 ? `+${totalNet}` : totalNet}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }

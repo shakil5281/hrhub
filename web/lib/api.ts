@@ -258,6 +258,7 @@ export const requirementApi = {
   create: (data: Record<string, unknown>) => api.post("/requirements", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/requirements/${id}`, data),
   delete: (id: string) => api.delete(`/requirements/${id}`),
+  sectionSummary: () => api.get("/requirements/section-summary"),
 }
 
 export const separationApi = {

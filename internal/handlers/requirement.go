@@ -18,23 +18,29 @@ func NewRequirementHandler(repo *repository.RequirementRepository) *RequirementH
 }
 
 type CreateRequirementRequest struct {
-	Position     string `json:"position" binding:"required"`
-	DepartmentID string `json:"department_id" binding:"required"`
-	Vacancies    int    `json:"vacancies" binding:"required"`
-	Applicants   int    `json:"applicants"`
-	Status       string `json:"status"`
-	Priority     string `json:"priority"`
-	Description  string `json:"description"`
+	Position      string `json:"position" binding:"required"`
+	DepartmentID  string `json:"department_id"`
+	SectionID     string `json:"section_id"`
+	DesignationID string `json:"designation_id"`
+	GroupType     string `json:"group_type"`
+	Vacancies     int    `json:"vacancies" binding:"required"`
+	Applicants    int    `json:"applicants"`
+	Status        string `json:"status"`
+	Priority      string `json:"priority"`
+	Description   string `json:"description"`
 }
 
 type UpdateRequirementRequest struct {
-	Position     string `json:"position" binding:"required"`
-	DepartmentID string `json:"department_id" binding:"required"`
-	Vacancies    int    `json:"vacancies" binding:"required"`
-	Applicants   int    `json:"applicants"`
-	Status       string `json:"status"`
-	Priority     string `json:"priority"`
-	Description  string `json:"description"`
+	Position      string `json:"position" binding:"required"`
+	DepartmentID  string `json:"department_id"`
+	SectionID     string `json:"section_id"`
+	DesignationID string `json:"designation_id"`
+	GroupType     string `json:"group_type"`
+	Vacancies     int    `json:"vacancies" binding:"required"`
+	Applicants    int    `json:"applicants"`
+	Status        string `json:"status"`
+	Priority      string `json:"priority"`
+	Description   string `json:"description"`
 }
 
 // ListRequirements godoc
@@ -102,14 +108,22 @@ func (h *RequirementHandler) Create(c *gin.Context) {
 		priority = "Medium"
 	}
 
+	groupType := req.GroupType
+	if groupType == "" {
+		groupType = "Worker"
+	}
+
 	item := &models.Requirement{
-		Position:     req.Position,
-		DepartmentID: req.DepartmentID,
-		Vacancies:    req.Vacancies,
-		Applicants:   req.Applicants,
-		Status:       status,
-		Priority:     priority,
-		Description:  req.Description,
+		Position:      req.Position,
+		DepartmentID:  req.DepartmentID,
+		SectionID:     req.SectionID,
+		DesignationID: req.DesignationID,
+		GroupType:     groupType,
+		Vacancies:     req.Vacancies,
+		Applicants:    req.Applicants,
+		Status:        status,
+		Priority:      priority,
+		Description:   req.Description,
 	}
 
 	if err := h.repo.Create(item); err != nil {
@@ -119,6 +133,15 @@ func (h *RequirementHandler) Create(c *gin.Context) {
 
 	result, _ := h.repo.FindByID(item.ID)
 	c.JSON(http.StatusCreated, result)
+}
+
+func (h *RequirementHandler) SectionSummary(c *gin.Context) {
+	result, err := h.repo.ListBySection()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
 func (h *RequirementHandler) Update(c *gin.Context) {
@@ -137,6 +160,15 @@ func (h *RequirementHandler) Update(c *gin.Context) {
 
 	item.Position = req.Position
 	item.DepartmentID = req.DepartmentID
+	if req.SectionID != "" {
+		item.SectionID = req.SectionID
+	}
+	if req.DesignationID != "" {
+		item.DesignationID = req.DesignationID
+	}
+	if req.GroupType != "" {
+		item.GroupType = req.GroupType
+	}
 	item.Vacancies = req.Vacancies
 	item.Applicants = req.Applicants
 	item.Description = req.Description

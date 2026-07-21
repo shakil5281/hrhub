@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"time"
 
 	"github.com/shakil5281/hrhub-api/internal/models"
@@ -122,13 +123,16 @@ func (r *LeaveRepository) DeleteLeave(id string) error {
 
 func (r *LeaveRepository) UpsertAllocation(a *models.LeaveAllocation) error {
 	var existing models.LeaveAllocation
-	err := r.db.Where("employee_id = ? AND leave_type_id = ? AND year = ?", a.EmployeeID, a.LeaveTypeID, a.Year).First(&existing).Error
-	if err == nil {
-		a.ID = existing.ID
-		a.CreatedAt = existing.CreatedAt
-		return r.db.Save(a).Error
+	err := r.db.Where("employee_id = ? AND leave_type_id = ? AND year = ? AND deleted_at IS NULL", a.EmployeeID, a.LeaveTypeID, a.Year).First(&existing).Error
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return r.db.Create(a).Error
 	}
-	return r.db.Create(a).Error
+	a.ID = existing.ID
+	a.CreatedAt = existing.CreatedAt
+	return r.db.Save(a).Error
 }
 
 func (r *LeaveRepository) FindAllocation(employeeID, leaveTypeID string, year int) (*models.LeaveAllocation, error) {

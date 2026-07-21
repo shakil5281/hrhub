@@ -38,6 +38,7 @@
 - **Dashboard & Analytics:** Real-time stats, attendance trends, department/gender distribution
 - **Database Admin:** Backup, restore, reset via API endpoints
 - **RBAC Authentication:** JWT-based auth with roles, permissions, session management, password history
+- **Additional HR Operations:** Night bill and tiffin bill management, punishment tracking, daily schedules, salary increment approvals
 
 ---
 
@@ -125,7 +126,7 @@ HRHub uses **GORM AutoMigrate** for schema management. Migrations run automatica
 
 ### How Migration Works
 
-1. **AutoMigrate:** `internal/database/postgres.go` calls `db.AutoMigrate(...)` with all 35 models. This creates tables if they don't exist.
+1. **AutoMigrate:** `internal/database/postgres.go` calls `db.AutoMigrate(...)` with all 40 models. This creates tables if they don't exist.
 2. **ALTER Fixes:** After AutoMigrate, `postgres.go` runs `ALTER TABLE ... TYPE varchar(50)` on `employee_id` columns because GORM 1.31.2 forces UUID type on `*_id` columns by default.
 3. **Auto-Created Indexes:** On startup, `postgres.go` creates `IF NOT EXISTS` performance indexes for high-frequency queries (salaries, employees, leave_allocations, temporary_shifts, data_logs, attendances, leaves, sessions).
 4. **No Foreign Keys:** `DisableForeignKeyConstraintWhenMigrating: true` is set. Referential integrity is managed at the application level.
@@ -365,6 +366,9 @@ Creates sample employee records for testing.
 | POST | `/api/v1/auth/login` | Login (returns tokens) |
 | POST | `/api/v1/auth/refresh` | Refresh access token |
 | POST | `/api/v1/auth/logout` | Revoke refresh token |
+| POST | `/api/v1/auth/forgot-password` | Request password reset email |
+| POST | `/api/v1/auth/reset-password` | Reset password with token |
+| POST | `/api/v1/auth/validate-token` | Check if access token is valid |
 
 ### Protected Endpoints (Bearer Token Required)
 
@@ -441,11 +445,26 @@ Creates sample employee records for testing.
 - `GET /salary/payslip` — Single employee payslip
 - `GET /salary/list` — Department summary
 - `GET /salary/summary` — Salary summary with grand totals
+- `GET /salary/daily-sheet`, `/salary/bank-sheet` — Specialized sheets
+- `GET/PUT /salary/increments` — Salary increment CRUD + approve/reject
 
 #### HR Operations
 - `GET/POST/PUT/DELETE` for `/requirements`
 - `GET/POST/PUT/DELETE` for `/separations`
-- `GET/POST/PUT/DELETE` for `/id-cards`
+- `GET/POST/PUT/DELETE` for `/id-cards` + `POST /id-cards/generate` (PDF)
+- `GET/POST/PUT/DELETE` for `/punishments`
+- `GET/POST/PUT/DELETE` for `/daily-schedules`
+- `GET/POST/PUT/DELETE` for `/night-bills`, `/tiffin-bills`
+
+#### User & Role Management
+- `GET/POST/PUT/DELETE` for `/users`, `/roles`
+- `POST /users/:id/roles` — Assign roles to user
+- `POST /roles/:id/permissions` — Assign permissions to role
+- `GET /permissions` — List all permissions
+
+#### Settings
+- `GET /settings` — List all settings
+- `PUT /settings` — Bulk update settings
 
 #### Dashboard & Admin
 - `GET /dashboard/stats` — Dashboard statistics
@@ -453,14 +472,15 @@ Creates sample employee records for testing.
 - `GET /database/backups` — List backups
 - `GET /database/export?filename=...` — Download backup
 - `POST /database/import` — Restore from SQL
+- `DELETE /database/backups` — Delete backups
 - `POST /database/reset` — Drop all tables and remigrate
 
 #### Upload
-- `POST /upload` — Generic file upload
+- `POST /upload` — Generic file upload (max 5MB, jpg/jpeg/png/gif)
 
 **Pagination:** All `GET` list endpoints support `?page=` (default 1) and `?limit=` (default 20, max 100) query parameters. Responses are wrapped in `PaginatedResponse` with `data`, `total`, `page`, `limit`, `total_pages`.
 
-**Total Endpoints:** ~100+ (5 Public, ~95 Protected)
+**Total Endpoints:** ~170+ (7 Public, ~163 Protected)
 
 ---
 
@@ -484,16 +504,16 @@ hrhub/
 ├── backups/                      # PostgreSQL dump files
 ├── uploads/                      # Static file uploads
 ├── internal/
-│   ├── auth/                     # JWT & password hashing
+│   ├── auth/                     # JWT & password hashing (bcrypt cost 12)
 │   ├── config/                   # Environment config loader
-│   ├── database/                 # GORM PostgreSQL connection + AutoMigrate
-│   ├── handlers/                 # HTTP handlers (~25 files)
-│   ├── middleware/               # Auth, CORS, Logger, Permission
-│   ├── models/                   # 35 GORM model files
-│   ├── repository/               # ~20 data access files
-│   ├── routes/                   # Route registration (single file)
-│   ├── server/                   # Dependency injection wiring
-│   └── service/                  # Business logic (auth, MDB reader)
+│   ├── database/                 # GORM PostgreSQL connection + AutoMigrate(40 models) + ALTER fixes + 9 indexes
+│   ├── handlers/                 # HTTP handlers (33 files)
+│   ├── middleware/               # Auth, CORS, Logger, Audit, Permission
+│   ├── models/                   # 40 GORM model files
+│   ├── repository/               # 26 data access files
+│   ├── routes/                   # Route registration (single 490-line file)
+│   ├── server/                   # Dependency injection wiring (25+ repos, 7 services)
+│   └── service/                  # Business logic (auth, salary, attendance, separation, MDB reader, user)
 └── web/                          # Next.js 16 frontend
     ├── app/                      # App Router pages
     ├── components/               # UI components, tables, forms, layout
@@ -532,10 +552,11 @@ POST /api/v1/salary/process
     ├──► Load active employees
     ├──► Load monthly attendance report
     ├──► Load monthly overtime hours
-    └──► For each employee:
-         - basic = gross × 0.5
-         - house_rent = gross × 0.25
-         - medical = gross × 0.1
+     └──► For each employee:
+         - core = gross - transport(450) - food(1250) - medical(750)
+         - basic = core / 1.5
+         - house_rent = core - basic
+         - medical = 750 (fixed)
          - absent_deduction = (gross / total_days) × absent_days
          - ot_amount = ot_hours × (basic / total_days / 8)
          - attendance_bonus = 500 (if perfect attendance)
@@ -569,6 +590,22 @@ PUT /leaves/:id/reject
 
 ---
 
+## Frontend Architecture Details
+
+| Layer | Technology | Details |
+|-------|-----------|---------|
+| **Framework** | Next.js 16 App Router | Client-side rendered pages with `"use client"` |
+| **State** | React hooks (`useState`/`useEffect`) | No global state manager (Zustand/Redux) |
+| **Data Fetching** | Axios via `lib/api.ts` | `lib/axios-instance.ts` handles 401 token refresh |
+| **Forms** | React Hook Form + Zod | Domain-specific schemas in `components/data/*` |
+| **Tables** | TanStack React Table v8 | Wrapped in `DataTable` component (528 lines) |
+| **UI** | shadcn/ui + Radix | 129 components (Sidebar, Dialog, Select, DatePicker, etc.) |
+| **Styling** | Tailwind CSS v4 + cn() | oklch color space, dark mode, custom Bengali font |
+| **Charts** | Recharts | Dashboard and analytics pages |
+| **Layout** | Sidebar-based | Collapsible groups with navigation (NavMain, NavGroup, NavSecondary) |
+
+**Key pages (~40+ route files):** Dashboard, Employee CRUD (with 15+ filters), Attendance (daily, summary, job-card, OT, missing, absent), Leave (types, applications, reports), Payroll (process, sheet, payslip, increment), HR Ops (requirements, separations, ID cards, punishments, daily schedules, night bills, tiffin bills), Admin (users, roles, permissions, database, settings)
+
 ## Development Standards
 
 For detailed coding standards, architecture decisions, business rules, and security model, refer to:
@@ -597,6 +634,8 @@ For detailed coding standards, architecture decisions, business rules, and secur
 | **Audit Trail** | ✅ Active | `AuditMiddleware` captures all POST/PUT/PATCH/DELETE to `audit_logs` table |
 | **Rate Limiting** | ❌ Missing | Add rate limiting for auth endpoints |
 | **Input Sanitization** | ✅ Safe | All raw SQL uses parameterized `Where()` with `?` placeholders |
+| **Test Coverage** | ❌ Missing | No `_test.go` files exist in the codebase |
+| **Transaction Usage** | ⚠️ Partial | Leave operations use transactions; some multi-table updates do not |
 | **Secrets** | ⚠️ Default values | Change `JWT_SECRET` and DB credentials for production |
 
 ---

@@ -150,6 +150,26 @@ export default function DailySummaryPage() {
     { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Enter employee code..." },
   ], [companies, departments, sections, designations, lines, groups, shifts])
 
+  const loadSections = React.useCallback(async (departmentId: string) => {
+    if (!departmentId) { setSections([]); return }
+    try {
+      const { data: res } = await sectionApi.list(departmentId)
+      setSections(Array.isArray(res.data) ? res.data : [])
+    } catch { setSections([]) }
+  }, [])
+
+  const loadDesignationsAndLines = React.useCallback(async (sectionId: string) => {
+    if (!sectionId) { setDesignations([]); setLines([]); return }
+    try {
+      const [desRes, lRes] = await Promise.all([
+        designationApi.list(sectionId),
+        lineApi.list(sectionId),
+      ])
+      setDesignations(Array.isArray(desRes.data?.data) ? desRes.data.data : [])
+      setLines(Array.isArray(lRes.data?.data) ? lRes.data.data : [])
+    } catch { setDesignations([]); setLines([]) }
+  }, [])
+
   const fetchData = React.useCallback(async (params: Record<string, string>, gb: string) => {
     setLoading(true)
     setError("")
@@ -169,16 +189,12 @@ export default function DailySummaryPage() {
 
   React.useEffect(() => {
     const init = async () => {
-      const [cRes, dRes, secRes, desRes, lRes, gRes, sRes] = await Promise.all([
+      const [cRes, dRes, gRes, sRes] = await Promise.all([
         companyApi.list({ limit: "100" }), departmentApi.list({ limit: "100" }),
-        sectionApi.list(undefined, { limit: "100" }), designationApi.list(undefined, { limit: "100" }),
-        lineApi.list(undefined, { limit: "100" }), groupApi.list({ limit: "100" }), shiftApi.list({ limit: "100" }),
+        groupApi.list({ limit: "100" }), shiftApi.list({ limit: "100" }),
       ])
       if (Array.isArray(cRes.data?.data)) setCompanies(cRes.data.data)
       if (Array.isArray(dRes.data?.data)) setDepartments(dRes.data.data)
-      if (Array.isArray(secRes.data?.data)) setSections(secRes.data.data)
-      if (Array.isArray(desRes.data?.data)) setDesignations(desRes.data.data)
-      if (Array.isArray(lRes.data?.data)) setLines(lRes.data.data)
       if (Array.isArray(gRes.data?.data)) setGroups(gRes.data.data)
       if (Array.isArray(sRes.data?.data)) setShifts(sRes.data.data)
     }
@@ -186,8 +202,26 @@ export default function DailySummaryPage() {
     fetchData({ date: today }, "department")
   }, [])
 
-  const handleTabChange = (value: string) => { setGroupBy(value); fetchData(filters, value) }
-  const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+  const handleTabChange = (value: string) => { setGroupBy(value) }
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value }
+      if (key === "department_id") {
+        delete next.section_id
+        delete next.designation_id
+        delete next.line_id
+        loadSections(value)
+        setDesignations([])
+        setLines([])
+      }
+      if (key === "section_id") {
+        delete next.designation_id
+        delete next.line_id
+        loadDesignationsAndLines(value)
+      }
+      return next
+    })
+  }
 
   const handleApply = () => {
     const active: Record<string, string> = {}

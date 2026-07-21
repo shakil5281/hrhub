@@ -159,80 +159,127 @@ func (r *AttendanceRepository) Summary(startDate, endDate, companyID, department
 }
 
 func (r *AttendanceRepository) SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupFilter, shiftID, statusFilter string) ([]map[string]interface{}, error) {
-	var selectCols, joinClause, groupCols, orderCol string
+	var entityCol, joinClause, groupCol, orderCol string
 	switch groupBy {
 	case "department":
-		selectCols = "d.id as entity_id, d.name"
-		joinClause = "LEFT JOIN departments d ON d.id = e.department_id"
-		groupCols = "d.id, d.name"
-		orderCol = "d.name"
+		entityCol = "departments.id as entity_id, departments.name"
+		joinClause = "LEFT JOIN departments ON departments.id = employees.department_id"
+		groupCol = "departments.id, departments.name"
+		orderCol = "departments.name"
 	case "section":
-		selectCols = "s.id as entity_id, s.name"
-		joinClause = "LEFT JOIN sections s ON s.id = e.section_id"
-		groupCols = "s.id, s.name"
-		orderCol = "s.name"
+		entityCol = "sections.id as entity_id, sections.name"
+		joinClause = "LEFT JOIN sections ON sections.id = employees.section_id"
+		groupCol = "sections.id, sections.name"
+		orderCol = "sections.name"
 	case "designation":
-		selectCols = "des.id as entity_id, des.name"
-		joinClause = "LEFT JOIN designations des ON des.id = e.designation_id"
-		groupCols = "des.id, des.name"
-		orderCol = "des.name"
+		entityCol = "designations.id as entity_id, designations.name"
+		joinClause = "LEFT JOIN designations ON designations.id = employees.designation_id"
+		groupCol = "designations.id, designations.name"
+		orderCol = "designations.name"
 	case "line":
-		selectCols = "l.id as entity_id, l.name"
-		joinClause = "LEFT JOIN lines l ON l.id = e.line_id"
-		groupCols = "l.id, l.name"
-		orderCol = "l.name"
+		entityCol = "lines.id as entity_id, lines.name"
+		joinClause = "LEFT JOIN lines ON lines.id = employees.line_id"
+		groupCol = "lines.id, lines.name"
+		orderCol = "lines.name"
 	case "group":
-		selectCols = "g.id as entity_id, g.name"
-		joinClause = "LEFT JOIN \"groups\" g ON g.id = e.group_id"
-		groupCols = "g.id, g.name"
-		orderCol = "g.name"
+		entityCol = "\"groups\".id as entity_id, \"groups\".name"
+		joinClause = "LEFT JOIN \"groups\" ON \"groups\".id = employees.group_id"
+		groupCol = "\"groups\".id, \"groups\".name"
+		orderCol = "\"groups\".name"
 	default:
 		return nil, fmt.Errorf("invalid group_by: %s", groupBy)
 	}
 
-	query := r.db.Table("attendances a").
-		Select(fmt.Sprintf(`
-			%s,
-			SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present,
-			SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late,
-			SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent,
-			SUM(CASE WHEN a.status = 'half_day' THEN 1 ELSE 0 END) as half_day,
-			SUM(CASE WHEN a.status = 'on_leave' THEN 1 ELSE 0 END) as on_leave,
-			SUM(CASE WHEN a.status = 'weekend' THEN 1 ELSE 0 END) as weekend,
-			COUNT(*) as total
-		`, selectCols)).
-		Joins("JOIN employees e ON e.employee_id = a.employee_id").
-		Joins(joinClause).
-		Where("a.date BETWEEN ? AND ? AND a.deleted_at IS NULL", startDate, endDate)
+	var conditions []string
+	var args []interface{}
+
+	conditions = append(conditions, "attendances.date BETWEEN ? AND ?", "attendances.deleted_at IS NULL")
+	args = append(args, startDate, endDate)
 
 	if companyID != "" {
-		query = query.Where("a.company_id = ?", companyID)
+		conditions = append(conditions, "attendances.company_id = ?")
+		args = append(args, companyID)
 	}
 	if departmentID != "" {
-		query = query.Where("e.department_id = ?", departmentID)
+		conditions = append(conditions, "employees.department_id = ?")
+		args = append(args, departmentID)
 	}
 	if sectionID != "" {
-		query = query.Where("e.section_id = ?", sectionID)
+		conditions = append(conditions, "employees.section_id = ?")
+		args = append(args, sectionID)
 	}
 	if designationID != "" {
-		query = query.Where("e.designation_id = ?", designationID)
+		conditions = append(conditions, "employees.designation_id = ?")
+		args = append(args, designationID)
 	}
 	if lineID != "" {
-		query = query.Where("e.line_id = ?", lineID)
+		conditions = append(conditions, "employees.line_id = ?")
+		args = append(args, lineID)
 	}
 	if groupFilter != "" {
-		query = query.Where("e.group_id = ?", groupFilter)
+		conditions = append(conditions, "employees.group_id = ?")
+		args = append(args, groupFilter)
 	}
 	if shiftID != "" {
-		query = query.Where("a.shift_id = ?", shiftID)
+		conditions = append(conditions, "attendances.shift_id = ?")
+		args = append(args, shiftID)
 	}
 	if statusFilter != "" {
-		query = query.Where("a.status = ?", statusFilter)
+		conditions = append(conditions, "attendances.status = ?")
+		args = append(args, statusFilter)
 	}
 
+	whereClause := ""
+	for i, c := range conditions {
+		if i == 0 {
+			whereClause = "WHERE " + c
+		} else {
+			whereClause += " AND " + c
+		}
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT %s,
+			SUM(CASE WHEN attendances.status = 'present' THEN 1 ELSE 0 END) as present,
+			SUM(CASE WHEN attendances.status = 'late' THEN 1 ELSE 0 END) as late,
+			SUM(CASE WHEN attendances.status = 'absent' THEN 1 ELSE 0 END) as absent,
+			SUM(CASE WHEN attendances.status = 'half_day' THEN 1 ELSE 0 END) as half_day,
+			SUM(CASE WHEN attendances.status = 'on_leave' THEN 1 ELSE 0 END) as on_leave,
+			SUM(CASE WHEN attendances.status = 'weekend' THEN 1 ELSE 0 END) as weekend,
+			COUNT(*) as total
+		FROM attendances
+		JOIN employees ON employees.employee_id = attendances.employee_id
+		%s
+		%s
+		GROUP BY %s
+		ORDER BY %s ASC`,
+		entityCol, joinClause, whereClause, groupCol, orderCol)
+
+	rows, err := r.db.Raw(sql, args...).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols, _ := rows.Columns()
 	var results []map[string]interface{}
-	err := query.Group(groupCols).Order(orderCol + " ASC").Find(&results).Error
-	return results, err
+	for rows.Next() {
+		vals := make([]interface{}, len(cols))
+		valPtrs := make([]interface{}, len(cols))
+		for i := range vals {
+			valPtrs[i] = &vals[i]
+		}
+		rows.Scan(valPtrs...)
+		row := make(map[string]interface{})
+		for i, col := range cols {
+			row[col] = vals[i]
+		}
+		results = append(results, row)
+	}
+	if results == nil {
+		results = []map[string]interface{}{}
+	}
+	return results, nil
 }
 
 func (r *AttendanceRepository) Overtime(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter string) ([]map[string]interface{}, error) {

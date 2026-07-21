@@ -1,12 +1,15 @@
 "use client"
 
 import { z } from "zod"
-import type { Department } from "./organization-data"
+import type { Department, Section, Designation } from "./organization-data"
 
 export interface Requirement {
   id: string
   position: string
   department_id: string
+  section_id: string
+  designation_id: string
+  group_type: string
   vacancies: number
   applicants: number
   status: "Open" | "Closed"
@@ -15,11 +18,16 @@ export interface Requirement {
   created_at: string
   updated_at: string
   department?: Department
+  section?: Section
+  designation?: Designation
 }
 
 export const requirementSchema = z.object({
   position: z.string().min(2, "Position is required"),
-  department_id: z.string().min(1, "Department is required"),
+  department_id: z.string().optional(),
+  section_id: z.string().min(1, "Section is required"),
+  designation_id: z.string().min(1, "Designation is required"),
+  group_type: z.enum(["Staff", "Worker"]),
   vacancies: z.number().min(1, "At least 1 vacancy"),
   applicants: z.number().min(0, "Must be 0 or more"),
   status: z.enum(["Open", "Closed"]),
@@ -40,8 +48,17 @@ export const priorityOptions = [
   { value: "Low" as const, label: "Low" },
 ]
 
+export const groupTypeOptions = [
+  { value: "Staff" as const, label: "Staff" },
+  { value: "Worker" as const, label: "Worker" },
+]
+
 export const positionOptions = [
   "Senior Operator", "Operator", "Supervisor", "Manager", "Software Developer", "QC Inspector",
   "Security Guard", "Cleaner", "Accountant", "Driver", "HR Executive", "Executive", "Assistant",
   "Store Keeper", "IT Support", "Quality Inspector",
 ].map((v) => ({ value: v, label: v }))
+
+export const sectionTabOptions = [
+  "Summary", "Cutting", "Sewing", "Finishing", "Quality", "Admin", "Store",
+]

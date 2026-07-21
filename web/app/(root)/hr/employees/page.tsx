@@ -97,7 +97,7 @@ export default function EmployeesPage() {
   const [exporting, setExporting] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  const [filters, setFilters] = React.useState<Record<string, string>>({ employee_type: "Regular" })
+  const [filters, setFilters] = React.useState<Record<string, string>>({ employee_type: "Regular", status: "active" })
 
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
@@ -215,13 +215,13 @@ export default function EmployeesPage() {
   const handleReset = async () => {
     setPage(1)
     setLimit(20)
-    setFilters({})
+    setFilters({ status: "active", employee_type: "Regular" })
     setSections([])
     setDesignations([])
     setLines([])
     setError("")
     setSubmitting(true)
-    await fetchEmployees({}, 1, 20)
+    await fetchEmployees({ status: "active" }, 1, 20)
     setSubmitting(false)
   }
 

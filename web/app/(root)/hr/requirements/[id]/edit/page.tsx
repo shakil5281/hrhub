@@ -19,7 +19,10 @@ export default function EditRequirementPage() {
     requirementApi.get(id).then(({ data }) => {
       setRequirement({
         position: data.position,
-        department_id: data.department_id,
+        department_id: data.department_id || "",
+        section_id: data.section_id || "",
+        designation_id: data.designation_id || "",
+        group_type: data.group_type || "Worker",
         vacancies: data.vacancies,
         applicants: data.applicants,
         status: data.status,

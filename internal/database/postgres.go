@@ -69,6 +69,9 @@ func Connect(cfg *config.Config) {
 	alterCol("night_bills", "employee_id")
 	alterCol("tiffin_bills", "employee_id")
 	silentDB.Exec("ALTER TABLE separations ADD COLUMN IF NOT EXISTS company_id uuid")
+	silentDB.Exec("ALTER TABLE requirements ADD COLUMN IF NOT EXISTS section_id uuid")
+	silentDB.Exec("ALTER TABLE requirements ADD COLUMN IF NOT EXISTS designation_id uuid")
+	silentDB.Exec("ALTER TABLE requirements ADD COLUMN IF NOT EXISTS group_type varchar(20) DEFAULT 'Worker'")
 
 	// Migrate check_in/check_out from varchar to timestamp.
 	// Existing data may be "HH:mm" (time-only, length=5) or already a full datetime string.

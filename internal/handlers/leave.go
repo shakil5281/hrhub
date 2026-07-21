@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -316,7 +317,13 @@ func (h *LeaveHandler) ApplyLeave(c *gin.Context) {
 	// Check allocation
 	year := from.Year()
 	alloc, err := h.leaveRepo.FindAllocation(req.EmployeeID, req.LeaveTypeID, year)
-	if err == nil {
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		alloc = nil
+	} else {
 		remaining := alloc.TotalDays - alloc.UsedDays - alloc.PendingDays
 		if remaining < totalDays {
 			c.JSON(http.StatusConflict, gin.H{"error": "insufficient leave balance", "remaining": remaining, "requested": totalDays})

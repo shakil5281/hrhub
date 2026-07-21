@@ -311,6 +311,7 @@ func Setup(
 	requirement.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		requirement.GET("", requirementHandler.List)
+		requirement.GET("/section-summary", requirementHandler.SectionSummary)
 		requirement.GET("/:id", requirementHandler.GetByID)
 		requirement.POST("", requirementHandler.Create)
 		requirement.PUT("/:id", requirementHandler.Update)

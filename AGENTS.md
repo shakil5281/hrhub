@@ -52,77 +52,90 @@ hrhub/
 │   └── superadmin/main.go   # Creates superadmin role + user
 ├── internal/
 │   ├── auth/
-│   │   ├── jwt.go           # JWT generation & validation
-│   │   └── password.go      # bcrypt hashing
+│   │   ├── jwt.go                # JWT generation & validation (HS256, 15min access, 7d refresh)
+│   │   └── password.go           # bcrypt hashing (cost 12), OTP, backup codes
 │   ├── config/
-│   │   └── config.go        # Env-based config loader (port 5000 default)
+│   │   └── config.go             # Env-based config loader (port 5000 default)
 │   ├── database/
-│   │   └── postgres.go      # GORM connection + AutoMigrate + ALTER fixes
-│   ├── handlers/            # ~25 handler files (HTTP layer)
+│   │   └── postgres.go           # GORM connection + AutoMigrate(40 models) + ALTER fixes + 9 indexes
+│   ├── handlers/                 # 33 handler files
 │   │   ├── auth.go, auth_register.go
 │   │   ├── attendance.go
 │   │   ├── company.go
-│   │   ├── dashboard.go
-│   │   ├── data_log.go
+│   │   ├── daily_schedule.go, dashboard.go
+│   │   ├── data_log.go, database.go
 │   │   ├── employee.go, employee_export.go, employee_import.go
 │   │   ├── floor.go, group.go
 │   │   ├── health.go
-│   │   ├── id_card.go
+│   │   ├── id_card.go, id_card_generate.go
 │   │   ├── leave.go
+│   │   ├── night_bill.go, tiffin_bill.go
 │   │   ├── organization.go, organization_import.go
+│   │   ├── punishment.go
 │   │   ├── requirement.go
-│   │   ├── salary.go
+│   │   ├── role.go
+│   │   ├── salary.go, salary_increment.go
 │   │   ├── separation.go
-│   │   ├── shift.go
-│   │   ├── temporary_shift.go
-│   │   └── upload.go
+│   │   ├── settings.go
+│   │   ├── shift.go, temporary_shift.go
+│   │   ├── upload.go
+│   │   └── user.go
 │   ├── middleware/
-│   │   ├── auth.go          # JWT Bearer validation
-│   │   ├── audit.go         # Audit log middleware (POST/PUT/PATCH/DELETE)
-│   │   ├── cors.go          # CORS headers
-│   │   ├── logger.go        # Request logging
-│   │   └── permission.go    # RBAC permission & role checks
+│   │   ├── auth.go               # JWT Bearer validation (sets user_id/email/roles/permissions)
+│   │   ├── audit.go              # Audit log middleware (POST/PUT/PATCH/DELETE → audit_logs)
+│   │   ├── cors.go               # CORS (localhost:3000, localhost:5173)
+│   │   ├── logger.go             # Request logging [IP] METHOD PATH | STATUS | DURATION
+│   │   └── permission.go         # RequirePermission / RequireRole middleware
 │   ├── utils/
-│   │   └── pagination.go    # Pagination DTOs and helpers
-│   ├── models/              # 35 GORM model files
-│   ├── repository/          # ~20 repository files (data access)
+│   │   ├── pagination.go         # Pagination DTOs (page/limit/total/total_pages)
+│   │   └── date.go               # Date range generator + weekend checker
+│   ├── models/                   # 40 GORM model files
+│   ├── repository/               # 26 repository files (data access)
 │   ├── routes/
-│   │   └── routes.go        # ALL route registrations (single file)
+│   │   └── routes.go             # ALL route registrations (single 490-line file)
 │   ├── server/
-│   │   └── server.go        # Dependency injection wiring
+│   │   └── server.go             # Dependency injection wiring (25+ repos, 7 services, 32+ handlers)
 │   └── service/
-│       ├── auth.go          # Auth business logic (login, register, refresh)
-│       └── mdb_reader.go    # ZKTeco MDB PowerShell reader
-├── docs/                    # Swagger generated files
-├── backups/                 # PostgreSQL dump files (.sql)
-├── uploads/                 # Static file uploads
-└── web/                     # Next.js frontend
-    ├── app/                 # App Router pages
-    │   ├── (auth)/          # Login, Register (no layout sidebar)
-    │   └── (root)/          # All authenticated pages
-    │       ├── dashboard/
-    │       ├── attendance/     # daily, monthly, summary, job-card, missing, absent, OT
-    │       ├── collect-data/   # log-collect, daily-process, monthly-process
-    │       ├── hr/             # employees, id-card, requirements, seperation
-    │       ├── information/    # company, organization, floor, group, shift, temp-shift, address
-    │       ├── leave/          # leave-types, leave-entry, leave-details, monthly-report
-    │       ├── payroll/        # salary-sheet, daily-salary, payslip, increment, process, summary
+│       ├── auth.go               # Auth business logic (login, register, refresh, lockout)
+│       ├── attendance_processor.go # ZKTeco→attendance processing pipeline
+│       ├── data_log.go           # MDB import + dedup logic
+│       ├── mdb_reader.go         # ZKTeco MDB PowerShell reader
+│       ├── salary.go             # Monthly salary calculation engine
+│       ├── separation.go         # Separation process/cancel/reactivate
+│       └── user.go               # User CRUD, forgot/reset password, role assignment
+├── docs/                         # Swagger generated files
+├── backups/                      # PostgreSQL dump files (.sql)
+├── uploads/                      # Static file uploads
+└── web/                          # Next.js 16 App Router frontend
+    ├── app/                      # App Router pages
+    │   ├── (auth)/               # Login, Register (no layout sidebar)
+    │   └── (root)/               # All authenticated pages
+    │       ├── admin/            # users, roles, database, system-settings
     │       ├── analytics/
+    │       ├── attendance/       # daily, summary, job-card, missing, absent, OT, manual
+    │       ├── collect-data/     # log-collect, daily-process, monthly-process
+    │       ├── dashboard/
+    │       ├── hr/               # employees, id-card, requirements, separation, punishment, daily-schedule
+    │       ├── information/      # company, organization, floor, group, shift, temp-shift, address
+    │       ├── leave/            # leave-types, leave-entry, leave-details, monthly-report
     │       ├── lifecycle/
     │       ├── notifications/
+    │       ├── payroll/          # salary-sheet, daily-salary, payslip, increment, process, summary, night-bill, tiffin-bill
     │       ├── profile/
     │       └── settings/
     ├── components/
-    │   ├── ui/                # shadcn/ui components
-    │   ├── table/             # DataTable wrapper
-    │   ├── form/              # Form abstractions
-    │   ├── layout/            # Sidebar, Navbar, AppShell
-    │   └── ...
+    │   ├── ui/                   # 129 shadcn/ui components (Sidebar, Dialog, Select, DataTable...)
+    │   ├── table/                # DataTable (528 lines, TanStack+dnd-kit), SimpleTable, CompanyTable
+    │   ├── form/                 # 11 form components (EmployeeForm 701 lines, LoginForm, etc.)
+    │   ├── layout/               # AppSidebar, SiteHeader, SearchDialog, NavMain, NavGroup, NavSecondary
+    │   └── data/                 # Navigation configs + domain type definitions (Employee, Company, Shift, etc.)
     ├── lib/
-    │   ├── api.ts             # Centralized API client functions
-    │   ├── axios-instance.ts  # Axios config + token refresh interceptor
-    │   ├── crud-factory.ts    # CRUD abstraction
-    │   └── utils.ts           # cn() and helpers
+    │   ├── api.ts                # 40 API client objects (auth, employee, attendance, leave, salary, etc.)
+    │   ├── axios-instance.ts     # Axios + Bearer token + 401 refresh interceptor
+    │   ├── crud-factory.ts       # createCrudApi(basePath) → { list, get, create, update, delete }
+    │   ├── auth.ts               # hasRole(), isSuperAdmin() — JWT payload decode
+    │   ├── error-handler.ts      # handleApiError(), handleApiErrorWithToast()
+    │   └── utils.ts              # cn() clsx+twMerge, formatCheck()
     └── package.json
 ```
 
@@ -159,7 +172,7 @@ All dependencies are manually wired in `internal/server/server.go`:
 5. Handlers (each receives its required repositories/services)
 6. Routes (`routes.Setup(...)` receives all handlers)
 
-There is no DI framework (Wire/Dig). At current scale (~25 handlers) manual wiring is manageable.
+There is no DI framework (Wire/Dig). At current scale (33 handlers, 26 repos, 7 services) manual wiring is manageable.
 
 ### 4.3 Middleware Pipeline (per request)
 
@@ -199,7 +212,7 @@ Handler
 
 ### 6.1 Summary
 
-**Total Tables:** 35  
+**Total Tables:** 40  
 **Primary Key Type:** `uuid` (gen_random_uuid()) on all tables  
 **Soft Deletes:** `deleted_at` (GORM `gorm.DeletedAt`) on nearly all tables  
 **Audit Columns:** `created_by`, `updated_by`, `deleted_by` (UUID, nullable) on most tables  
@@ -284,28 +297,40 @@ Handler
 | `leave_allocations` | Per-employee balance | `id` UUID PK, `employee_id` **varchar(50)**, `leave_type_id` UUID, `year` int, `total_days`, `used_days` (default 0), `pending_days` (default 0). **Unique:** (`employee_id`, `leave_type_id`, `year`) |
 | `leaves` | Leave applications | `id` UUID PK, `company_id`, `employee_id` **varchar(50)**, `leave_type_id` UUID, `from_date` date, `to_date` date, `total_days` int, `reason` text, `status` (pending/approved/rejected/cancelled), `approved_by`, `approved_at`, `rejection_reason` |
 
-### 6.7 Payroll (1 table)
+### 6.7 Payroll (2 tables)
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
 | `salaries` | Monthly payroll | `id` UUID PK, `company_id` UUID, `employee_id` **varchar(50)**, `month` int, `year` int, `basic_salary`, `house_rent`, `medical_allowance`, `transport_allowance`, `food_allowance`, `other_allowance`, `gross_salary`, `provident_fund`, `tax`, `absent_deduction`, `other_deduction`, `total_deductions`, `overtime_hours`, `overtime_rate`, `overtime_amount`, `attendance_bonus`, `net_salary`, `present_days`, `absent_days`, `late_days`, `leave_days`, `weekend_days`, `total_days`, `status` (default processed). **Unique:** (`company_id`, `employee_id`, `month`, `year`) |
+| `salary_increments` | Salary increment history | `id` UUID PK, `company_id`, `employee_id`, `previous_gross`, `increment_amount`, `new_gross`, `effective_date`, `status` (pending/approved/rejected), `approved_by`, `approved_at` |
 
-### 6.8 Support (2 tables)
+### 6.8 HR Operations (7 tables)
 
-| Table | Purpose |
-|-------|---------|
-| `separations` | Employee separation records |
-| `id_cards` | Employee ID card issuance records |
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `separations` | Employee separation records | `id` UUID PK, `employee_ref_id` (uuid), `employee`, `employee_id`, `company_id`, `department_id`, `type` (Resign/Lefty/Close), `date`, `status` (Pending/Approved/Cancelled), `reason` |
+| `id_cards` | ID card issuance | `id` UUID PK, `employee_ref_id` (uuid), `employee`, `employee_id`, `designation_id`, `department_id`, `card_no`, `issued`, `expiry`, `status` (Active/Expired/Lost/Damaged) |
+| `punishments` | Employee penalties | `id` UUID PK, `company_id`, `employee_id`, `type`, `reason`, `amount` (decimal), `date`, `status`, `remarks` |
+| `daily_schedules` | Per-employee daily schedule | `id` UUID PK, `company_id`, `employee_id`, `date`, `schedule_type`, `start_time`, `end_time`, `remarks`, `status` |
+| `night_bills` | Night shift allowance | `id` UUID PK, `company_id`, `employee_id`, `date`, `night_hours` (decimal), `rate` (decimal), `amount` (decimal), `month`, `year`, `status` |
+| `tiffin_bills` | Tiffin/meal allowance | `id` UUID PK, `company_id`, `employee_id`, `date`, `amount` (decimal), `month`, `year`, `status` |
+| `system_settings` | Key-value settings | `id` UUID PK, `key` (unique), `value` |
 
 ### 6.9 Critical Schema Notes
 
-1. **Dual Employee Key System:** `employees.id` is UUID (PK). `employees.employee_id` is VARCHAR(50) (business key). `attendances`, `leaves`, `leave_allocations`, and `salaries` all reference the VARCHAR business key (`employee_id`), NOT the UUID `id`. This means **no true foreign key constraints** can exist on these relationships. Data integrity is application-level only.
-2. **GORM VARCHAR Override:** GORM 1.31.2 forces UUID type on `*_id` columns. `postgres.go` runs `ALTER TABLE ... TYPE varchar(50)` after AutoMigrate to fix `employee_id` columns in `employees`, `attendances`, `leaves`, `leave_allocations`, `salaries`, `temporary_shifts`.
+1. **Dual Employee Key System:** `employees.id` is UUID (PK). `employees.employee_id` is VARCHAR(50) (business key). `attendances`, `leaves`, `leave_allocations`, `salaries`, `temporary_shifts`, `salary_increments`, `punishments`, `daily_schedules`, `night_bills`, `tiffin_bills` all reference the VARCHAR business key (`employee_id`), NOT the UUID `id`. This means **no true foreign key constraints** can exist on these relationships. Data integrity is application-level only.
+2. **GORM VARCHAR Override (11 ALTERs):** GORM 1.31.2 forces UUID type on `*_id` columns. `postgres.go` runs `ALTER TABLE ... TYPE varchar(50)` after AutoMigrate to fix `employee_id` columns in `employees`, `attendances`, `leaves`, `leave_allocations`, `salaries`, `temporary_shifts`, `salary_increments`, `punishments`, `daily_schedules`, `night_bills`, `tiffin_bills`.
 3. **No FK Constraints in DB:** `DisableForeignKeyConstraintWhenMigrating: true` means zero database-level foreign keys. All relationships are managed by GORM associations only.
-4. ~~**AuditLog Table Unused:**~~ ✅ **FIXED** — `middleware/audit.go` now captures all POST/PUT/PATCH/DELETE operations and writes to `audit_logs` asynchronously.
-5. **Auto-Created Performance Indexes:** `postgres.go` creates `IF NOT EXISTS` indexes on startup for high-frequency query patterns (salaries, employees, leave_allocations, temporary_shifts, data_logs, attendances, leaves, sessions).
-
----
+4. **Auto-Created Performance Indexes (9):** `postgres.go` creates `IF NOT EXISTS` indexes on startup:
+   - `idx_salaries_company_month_year` on `salaries(company_id, year, month)`
+   - `idx_employees_company_status` on `employees(company_id, status)` WHERE deleted_at IS NULL
+   - `idx_employees_department` on `employees(department_id)` WHERE deleted_at IS NULL
+   - `idx_leave_allocations_emp_year` on `leave_allocations(employee_id, year)`
+   - `idx_temporary_shifts_company_date` on `temporary_shifts(company_id, date)`
+   - `idx_data_logs_date_processed` on `data_logs(date, processed)` WHERE deleted_at IS NULL
+   - `idx_attendances_date_status` on `attendances(date, status)`
+   - `idx_leaves_status_dates` on `leaves(status, from_date, to_date)`
+   - `idx_sessions_user` on `sessions(user_id)` WHERE deleted_at IS NULL
 
 ## 7. Complete API Inventory
 
@@ -466,46 +491,58 @@ All routes are prefixed with `/api/v1` unless noted. Authentication: Bearer JWT 
 
 ### 7.13 HR Operations
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/requirements` | List job requirements |
-| GET | `/requirements/:id` | Get requirement |
-| POST | `/requirements` | Create requirement |
-| PUT | `/requirements/:id` | Update |
-| DELETE | `/requirements/:id` | Delete |
-| GET | `/separations` | List separations |
-| GET | `/separations/:id` | Get separation |
-| POST | `/separations` | Create separation |
-| PUT | `/separations/:id` | Update |
-| DELETE | `/separations/:id` | Delete |
-| GET | `/id-cards` | List ID cards |
-| GET | `/id-cards/:id` | Get ID card |
-| POST | `/id-cards` | Create ID card |
-| PUT | `/id-cards/:id` | Update |
-| DELETE | `/id-cards/:id` | Delete |
+| Entity | GET List | GET One | POST | PUT | DELETE | Extra |
+|--------|----------|---------|------|-----|--------|-------|
+| **Requirements** | `/requirements` | `/requirements/:id` | `/requirements` | `/requirements/:id` | `/requirements/:id` | — |
+| **Separations** | `/separations` | `/separations/:id` | `/separations` | `/separations/:id` | `/separations/:id` | (Process/Cancel/Reactivate via service) |
+| **ID Cards** | `/id-cards` | `/id-cards/:id` | `/id-cards` | `/id-cards/:id` | `/id-cards/:id` | `POST /id-cards/generate` (PDF, 6 per A4) |
+| **Punishments** | `/punishments` | `/punishments/:id` | `/punishments` | `/punishments/:id` | `/punishments/:id` | Filters: company_id, employee_id |
+| **Daily Schedules** | `/daily-schedules` | `/daily-schedules/:id` | `/daily-schedules` | `/daily-schedules/:id` | `/daily-schedules/:id` | Filters: company_id, date, employee_id |
+| **Night Bills** | `/night-bills` | `/night-bills/:id` | `/night-bills` | `/night-bills/:id` | `/night-bills/:id` | Filters: company_id, month, year |
+| **Tiffin Bills** | `/tiffin-bills` | `/tiffin-bills/:id` | `/tiffin-bills` | `/tiffin-bills/:id` | `/tiffin-bills/:id` | Filters: company_id, month, year |
 
-### 7.14 Dashboard & Database Admin
+### 7.14 Additional Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/dashboard/stats` | Aggregated dashboard statistics |
+| GET | `/dashboard/stats` | Aggregated dashboard statistics (employees, attendance, leaves, new hires, separations, gender/dept distribution) |
+| GET | `/settings` | List all system settings |
+| PUT | `/settings` | Update system settings (bulk) |
+| GET | `/permissions` | List all available permissions |
+| GET/POST/PUT/DELETE | `/users` | User management CRUD |
+| GET/POST/PUT/DELETE | `/roles` | Role management CRUD |
+| GET | `/roles/:id/permissions` | List role's permissions |
+| POST | `/roles/:id/permissions` | Assign permissions to role |
+| POST | `/users/:id/roles` | Assign roles to user |
+| PUT | `/users/:id/password` | Admin reset user password |
+| PUT | `/users/:id/status` | Set user status (active/inactive/locked) |
+| GET | `/users/:id/login-history` | User login history |
+| POST | `/auth/forgot-password` | Request password reset (public) |
+| POST | `/auth/reset-password` | Reset password with token (public) |
+| POST | `/auth/validate-token` | Check if access token is still valid |
+
+### 7.15 Database Admin (super_admin only)
+
+| Method | Path | Description |
+|--------|------|-------------|
 | POST | `/database/backup` | Create pg_dump backup |
 | GET | `/database/backups` | List backup files |
-| GET | `/database/export?filename=...` | Download backup SQL |
-| POST | `/database/import` | Restore from uploaded SQL |
+| GET | `/database/export?filename=` | Download backup SQL file |
+| POST | `/database/import` | Restore from uploaded SQL file |
+| DELETE | `/database/backups` | Delete backup files |
 | POST | `/database/reset` | **DROP all tables + remigrate** |
 
-### 7.15 Organization Import & Upload
+### 7.16 Organization Import & File Handling
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/organization/template` | Download org import Excel template |
 | POST | `/organization/import` | Bulk import departments/sections/designations/lines/groups/floors |
-| POST | `/upload` | Generic file upload → `/uploads/` |
+| POST | `/upload` | File upload (max 5MB, jpg/jpeg/png/gif) → `/uploads/` |
 
-**Pagination:** All `GET` list endpoints support `?page=` (default 1) and `?limit=` (default 20, max 100) query parameters. Responses are wrapped in `PaginatedResponse` with `data`, `total`, `page`, `limit`, `total_pages`.
+**Pagination:** All `GET` list endpoints support `?page=` (default 1) and `?limit=` (default 20, max 100, clamped) query parameters. Responses are wrapped in `PaginatedResponse` with `data`, `total`, `page`, `limit`, `total_pages`.
 
-**Total API Endpoints:** ~100+ (Public: 5, Protected: ~95)
+**Total API Endpoints:** ~170+ (Public: 7, Protected: ~163)
 
 ---
 
@@ -595,26 +632,28 @@ Body: { company_id, month, year }
     │
     └──► For each employee:
          1. gross = employee.gross_salary
-         2. basic = gross * 0.5
-         3. house_rent = gross * 0.25
-         4. medical = gross * 0.1
-         5. transport = employee.transport_allowance (default 450)
-         6. food = employee.food_allowance (default 1250)
-         7. other = employee.other_allowance
-         8. per_day_salary = gross / total_days_in_month
-         9. absent_deduction = per_day_salary * absent_days
-         10. ot_rate = basic / total_days / 8
-         11. ot_amount = ot_hours * ot_rate
-         12. attendance_bonus = 500 if absent_days == 0 AND present_days > 0
-         13. net_salary = gross - absent_deduction + ot_amount + attendance_bonus
-         14. Upsert salaries table (company_id + employee_id + month + year)
+         2. core = gross - transport_allowance(450) - food_allowance(1250) - medical_allowance(750)
+         3. basic = core / 1.5                          # Effectively 50% of core-adjusted gross
+         4. house_rent = core - basic                    # Effectively 25% of core-adjusted gross
+         5. medical = employee.medical_allowance (default 750)
+         6. transport = employee.transport_allowance (default 450)
+         7. food = employee.food_allowance (default 1250)
+         8. other = employee.other_allowance
+         9. per_day_salary = gross / total_days_in_month
+         10. absent_deduction = per_day_salary * absent_days
+         11. ot_rate = basic / total_days / 8
+         12. ot_amount = ot_hours * ot_rate
+         13. attendance_bonus = 500 if absent_days == 0 AND present_days > 0
+         14. net_salary = gross - absent_deduction + ot_amount + attendance_bonus
+         15. Upsert salaries table (company_id + employee_id + month + year)
 ```
 
 **Key Business Rules:**
 - Salary is always calculated from `gross_salary` field on employee record
-- Basic is **exactly** 50% of gross
-- House rent is **exactly** 25% of gross
-- Medical is **exactly** 10% of gross
+- The `core` is calculated as `gross - 450 - 1250 - 750` (subtracting fixed allowances)
+- Basic is `core / 1.5` (effectively 50% of adjusted gross)
+- House rent is `core - basic` (effectively 25% of adjusted gross)
+- Medical is a fixed 750 BDT (not 10% of gross)
 - Transport and food use employee-level overrides (defaults: 450 and 1250)
 - OT rate is based on basic salary divided by days in month divided by 8 hours
 - Attendance bonus is a flat 500 BDT for perfect attendance
@@ -756,6 +795,8 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 | **Salary PF/Tax Placeholders** | Low | Provident Fund and Tax are always 0. No calculation logic implemented. |
 | **Client-Side Rendering Only** | Low | All data pages fetch on mount. No SSR/SSG for dashboard or reports. |
 | **Frontend any Types** | Low | Some TanStack column accessors use `(r: any)` instead of proper generics. |
+| **No Test Coverage** | Low | No `_test.go` files exist in the codebase. |
+| **No Transaction Usage in Handlers** | Low | Some handlers update multiple tables without wrapping in `Transaction()`. |
 | ~~**Missing DB Indexes**~~ | ~~Low~~ | ✅ **FIXED** — 9 performance indexes auto-created on startup for salaries, employees, leave_allocations, temporary_shifts, data_logs, attendances, leaves, sessions. |
 
 ---
@@ -789,13 +830,13 @@ cmd/server/main.go
     └── internal/server/server.go
             ├── internal/config/config.go
             ├── internal/database/postgres.go
-            │       └── internal/models/* (35 files)
+            │       └── internal/models/* (40 files)
             ├── internal/auth/jwt.go
             ├── internal/middleware/* (auth, cors, logger, permission)
             ├── internal/routes/routes.go
             │       └── All handlers...
-            ├── internal/handlers/* (~25 files)
-            │       └── internal/repository/* (~20 files)
+            ├── internal/handlers/* (33 files)
+            │       └── internal/repository/* (26 files)
             │               └── database.DB (GORM instance)
             ├── internal/service/auth.go
             │       └── internal/repository/user.go, auth.go

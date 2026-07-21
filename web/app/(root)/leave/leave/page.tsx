@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { format } from "date-fns"
 import { CalendarCheckIcon, PlusIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -84,8 +85,8 @@ export default function LeavePage() {
     { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
     { accessorKey: "employee.name_en", header: "Employee", cell: ({ row }) => row.original.employee?.name_en || "-" },
     { accessorKey: "leave_type.name", header: "Leave Type", cell: ({ row }) => row.original.leave_type?.name || "-" },
-    { accessorKey: "from_date", header: "From" },
-    { accessorKey: "to_date", header: "To" },
+    { accessorKey: "from_date", header: "From", cell: ({ row }) => row.original.from_date ? format(new Date(row.original.from_date), "dd-MM-yyyy") : "-" },
+    { accessorKey: "to_date", header: "To", cell: ({ row }) => row.original.to_date ? format(new Date(row.original.to_date), "dd-MM-yyyy") : "-" },
     { accessorKey: "total_days", header: "Days" },
     { accessorKey: "reason", header: "Reason" },
     {
