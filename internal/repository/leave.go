@@ -119,6 +119,10 @@ func (r *LeaveRepository) DeleteLeave(id string) error {
 	return r.db.Where("id = ?", id).Delete(&models.Leave{}).Error
 }
 
+func (r *LeaveRepository) HardDeleteLeave(id string) error {
+	return r.db.Unscoped().Where("id = ?", id).Delete(&models.Leave{}).Error
+}
+
 // --- Leave Allocations / Balance ---
 
 func (r *LeaveRepository) UpsertAllocation(a *models.LeaveAllocation) error {

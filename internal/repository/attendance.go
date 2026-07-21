@@ -369,6 +369,12 @@ func (r *AttendanceRepository) UpdateStatusByEmployeeAndDateRange(employeeID, fr
 		Update("status", status).Error
 }
 
+func (r *AttendanceRepository) ClearOnLeaveStatus(employeeID, fromDate, toDate string) error {
+	return r.db.Model(&models.Attendance{}).
+		Where("employee_id = ? AND date >= ? AND date <= ? AND status = 'on_leave' AND deleted_at IS NULL", employeeID, fromDate, toDate).
+		Update("status", "").Error
+}
+
 func (r *AttendanceRepository) CountByDate(date string) (int64, error) {
 	var count int64
 	err := r.db.Model(&models.Attendance{}).Where("date = ? AND deleted_at IS NULL", date).Count(&count).Error

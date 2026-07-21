@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { requirementSchema, RequirementFormData, statusOptions, priorityOptions, groupTypeOptions, positionOptions } from "../data/requirement-data"
-import { requirementApi, sectionApi, designationApi } from "@/lib/api"
-import type { Section, Designation } from "@/components/data/organization-data"
+import { requirementSchema, RequirementFormData, statusOptions, priorityOptions, groupTypeOptions } from "../data/requirement-data"
+import { requirementApi, departmentApi, sectionApi, designationApi } from "@/lib/api"
+import type { Department, Section, Designation } from "@/components/data/organization-data"
 
 interface RequirementFormProps {
   initialData?: Partial<RequirementFormData>
@@ -25,13 +25,13 @@ interface RequirementFormProps {
 export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = false, requirementId }: RequirementFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
+  const [departments, setDepartments] = React.useState<Department[]>([])
   const [sections, setSections] = React.useState<Section[]>([])
   const [designations, setDesignations] = React.useState<Designation[]>([])
 
   const { handleSubmit, formState: { errors }, setValue, watch, register } = useForm<RequirementFormData>({
     resolver: zodResolver(requirementSchema),
     defaultValues: {
-      position: "",
       department_id: "",
       section_id: "",
       designation_id: "",
@@ -45,17 +45,30 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
     },
   })
 
+  const departmentId = watch("department_id")
   const sectionId = watch("section_id")
-  const position = watch("position")
   const groupType = watch("group_type")
   const statusVal = watch("status")
   const priorityVal = watch("priority")
 
   React.useEffect(() => {
-    sectionApi.list(undefined, { limit: "200" }).then(({ data }) => {
-      setSections(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [])
+    departmentApi.list({ limit: "200" }).then(({ data }) => {
+      setDepartments(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [])
     }).catch(() => {})
   }, [])
+
+  React.useEffect(() => {
+    if (departmentId) {
+      sectionApi.list(departmentId, { limit: "200" }).then(({ data }) => {
+        setSections(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [])
+      }).catch(() => setSections([]))
+      if (!isEditing) { setValue("section_id", ""); setValue("designation_id", "") }
+      setDesignations([])
+    } else {
+      setSections([])
+      setDesignations([])
+    }
+  }, [departmentId, setValue, isEditing])
 
   React.useEffect(() => {
     if (sectionId) {
@@ -102,45 +115,54 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><ClipboardListIcon className="h-5 w-5" /> Requirement Details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="position">Designation / Position *</Label>
-              <Select value={position} onValueChange={(val) => setValue("position", val)}>
-                <SelectTrigger id="position"><SelectValue placeholder="Select position" /></SelectTrigger>
+              <Label htmlFor="department_id">Department *</Label>
+              <Select value={departmentId} onValueChange={(val) => setValue("department_id", val)}>
+                <SelectTrigger id="department_id" className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
                 <SelectContent>
-                  {positionOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {errors.position && <p className="text-sm text-destructive">{errors.position.message}</p>}
+              {errors.department_id && <p className="text-sm text-destructive">{errors.department_id.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="section_id">Section *</Label>
-              <Select value={sectionId} onValueChange={(val) => setValue("section_id", val)}>
-                <SelectTrigger id="section_id"><SelectValue placeholder="Select section" /></SelectTrigger>
+              <Select value={sectionId} onValueChange={(val) => setValue("section_id", val)} disabled={!departmentId}>
+                <SelectTrigger id="section_id" className="w-full"><SelectValue placeholder={departmentId ? "Select section" : "Select department first"} /></SelectTrigger>
                 <SelectContent>
                   {sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               {errors.section_id && <p className="text-sm text-destructive">{errors.section_id.message}</p>}
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="designation_id">Designation Ref *</Label>
+              <Label htmlFor="designation_id">Designation *</Label>
               <Select value={watch("designation_id")} onValueChange={(val) => setValue("designation_id", val)} disabled={!sectionId}>
-                <SelectTrigger id="designation_id"><SelectValue placeholder={sectionId ? "Select designation" : "Select section first"} /></SelectTrigger>
+                <SelectTrigger id="designation_id" className="w-full"><SelectValue placeholder={sectionId ? "Select designation" : "Select section first"} /></SelectTrigger>
                 <SelectContent>
                   {designations.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               {errors.designation_id && <p className="text-sm text-destructive">{errors.designation_id.message}</p>}
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="group_type">Group *</Label>
               <Select value={groupType} onValueChange={(val) => setValue("group_type", val as "Staff" | "Worker")}>
-                <SelectTrigger id="group_type"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="group_type" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {groupTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status *</Label>
+              <Select value={statusVal} onValueChange={(val) => setValue("status", val as "Open" | "Closed")}>
+                <SelectTrigger id="status" className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -159,26 +181,17 @@ export function RequirementForm({ initialData, onSuccess, onCancel, isEditing = 
             <div className="space-y-2">
               <Label htmlFor="priority">Priority *</Label>
               <Select value={priorityVal} onValueChange={(val) => setValue("priority", val as "High" | "Medium" | "Low")}>
-                <SelectTrigger id="priority"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="priority" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {priorityOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select value={statusVal} onValueChange={(val) => setValue("status", val as "Open" | "Closed")}>
-                <SelectTrigger id="status"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-1">
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Input id="description" {...register("description")} />
+              <Input id="description" {...register("description")} placeholder="Additional notes..." />
             </div>
           </div>
         </CardContent>

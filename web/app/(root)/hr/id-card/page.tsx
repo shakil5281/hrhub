@@ -62,7 +62,7 @@ export default function IdCardPage() {
   const [generating, setGenerating] = React.useState(false)
   const [selectedRows, setSelectedRows] = React.useState<Employee[]>([])
   const [error, setError] = React.useState("")
-  const [filters, setFilters] = React.useState<Record<string, string>>({ employee_type: "Regular" })
+  const [filters, setFilters] = React.useState<Record<string, string>>({ employee_type: "Regular", status: "active" })
 
   const [companies, setCompanies] = React.useState<Company[]>([])
   const [departments, setDepartments] = React.useState<Department[]>([])
@@ -115,7 +115,7 @@ export default function IdCardPage() {
       setGroups(getData(results[3]))
       setFloors(getData(results[4]))
     })
-    fetchEmployees()
+    fetchEmployees(filters)
   }, [])
 
   React.useEffect(() => {
@@ -162,11 +162,11 @@ export default function IdCardPage() {
   const handleReset = async () => {
     setPage(1)
     setLimit(20)
-    setFilters({ employee_type: "Regular" })
+    setFilters({ employee_type: "Regular", status: "active" })
     setSections([])
     setDesignations([])
     setLines([])
-    await fetchEmployees({ employee_type: "Regular" }, 1, 20)
+    await fetchEmployees({ status: "active", employee_type: "Regular" }, 1, 20)
   }
 
   const setFilter = (key: string, value: string) => {

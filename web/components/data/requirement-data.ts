@@ -23,7 +23,7 @@ export interface Requirement {
 }
 
 export const requirementSchema = z.object({
-  position: z.string().min(2, "Position is required"),
+  position: z.string().optional(),
   department_id: z.string().optional(),
   section_id: z.string().min(1, "Section is required"),
   designation_id: z.string().min(1, "Designation is required"),

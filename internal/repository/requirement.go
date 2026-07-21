@@ -5,6 +5,15 @@ import (
 	"gorm.io/gorm"
 )
 
+type SectionSummaryRow struct {
+	SectionName string `json:"section_name"`
+	GroupType   string `json:"group_type"`
+	Designation string `json:"designation"`
+	Required    int64  `json:"required"`
+	Present     int64  `json:"present"`
+	Net         int64  `json:"net"`
+}
+
 type RequirementRepository struct {
 	db *gorm.DB
 }
@@ -57,15 +66,15 @@ func (r *RequirementRepository) ListFiltered(departmentID, status, priority, pos
 	return reqs, total, err
 }
 
-func (r *RequirementRepository) ListBySection() ([]map[string]interface{}, error) {
+func (r *RequirementRepository) ListBySection() ([]SectionSummaryRow, error) {
 	sql := `
 		SELECT
 			COALESCE(sections.name, 'General') as section_name,
 			COALESCE(req.group_type, 'Worker') as group_type,
 			COALESCE(designations.name, req.position) as designation,
 			SUM(req.vacancies) as required,
-			COALESCE(emp.present_count, 0) as present,
-			SUM(req.vacancies) - COALESCE(emp.present_count, 0) as net
+			COALESCE(MAX(emp.present_count), 0) as present,
+			SUM(req.vacancies) - COALESCE(MAX(emp.present_count), 0) as net
 		FROM requirements req
 		LEFT JOIN sections ON sections.id = req.section_id
 		LEFT JOIN designations ON designations.id = req.designation_id
@@ -76,37 +85,15 @@ func (r *RequirementRepository) ListBySection() ([]map[string]interface{}, error
 			GROUP BY designation_id
 		) emp ON emp.designation_id = req.designation_id
 		WHERE req.deleted_at IS NULL AND req.status = 'Open'
-		GROUP BY sections.name, req.group_type, req.position, designations.name, emp.present_count
+		GROUP BY sections.name, req.group_type, req.position, designations.name
 		ORDER BY sections.name, req.group_type, req.position
 	`
-	rows, err := r.db.Raw(sql).Rows()
-	if err != nil {
+	var results []SectionSummaryRow
+	if err := r.db.Raw(sql).Scan(&results).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	cols, _ := rows.Columns()
-	var results []map[string]interface{}
-	for rows.Next() {
-		vals := make([]interface{}, len(cols))
-		valPtrs := make([]interface{}, len(cols))
-		for i := range vals {
-			valPtrs[i] = &vals[i]
-		}
-		rows.Scan(valPtrs...)
-		row := make(map[string]interface{})
-		for i, col := range cols {
-			val := vals[i]
-			if b, ok := val.([]byte); ok {
-				row[col] = string(b)
-			} else {
-				row[col] = val
-			}
-		}
-		results = append(results, row)
-	}
 	if results == nil {
-		results = []map[string]interface{}{}
+		results = []SectionSummaryRow{}
 	}
 	return results, nil
 }

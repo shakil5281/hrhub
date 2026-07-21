@@ -297,6 +297,7 @@ export const leaveApi = {
   cancel: (id: string) => api.delete(`/leaves/${id}`),
   approve: (id: string) => api.put(`/leaves/${id}/approve`),
   reject: (id: string, reason: string) => api.put(`/leaves/${id}/reject`, { rejection_reason: reason }),
+  exportFormPdf: (id: string) => api.get(`/leaves/${id}/export/pdf`, { responseType: "blob" }),
 }
 
 export const leaveBalanceApi = {

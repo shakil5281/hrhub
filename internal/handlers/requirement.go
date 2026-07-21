@@ -18,7 +18,7 @@ func NewRequirementHandler(repo *repository.RequirementRepository) *RequirementH
 }
 
 type CreateRequirementRequest struct {
-	Position      string `json:"position" binding:"required"`
+	Position      string `json:"position"`
 	DepartmentID  string `json:"department_id"`
 	SectionID     string `json:"section_id"`
 	DesignationID string `json:"designation_id"`
@@ -31,7 +31,7 @@ type CreateRequirementRequest struct {
 }
 
 type UpdateRequirementRequest struct {
-	Position      string `json:"position" binding:"required"`
+	Position      string `json:"position"`
 	DepartmentID  string `json:"department_id"`
 	SectionID     string `json:"section_id"`
 	DesignationID string `json:"designation_id"`

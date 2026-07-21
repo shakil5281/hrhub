@@ -382,6 +382,7 @@ func Setup(
 	{
 		leaves.GET("", leaveHandler.ListLeaves)
 		leaves.GET("/:id", leaveHandler.GetLeave)
+		leaves.GET("/:id/export/pdf", leaveHandler.ExportLeaveFormPDF)
 		leaves.POST("", leaveHandler.ApplyLeave)
 		leaves.PUT("/:id", leaveHandler.UpdateLeave)
 		leaves.DELETE("/:id", leaveHandler.DeleteLeave)

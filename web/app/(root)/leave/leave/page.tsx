@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
-import { CalendarCheckIcon, PlusIcon } from "lucide-react"
+import { CalendarCheckIcon, PlusIcon, EllipsisVertical, Pencil, Trash2, Check, X, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,13 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { leaveApi, companyApi, departmentApi } from "@/lib/api"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -83,6 +90,7 @@ export default function LeavePage() {
 
   const columns: ColumnDef<LeaveRecord>[] = React.useMemo(() => [
     { id: "sl", header: "Sl", cell: ({ row }) => row.index + 1 },
+    { accessorKey: "employee_id", header: "Emp. ID" },
     { accessorKey: "employee.name_en", header: "Employee", cell: ({ row }) => row.original.employee?.name_en || "-" },
     { accessorKey: "leave_type.name", header: "Leave Type", cell: ({ row }) => row.original.leave_type?.name || "-" },
     { accessorKey: "from_date", header: "From", cell: ({ row }) => row.original.from_date ? format(new Date(row.original.from_date), "dd-MM-yyyy") : "-" },
@@ -98,26 +106,46 @@ export default function LeavePage() {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        if (row.original.status !== "pending") return null
+        const leave = row.original
+        const isPending = leave.status === "pending"
         return (
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="default"
-              className="h-7 px-2 text-xs"
-              onClick={() => handleApprove(row.original.id)}
-            >
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-7 px-2 text-xs"
-              onClick={() => { setRejectingId(row.original.id); setRejectReason(""); setRejectDialogOpen(true) }}
-            >
-              Reject
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex size-8 text-muted-foreground data-[state=open]:bg-muted" size="icon">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => handleEdit(leave)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {isPending && (
+                <>
+                  <DropdownMenuItem onClick={() => handleApprove(leave.id)}>
+                    <Check className="mr-2 h-4 w-4 text-green-600" />
+                    Approve
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setRejectingId(leave.id); setRejectReason(""); setRejectDialogOpen(true) }}>
+                    <X className="mr-2 h-4 w-4 text-red-600" />
+                    Reject
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExportPdf(leave)}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export PDF
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleDelete(leave)}>
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
@@ -200,6 +228,35 @@ export default function LeavePage() {
       fetchData(filters)
     } catch {
       toast.error("Failed to reject leave")
+    }
+  }
+
+  const handleEdit = (leave: LeaveRecord) => {
+    router.push(`/leave/leave-entry?edit=${leave.id}`)
+  }
+
+  const handleDelete = async (leave: LeaveRecord) => {
+    try {
+      await leaveApi.cancel(leave.id)
+      toast.success("Leave cancelled")
+      fetchData(filters)
+    } catch {
+      toast.error("Failed to cancel leave")
+    }
+  }
+
+  const handleExportPdf = async (leave: LeaveRecord) => {
+    try {
+      const res = await leaveApi.exportFormPdf(leave.id)
+      const blob = new Blob([res.data], { type: "application/pdf" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `leave_application_${leave.employee_id}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Failed to export PDF")
     }
   }
 

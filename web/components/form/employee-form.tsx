@@ -64,6 +64,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, isEditing = fal
       company_id: "",
       employee_id: "",
       punch_number: "",
+      employee_type: "Regular",
       joining_date: "",
       shift_id: null,
       status: "active",

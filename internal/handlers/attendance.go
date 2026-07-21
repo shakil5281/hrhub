@@ -1502,14 +1502,14 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		header string
 		width  float64
 	}{
-		{"Employee ID", 16},
-		{"Name", 32},
+		{"Employee ID", 15},
+		{"Name", 28},
 		{"Designation", 20},
-		{"Last Cont. Absent", 16},
-		{"Status", 12},
+		{"Last Cont. Absent", 11},
+		{"Status", 11},
 	}
 
-	borderColor := "333333"
+	borderColor := "808080"
 	thinBorder := []excelize.Border{
 		{Type: "left", Color: borderColor, Style: 1},
 		{Type: "top", Color: borderColor, Style: 1},
@@ -1531,19 +1531,19 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		Border:    thinBorder,
 	})
 	dataCenter, _ := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Font:      &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"},
 		Border:    thinBorder,
-		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
 	})
 	dataLeft, _ := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"},
+		Font:      &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"},
 		Border:    thinBorder,
-		Alignment: &excelize.Alignment{Vertical: "center"},
+		Alignment: &excelize.Alignment{Vertical: "center", WrapText: true},
 	})
 	redStyle, _ := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"},
+		Font:      &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "FF0000"},
 		Border:    thinBorder,
-		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
 	})
 
 	companyName := company.CompanyNameEn
@@ -1555,9 +1555,8 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		companyAddress = "Company Address"
 	}
 
-	parsedStart, _ := time.Parse("2006-01-02", startDate)
-	parsedEnd, _ := time.Parse("2006-01-02", endDate)
-	dateRange := parsedStart.Format("02 Jan 2006") + " to " + parsedEnd.Format("02 Jan 2006")
+	parsedDate, _ := time.Parse("2006-01-02", startDate)
+	dateDisplay := parsedDate.Format("02 Jan 2006")
 
 	endCol := colNameAttendance(nCols)
 
@@ -1580,7 +1579,7 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 	f.SetRowHeight(sheet, 3, 20)
 
 	// Row 4: Date Range
-	f.SetCellValue(sheet, "A4", "Date: "+dateRange)
+	f.SetCellValue(sheet, "A4", "Date: "+dateDisplay)
 	f.MergeCell(sheet, "A4", endCol+"4")
 	f.SetCellStyle(sheet, "A4", endCol+"4", normalCenter)
 	f.SetRowHeight(sheet, 4, 20)
@@ -1592,7 +1591,7 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		f.SetCellStyle(sheet, cell, cell, headerStyle)
 		f.SetColWidth(sheet, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
 	}
-	f.SetRowHeight(sheet, 5, 24)
+	f.SetRowHeight(sheet, 5, 36)
 
 	// Data rows
 	for rowIdx, a := range attendances {
@@ -1614,14 +1613,14 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 		f.SetCellValue(sheet, colNameAttendance(5)+strconv.Itoa(row), "A")
 		f.SetCellStyle(sheet, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyle)
 
-		f.SetRowHeight(sheet, row, 20)
+		f.SetRowHeight(sheet, row, 25)
 	}
 
 	// Footer
 	lastRow := len(attendances) + 5
 	footerRow := lastRow + 2
 	footerStyle, _ := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"},
+		Font:      &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"},
 		Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"},
 	})
 	uniqueCount := len(lastContAbsentMap)
@@ -1631,19 +1630,19 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 	f.SetRowHeight(sheet, footerRow, 22)
 
 	// --- Grouped Sheets ---
-	addGroupedAbsentSheet(f, "Department Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Department Wise", companyName, companyAddress, dateDisplay, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.Department != nil { return a.Employee.Department.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Section Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Section Wise", companyName, companyAddress, dateDisplay, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.SectionRef != nil { return a.Employee.SectionRef.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Designation Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Designation Wise", companyName, companyAddress, dateDisplay, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.DesignationRef != nil { return a.Employee.DesignationRef.Name }
 		return "-"
 	})
-	addGroupedAbsentSheet(f, "Line Wise", companyName, companyAddress, dateRange, attendances, lastContAbsentMap, func(a models.Attendance) string {
+	addGroupedAbsentSheet(f, "Line Wise", companyName, companyAddress, dateDisplay, attendances, lastContAbsentMap, func(a models.Attendance) string {
 		if a.Employee.LineRef != nil { return a.Employee.LineRef.Name }
 		return "-"
 	})
@@ -1672,7 +1671,7 @@ func (h *AttendanceHandler) ExportAbsentExcel(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=absent_report_%s_%s.xlsx", startDate, endDate))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=absent_report_%s.xlsx", startDate))
 	f.Write(c.Writer)
 }
 
@@ -1724,7 +1723,7 @@ func (h *AttendanceHandler) buildLastContinuousAbsentMap(startDate, endDate, com
 	return result
 }
 
-func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddress, dateRange string, attendances []models.Attendance, lastContAbsentMap map[string]int, groupFn func(models.Attendance) string) {
+func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddress, dateDisplay string, attendances []models.Attendance, lastContAbsentMap map[string]int, groupFn func(models.Attendance) string) {
 	f.NewSheet(sheetName)
 
 	nCols := 5
@@ -1732,27 +1731,27 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 		header string
 		width  float64
 	}{
-		{"Employee ID", 16},
-		{"Name", 32},
+		{"Employee ID", 15},
+		{"Name", 28},
 		{"Designation", 20},
-		{"Last Cont. Absent", 16},
-		{"Status", 12},
+		{"Last Cont. Absent", 11},
+		{"Status", 11},
 	}
 
 	thinBorder := []excelize.Border{
-		{Type: "left", Color: "333333", Style: 1},
-		{Type: "top", Color: "333333", Style: 1},
-		{Type: "bottom", Color: "333333", Style: 1},
-		{Type: "right", Color: "333333", Style: 1},
+		{Type: "left", Color: "808080", Style: 1},
+		{Type: "top", Color: "808080", Style: 1},
+		{Type: "bottom", Color: "808080", Style: 1},
+		{Type: "right", Color: "808080", Style: 1},
 	}
 
 	companyNameStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 20, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
 	normalCenter, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
 	headerStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}, Border: thinBorder})
-	dataCenter, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
-	dataLeft, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 10, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Vertical: "center"}})
-	redStyleG, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "FF0000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"}})
-	groupHeaderStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
+	dataCenter, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}})
+	dataLeft, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Size: 11, Family: "Calibri", Color: "000000"}, Border: thinBorder, Alignment: &excelize.Alignment{Vertical: "center", WrapText: true}})
+	redStyleG, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "FF0000"}, Border: thinBorder, Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true}})
+	groupHeaderStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
 
 	endCol := colNameAttendance(nCols)
 
@@ -1772,7 +1771,7 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 	f.SetCellStyle(sheetName, "A3", endCol+"3", normalCenter)
 	f.SetRowHeight(sheetName, 3, 20)
 
-	f.SetCellValue(sheetName, "A4", "Date: "+dateRange)
+	f.SetCellValue(sheetName, "A4", "Date: "+dateDisplay)
 	f.MergeCell(sheetName, "A4", endCol+"4")
 	f.SetCellStyle(sheetName, "A4", endCol+"4", normalCenter)
 	f.SetRowHeight(sheetName, 4, 20)
@@ -1784,7 +1783,7 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 		f.SetCellStyle(sheetName, cell, cell, headerStyle)
 		f.SetColWidth(sheetName, colNameAttendance(i+1), colNameAttendance(i+1), c.width)
 	}
-	f.SetRowHeight(sheetName, 5, 24)
+	f.SetRowHeight(sheetName, 5, 36)
 
 	// Group data
 	grouped := make(map[string][]models.Attendance)
@@ -1821,13 +1820,13 @@ func addGroupedAbsentSheet(f *excelize.File, sheetName, companyName, companyAddr
 			f.SetCellStyle(sheetName, colNameAttendance(5)+strconv.Itoa(row), colNameAttendance(5)+strconv.Itoa(row), redStyleG)
 
 			totalAbsent++
-			f.SetRowHeight(sheetName, row, 20)
+			f.SetRowHeight(sheetName, row, 25)
 			row++
 		}
 	}
 
 	footerRow := row + 1
-	footerStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 10, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
+	footerStyle, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 11, Family: "Calibri", Color: "000000"}, Alignment: &excelize.Alignment{Horizontal: "left", Vertical: "center"}})
 	f.SetCellValue(sheetName, "A"+strconv.Itoa(footerRow), fmt.Sprintf("Total Absent: %d", totalAbsent))
 	f.MergeCell(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow))
 	f.SetCellStyle(sheetName, "A"+strconv.Itoa(footerRow), endCol+strconv.Itoa(footerRow), footerStyle)

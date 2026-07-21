@@ -53,9 +53,11 @@ export default function RequirementsPage() {
     return groups
   }, [filteredData])
 
-  const totals = React.useMemo(() => {
-    return { Staff: [], Worker: [] } as Record<string, SectionRow[]>
-  }, [])
+  const num = (v: unknown): number => {
+    if (typeof v === "number") return v
+    if (typeof v === "string") return parseFloat(v) || 0
+    return 0
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -97,9 +99,9 @@ export default function RequirementsPage() {
           ["Staff", "Worker"].map((group) => {
             const rows = groupedData[group] || []
             if (rows.length === 0) return null
-            const totalRequired = rows.reduce((s, r) => s + r.required, 0)
-            const totalPresent = rows.reduce((s, r) => s + r.present, 0)
-            const totalNet = rows.reduce((s, r) => s + r.net, 0)
+            const totalRequired = rows.reduce((s, r) => s + num(r.required), 0)
+            const totalPresent = rows.reduce((s, r) => s + num(r.present), 0)
+            const totalNet = rows.reduce((s, r) => s + num(r.net), 0)
             return (
               <div key={group} className="rounded-lg border bg-card overflow-hidden">
                 <div className="px-4 py-3 border-b bg-muted/30 font-semibold text-base flex items-center gap-2">
@@ -122,14 +124,14 @@ export default function RequirementsPage() {
                         <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
                           <td className="py-2.5 px-4 text-muted-foreground text-xs">{i + 1}</td>
                           <td className="py-2.5 px-4 font-medium">{row.designation}</td>
-                          <td className="py-2.5 px-4 text-right">{row.required}</td>
-                          <td className="py-2.5 px-4 text-right">{row.present}</td>
+                          <td className="py-2.5 px-4 text-right">{num(row.required)}</td>
+                          <td className="py-2.5 px-4 text-right">{num(row.present)}</td>
                           <td className="py-2.5 px-4 text-right">
                             <span className={
-                              row.net > 0 ? "text-destructive font-semibold" :
-                              row.net < 0 ? "text-green-600 font-semibold" : ""
+                              num(row.net) > 0 ? "text-destructive font-semibold" :
+                              num(row.net) < 0 ? "text-green-600 font-semibold" : ""
                             }>
-                              {row.net > 0 ? `+${row.net}` : row.net}
+                              {num(row.net) > 0 ? `+${num(row.net)}` : num(row.net)}
                             </span>
                           </td>
                         </tr>
@@ -139,14 +141,14 @@ export default function RequirementsPage() {
                       <tr className="border-t-2 border-muted bg-muted/40 font-semibold">
                         <td className="py-3 px-4" colSpan={1}></td>
                         <td className="py-3 px-4 text-base">Total</td>
-                        <td className="py-3 px-4 text-right text-base">{totalRequired}</td>
-                        <td className="py-3 px-4 text-right text-base">{totalPresent}</td>
+                        <td className="py-3 px-4 text-right text-base">{num(totalRequired)}</td>
+                        <td className="py-3 px-4 text-right text-base">{num(totalPresent)}</td>
                         <td className="py-3 px-4 text-right text-base">
                           <span className={
-                            totalNet > 0 ? "text-destructive" :
-                            totalNet < 0 ? "text-green-600" : ""
+                            num(totalNet) > 0 ? "text-destructive" :
+                            num(totalNet) < 0 ? "text-green-600" : ""
                           }>
-                            {totalNet > 0 ? `+${totalNet}` : totalNet}
+                            {num(totalNet) > 0 ? `+${num(totalNet)}` : num(totalNet)}
                           </span>
                         </td>
                       </tr>

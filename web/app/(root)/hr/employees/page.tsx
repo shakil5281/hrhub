@@ -147,7 +147,7 @@ export default function EmployeesPage() {
       } catch {
         // dropdowns will be empty
       }
-      await fetchEmployees()
+      await fetchEmployees(filters)
     }
     init()
   }, [])
@@ -221,7 +221,7 @@ export default function EmployeesPage() {
     setLines([])
     setError("")
     setSubmitting(true)
-    await fetchEmployees({ status: "active" }, 1, 20)
+    await fetchEmployees({ status: "active", employee_type: "Regular" }, 1, 20)
     setSubmitting(false)
   }
 
