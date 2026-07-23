@@ -1,0 +1,19 @@
+<service>
+  <id>HubGateway</id>
+  <name>Hub Gateway (Reverse Proxy)</name>
+  <description>Reverse proxy routing /api/* to backend and /* to frontend</description>
+  <executable>F:\softwer\hrhub\hub-gateway.exe</executable>
+  <workingdirectory>F:\softwer\hrhub</workingdirectory>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="10 sec"/>
+  <delayedAutoStart>true</delayedAutoStart>
+  <startmode>Automatic</startmode>
+  <env name="GATEWAY_PORT" value="80"/>
+  <env name="API_TARGET" value="http://localhost:5000"/>
+  <env name="WEB_TARGET" value="http://localhost:3000"/>
+  <env name="IIS_TARGET" value="http://localhost:8082"/>
+</service>
+

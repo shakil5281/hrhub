@@ -99,7 +99,7 @@ func New(cfg *config.Config) *gin.Engine {
 	dailyScheduleRepo := repository.NewDailyScheduleRepository(database.DB)
 	dailyScheduleHandler := handlers.NewDailyScheduleHandler(dailyScheduleRepo)
 	nightBillRepo := repository.NewNightBillRepository(database.DB)
-	nightBillHandler := handlers.NewNightBillHandler(nightBillRepo)
+	nightBillHandler := handlers.NewNightBillHandler(nightBillRepo, employeeRepo)
 	tiffinBillRepo := repository.NewTiffinBillRepository(database.DB)
 	tiffinBillHandler := handlers.NewTiffinBillHandler(tiffinBillRepo)
 

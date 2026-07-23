@@ -278,7 +278,7 @@ export const idCardApi = {
   create: (data: Record<string, unknown>) => api.post("/id-cards", data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/id-cards/${id}`, data),
   delete: (id: string) => api.delete(`/id-cards/${id}`),
-  generate: (employeeIds: string[]) => api.post("/id-cards/generate", { employee_ids: employeeIds }, { responseType: "blob" }),
+  generate: (employeeIds: string[]) => api.post("/id-cards/generate", { employee_ids: employeeIds }),
 }
 
 export const leaveTypeApi = {
@@ -343,6 +343,15 @@ export const dailyScheduleApi = {
 export const nightBillApi = {
   list: (params?: Record<string, string>) => api.get("/night-bills", { params }),
   create: (data: Record<string, unknown>) => api.post("/night-bills", data),
+  bulkCreate: (data: Record<string, unknown>) => api.post("/night-bills/bulk", data),
+  process: (data: Record<string, unknown>) => api.post("/night-bills/process", data),
+  listProcesses: (params?: Record<string, string>) => api.get("/night-bills/processes", { params }),
+  listEligibleEmployees: (params?: Record<string, string>) => api.get("/night-bills/eligible-employees", { params }),
+  listEligibleWithRates: (params?: Record<string, string>) => api.get("/night-bills/employees-with-rates", { params }),
+  calculateRate: (data: { employee_id: string; date: string }) => api.post("/night-bills/calculate-rate", data),
+  getSummary: (params?: Record<string, string>) => api.get("/night-bills/summary", { params }),
+  approve: (id: string) => api.put(`/night-bills/${id}/approve`),
+  reject: (id: string) => api.put(`/night-bills/${id}/reject`),
   update: (id: string, data: Record<string, unknown>) => api.put(`/night-bills/${id}`, data),
   delete: (id: string) => api.delete(`/night-bills/${id}`),
 }

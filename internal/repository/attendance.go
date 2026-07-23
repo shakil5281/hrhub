@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/shakil5281/hrhub-api/internal/models"
 	"gorm.io/gorm"
@@ -99,7 +100,7 @@ func (r *AttendanceRepository) ListByDateFiltered(date, companyID, departmentID,
 	return attendances, total, err
 }
 
-func (r *AttendanceRepository) Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter string) ([]map[string]interface{}, error) {
+func (r *AttendanceRepository) Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter, employeeID string) ([]map[string]interface{}, error) {
 	query := r.db.Table("attendances").
 		Select("date, company_id, status, COUNT(*) as count").
 		Where("attendances.date BETWEEN ? AND ? AND attendances.deleted_at IS NULL", startDate, endDate)
@@ -126,6 +127,9 @@ func (r *AttendanceRepository) Summary(startDate, endDate, companyID, department
 	}
 	if statusFilter != "" {
 		query = query.Where("attendances.status = ?", statusFilter)
+	}
+	if employeeID != "" {
+		query = query.Where("attendances.employee_id = ?", employeeID)
 	}
 	rows, err := query.Group("attendances.date, attendances.company_id, attendances.status").Order("attendances.date ASC").Rows()
 	if err != nil {
@@ -158,7 +162,7 @@ func (r *AttendanceRepository) Summary(startDate, endDate, companyID, department
 	return result, nil
 }
 
-func (r *AttendanceRepository) SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupFilter, shiftID, statusFilter string) ([]map[string]interface{}, error) {
+func (r *AttendanceRepository) SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupFilter, shiftID, statusFilter, employeeID string) ([]map[string]interface{}, error) {
 	var entityCol, joinClause, groupCol, orderCol string
 	switch groupBy {
 	case "department":
@@ -228,6 +232,10 @@ func (r *AttendanceRepository) SummaryByGroup(startDate, endDate, groupBy, compa
 		conditions = append(conditions, "attendances.status = ?")
 		args = append(args, statusFilter)
 	}
+	if employeeID != "" {
+		conditions = append(conditions, "attendances.employee_id = ?")
+		args = append(args, employeeID)
+	}
 
 	whereClause := ""
 	for i, c := range conditions {
@@ -278,6 +286,22 @@ func (r *AttendanceRepository) SummaryByGroup(startDate, endDate, groupBy, compa
 	}
 	if results == nil {
 		results = []map[string]interface{}{}
+	}
+	if len(results) == 0 {
+		// Diagnostic: count matching employees without grouping
+		diagSQL := fmt.Sprintf(`SELECT COUNT(DISTINCT employees.employee_id) FROM attendances JOIN employees ON employees.employee_id = attendances.employee_id %s %s`, joinClause, whereClause)
+		var empCount int64
+		if diagErr := r.db.Raw(diagSQL, args...).Scan(&empCount).Error; diagErr == nil {
+			log.Printf("[SummaryByGroup] group_by=%s filters=%v matched_employees=%d", groupBy, args, empCount)
+		}
+		// Extra diagnostic: show distinct designation IDs present when filtering by designation
+		if designationID != "" {
+			var actualIDs []string
+			idSQL := fmt.Sprintf(`SELECT DISTINCT employees.designation_id FROM attendances JOIN employees ON employees.employee_id = attendances.employee_id %s %s`, joinClause, whereClause)
+			if idErr := r.db.Raw(idSQL, args...).Pluck("designation_id", &actualIDs).Error; idErr == nil {
+				log.Printf("[SummaryByGroup] requested_designation_id=%s actual_designation_ids_in_data=%v", designationID, actualIDs)
+			}
+		}
 	}
 	return results, nil
 }

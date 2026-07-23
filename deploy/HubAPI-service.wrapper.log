@@ -1,0 +1,16 @@
+2026-07-23 15:13:18,463 DEBUG - Starting WinSW in console mode
+2026-07-23 15:13:18,510 INFO  - Installing service 'Hub API Server (HubAPI)'...
+2026-07-23 15:13:18,577 INFO  - Service 'Hub API Server (HubAPI)' was installed successfully.
+2026-07-23 15:13:35,404 DEBUG - Starting WinSW in service mode
+2026-07-23 15:13:35,645 INFO  - Starting F:\softwer\hrhub\hub.exe 
+2026-07-23 15:13:37,319 INFO  - Started process 11632
+2026-07-23 15:13:37,334 DEBUG - Forwarding logs of the process System.Diagnostics.Process (hub) to WinSW.SizeBasedRollingLogAppender
+2026-07-23 15:54:17,712 INFO  - Stopping HubAPI
+2026-07-23 15:54:17,713 DEBUG - ProcessKill 11632
+2026-07-23 15:54:17,716 DEBUG - Stopping process 11632...
+2026-07-23 15:54:17,872 DEBUG - Process 11632 canceled with code 0.
+2026-07-23 15:54:17,960 INFO  - Finished HubAPI
+2026-07-23 15:54:22,897 DEBUG - Starting WinSW in service mode
+2026-07-23 15:54:23,096 INFO  - Starting F:\softwer\hrhub\hub.exe 
+2026-07-23 15:54:24,841 INFO  - Started process 12764
+2026-07-23 15:54:24,856 DEBUG - Forwarding logs of the process System.Diagnostics.Process (hub) to WinSW.SizeBasedRollingLogAppender

@@ -574,15 +574,16 @@ func (h *AttendanceHandler) Summary(c *gin.Context) {
 	groupID := c.Query("group_id")
 	shiftID := c.Query("shift_id")
 	statusFilter := c.Query("status")
+	employeeID := c.Query("employee_id")
 	groupBy := c.Query("group_by")
 
 	var result []map[string]interface{}
 	var err error
 
 	if groupBy != "" {
-		result, err = h.attendanceRepo.SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+		result, err = h.attendanceRepo.SummaryByGroup(startDate, endDate, groupBy, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter, employeeID)
 	} else {
-		result, err = h.attendanceRepo.Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter)
+		result, err = h.attendanceRepo.Summary(startDate, endDate, companyID, departmentID, sectionID, designationID, lineID, groupID, shiftID, statusFilter, employeeID)
 	}
 
 	if err != nil {
@@ -1978,7 +1979,7 @@ func (h *AttendanceHandler) ExportSummaryExcel(c *gin.Context) {
 
 	for idx, g := range groups {
 		if idx > 0 { f.NewSheet(g.label) }
-		result, err := h.attendanceRepo.SummaryByGroup(startDate, endDate, g.key, "", "", "", "", "", "", "", "")
+		result, err := h.attendanceRepo.SummaryByGroup(startDate, endDate, g.key, "", "", "", "", "", "", "", "", "")
 		if err != nil { continue }
 		addDailySummarySheet(f, g.label, companyName, companyAddress, dateRange, result)
 	}

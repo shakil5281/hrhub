@@ -179,11 +179,17 @@ export default function IdCardPage() {
     try {
       const employeeIds = selectedRows.map((r) => r.employee_id)
       const res = await idCardApi.generate(employeeIds)
-      const blob = new Blob([res.data], { type: "application/pdf" })
+      const { data: base64Data, filename } = res.data
+      const binaryStr = atob(base64Data)
+      const bytes = new Uint8Array(binaryStr.length)
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i)
+      }
+      const blob = new Blob([bytes], { type: "application/pdf" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `id_cards_${new Date().toISOString().slice(0, 10)}.pdf`
+      a.download = filename || `id_cards_${new Date().toISOString().slice(0, 10)}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch {

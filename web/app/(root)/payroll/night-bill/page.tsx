@@ -1,23 +1,24 @@
 "use client"
 
 import * as React from "react"
-import { MoonIcon, PlusIcon, Loader2 } from "lucide-react"
+import { MoonIcon, PlusIcon, CheckIcon, XIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { DataTable } from "@/components/table/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { nightBillApi, companyApi } from "@/lib/api"
+import { nightBillApi, companyApi, departmentApi, sectionApi, designationApi } from "@/lib/api"
 import { FilterBar } from "@/components/filter-bar"
 import type { FilterDef } from "@/components/filter-bar"
 
 interface NightBill {
   id: string
+  company_id: string
   employee_id: string
+  department_id?: string
+  section_id?: string
+  designation_id?: string
   date: string
   night_hours: number
   rate: number
@@ -25,79 +26,171 @@ interface NightBill {
   month: number
   year: number
   status: string
-  employee?: { name_en: string }
+  remarks: string
+  is_processed: boolean
+  employee?: {
+    name_en: string
+    name_bn: string
+    department?: { name: string; name_bn: string }
+    designation_ref?: { name: string; name_bn: string }
+  }
+  department?: { name: string; name_bn: string }
+  designation?: { name: string; name_bn: string }
+  created_at: string
 }
-
-const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"]
-const currentYear = new Date().getFullYear()
 
 const statusBadge = (status: string) => {
-  const variant = status === "active" ? "default" : status === "inactive" ? "secondary" : "outline"
-  return <Badge variant={variant} className="capitalize">{status}</Badge>
+  const map: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+    pending: "outline",
+    approved: "default",
+    rejected: "destructive",
+  }
+  return <Badge variant={map[status] || "outline"} className="capitalize">{status}</Badge>
 }
 
-const selectClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-
 export default function NightBillPage() {
+  const router = useRouter()
   const [data, setData] = React.useState<NightBill[]>([])
   const [loading, setLoading] = React.useState(true)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [editing, setEditing] = React.useState<NightBill | null>(null)
-  const [submitting, setSubmitting] = React.useState(false)
   const [companies, setCompanies] = React.useState<Array<{ id: string; company_name_en: string }>>([])
+  const [departments, setDepartments] = React.useState<Array<{ id: string; name: string }>>([])
+  const [sections, setSections] = React.useState<Array<{ id: string; name: string }>>([])
+  const [designations, setDesignations] = React.useState<Array<{ id: string; name: string }>>([])
   const [filters, setFilters] = React.useState<Record<string, string>>({
-    month: String(new Date().getMonth() + 1),
-    year: String(currentYear),
+    date: new Date().toISOString().slice(0, 10),
   })
   const [page, setPage] = React.useState(1)
   const [limit, setLimit] = React.useState(20)
   const [total, setTotal] = React.useState(0)
   const [totalPages, setTotalPages] = React.useState(0)
 
-  const [form, setForm] = React.useState({ employee_id: "", date: "", night_hours: "", rate: "" })
+  const fetchDepartments = React.useCallback(async (companyId: string) => {
+    try {
+      const { data: res } = await departmentApi.list({ company_id: companyId, limit: "200" })
+      const list = res?.data || res?.departments || []
+      setDepartments(Array.isArray(list) ? list : [])
+    } catch { setDepartments([]) }
+  }, [])
+
+  const fetchOrgData = React.useCallback(async (companyId: string) => {
+    try {
+      const [sRes, desRes] = await Promise.all([
+        sectionApi.list(undefined, { company_id: companyId, limit: "200" }),
+        designationApi.list(undefined, { company_id: companyId, limit: "200" }),
+      ])
+      const extract = (res: any) => {
+        const d = res?.data || res?.sections || res?.designations || []
+        return Array.isArray(d) ? d : []
+      }
+      setSections(extract(sRes))
+      setDesignations(extract(desRes))
+    } catch { }
+  }, [])
 
   const filterDefs: FilterDef[] = React.useMemo(() => [
+    {
+      key: "date", label: "Current Date", type: "datepicker",
+      placeholder: "Pick a date",
+    },
     {
       key: "company_id", label: "Company", type: "select",
       options: companies.map((c) => ({ value: c.id, label: c.company_name_en })),
     },
     {
-      key: "month", label: "Month", type: "select",
-      options: monthNames.map((name, i) => ({ value: String(i + 1), label: name })),
+      key: "department_id", label: "Department", type: "select",
+      options: departments.map((d) => ({ value: d.id, label: d.name })),
     },
     {
-      key: "year", label: "Year", type: "select",
-      options: Array.from({ length: 5 }, (_, i) => {
-        const y = currentYear - 2 + i
-        return { value: String(y), label: String(y) }
-      }),
+      key: "section_id", label: "Section", type: "select",
+      options: sections.map((s) => ({ value: s.id, label: s.name })),
     },
-  ], [companies])
+    {
+      key: "designation_id", label: "Designation", type: "select",
+      options: designations.map((d) => ({ value: d.id, label: d.name })),
+    },
+    {
+      key: "status", label: "Status", type: "select",
+      options: [
+        { value: "pending", label: "Pending" },
+        { value: "approved", label: "Approved" },
+        { value: "rejected", label: "Rejected" },
+      ],
+    },
+    {
+      key: "employee_id", label: "Employee ID", type: "text", placeholder: "EMP-001",
+    },
+  ], [companies, departments, sections, designations])
 
-  const columns: ColumnDef<NightBill>[] = React.useMemo(() => [
+  const summaryColumns: ColumnDef<NightBill>[] = [
     { accessorKey: "employee_id", header: "Employee ID" },
     {
-      header: "Employee",
+      header: "Employee Name",
       accessorFn: (r) => r.employee?.name_en || "-",
     },
     { accessorKey: "date", header: "Date" },
-    { accessorKey: "night_hours", header: "Night Hours" },
-    { accessorKey: "rate", header: "Rate", cell: ({ row }) => `৳${row.original.rate}` },
-    { accessorKey: "amount", header: "Amount", cell: ({ row }) => `৳${row.original.amount}` },
+    { accessorKey: "night_hours", header: "Hours" },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: "rate", header: "Rate",
+      cell: ({ row }) => `৳${row.original.rate.toFixed(2)}`,
+    },
+    {
+      accessorKey: "amount", header: "Amount",
+      cell: ({ row }) => `৳${row.original.amount.toFixed(2)}`,
+    },
+    {
+      accessorKey: "status", header: "Status",
       cell: ({ row }) => statusBadge(row.original.status),
     },
-  ], [])
+    {
+      header: "Dept",
+      accessorFn: (r) => r.employee?.department?.name || r.department?.name || "-",
+    },
+    {
+      header: "Designation",
+      accessorFn: (r) => r.employee?.designation_ref?.name || r.designation?.name || "-",
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const r = row.original
+        if (r.status !== "pending") return <span className="text-muted-foreground text-xs">--</span>
+        return (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => {
+              nightBillApi.approve(r.id).then(() => {
+                toast.success("Night bill approved")
+                fetchData(filters, page)
+              }).catch(() => toast.error("Failed to approve"))
+            }} title="Approve">
+              <CheckIcon className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => {
+              nightBillApi.reject(r.id).then(() => {
+                toast.success("Night bill rejected")
+                fetchData(filters, page)
+              }).catch(() => toast.error("Failed to reject"))
+            }} title="Reject">
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        )
+      },
+    },
+  ]
 
   const fetchData = React.useCallback(async (f: Record<string, string>, p?: number, l?: number) => {
     setLoading(true)
     try {
-      const params: Record<string, string> = { page: String(p ?? page), limit: String(l ?? limit) }
-      if (f.company_id) params.company_id = f.company_id
-      if (f.month) params.month = f.month
-      if (f.year) params.year = f.year
+      const params: Record<string, string> = { page: String(p ?? page), limit: String(l ?? limit) };
+      ["company_id", "department_id", "section_id", "designation_id", "employee_id", "status", "date"].forEach((k) => {
+        if (f[k]) params[k] = f[k]
+      })
+      if (f.date) {
+        const d = new Date(f.date + "T00:00:00")
+        params.month = String(d.getMonth() + 1)
+        params.year = String(d.getFullYear())
+      }
       const { data: res } = await nightBillApi.list(params)
       setData(Array.isArray(res.data) ? res.data : [])
       setTotal(res.total ?? 0)
@@ -112,53 +205,14 @@ export default function NightBillPage() {
 
   React.useEffect(() => {
     companyApi.list({ limit: "100" }).then((res) => {
-      setCompanies(Array.isArray(res.data?.data) ? res.data.data : [])
-    }).catch(() => {})
+      const list = res?.data?.data || res?.data || []
+      const arr = Array.isArray(list) ? list : []
+      setCompanies(arr)
+    }).catch(() => { })
     fetchData(filters)
   }, [])
 
   React.useEffect(() => { fetchData(filters) }, [page, limit])
-
-  const resetForm = () => {
-    setForm({ employee_id: "", date: "", night_hours: "", rate: "" })
-    setEditing(null)
-  }
-
-  const handleCreate = async () => {
-    if (!form.employee_id || !form.date) { toast.error("Employee ID and date are required"); return }
-    setSubmitting(true)
-    try {
-      await nightBillApi.create({
-        employee_id: form.employee_id,
-        date: form.date,
-        night_hours: form.night_hours ? Number(form.night_hours) : 0,
-        rate: form.rate ? Number(form.rate) : 0,
-      })
-      toast.success("Night bill created")
-      setDialogOpen(false)
-      resetForm()
-      fetchData(filters, 1)
-    } catch { toast.error("Failed to create night bill") }
-    finally { setSubmitting(false) }
-  }
-
-  const handleUpdate = async () => {
-    if (!editing) return
-    setSubmitting(true)
-    try {
-      await nightBillApi.update(editing.id, {
-        employee_id: form.employee_id,
-        date: form.date,
-        night_hours: form.night_hours ? Number(form.night_hours) : 0,
-        rate: form.rate ? Number(form.rate) : 0,
-      })
-      toast.success("Night bill updated")
-      setDialogOpen(false)
-      resetForm()
-      fetchData(filters, page)
-    } catch { toast.error("Failed to update night bill") }
-    finally { setSubmitting(false) }
-  }
 
   const handleDelete = async (row: NightBill) => {
     try {
@@ -168,30 +222,27 @@ export default function NightBillPage() {
     } catch { toast.error("Failed to delete night bill") }
   }
 
-  const openEdit = (row: NightBill) => {
-    setEditing(row)
-    setForm({
-      employee_id: row.employee_id,
-      date: row.date,
-      night_hours: String(row.night_hours ?? ""),
-      rate: String(row.rate ?? ""),
-    })
-    setDialogOpen(true)
+  const handleChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+    if (key === "company_id" && value) {
+      fetchDepartments(value)
+      fetchOrgData(value)
+    }
   }
-
-  const handleChange = (key: string, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const handleApply = () => {
     setPage(1)
     const active: Record<string, string> = {}
-    for (const [k, v] of Object.entries(filters)) if (v) active[k] = v
+    for (const [k, v] of Object.entries(filters)) {
+      if (v) active[k] = v
+    }
     fetchData(active, 1)
   }
 
   const handleReset = () => {
     setPage(1)
     setLimit(20)
-    const defaults = { month: String(new Date().getMonth() + 1), year: String(currentYear) }
+    const defaults = { date: new Date().toISOString().slice(0, 10) }
     setFilters(defaults)
     fetchData(defaults, 1, 20)
   }
@@ -206,44 +257,12 @@ export default function NightBillPage() {
             <p className="text-muted-foreground mt-1">Manage employee night shift bills</p>
           </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add Night Bill
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Edit Night Bill" : "Add Night Bill"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>Employee ID *</Label>
-                <Input value={form.employee_id} onChange={(e) => setForm((p) => ({ ...p, employee_id: e.target.value }))} placeholder="EMP-001" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>Date *</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>Night Hours</Label>
-                <Input type="number" step="0.5" value={form.night_hours} onChange={(e) => setForm((p) => ({ ...p, night_hours: e.target.value }))} placeholder="0" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>Rate</Label>
-                <Input type="number" step="0.01" value={form.rate} onChange={(e) => setForm((p) => ({ ...p, rate: e.target.value }))} placeholder="0" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm() }}>Cancel</Button>
-              <Button onClick={editing ? handleUpdate : handleCreate} disabled={submitting}>
-                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editing ? "Update" : "Create"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button onClick={() => router.push("/payroll/night-bill/create")}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Night Bill
+          </Button>
+        </div>
       </div>
 
       <div className="px-4 lg:px-6">
@@ -252,8 +271,7 @@ export default function NightBillPage() {
 
       <DataTable
         data={data}
-        columns={columns}
-        onEdit={openEdit}
+        columns={summaryColumns}
         onDelete={handleDelete}
         serverSide={true}
         page={page}

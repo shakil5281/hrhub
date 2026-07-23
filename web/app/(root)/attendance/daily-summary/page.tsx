@@ -40,7 +40,7 @@ const groupTabs = [
   { value: "group", label: "Group" },
 ]
 
-function SummaryTable({ data, loading, title }: { data: SummaryRecord[]; loading: boolean; title?: string }) {
+function SummaryTable({ data, loading, title, activeFilters }: { data: SummaryRecord[]; loading: boolean; title?: string; activeFilters?: Record<string, string> }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -51,9 +51,15 @@ function SummaryTable({ data, loading, title }: { data: SummaryRecord[]; loading
   }
 
   if (data.length === 0) {
+    const activeKeys = activeFilters ? Object.entries(activeFilters).filter(([_, v]) => v && v !== today) : []
     return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground">
-        No records found for the selected period
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+        <div className="text-base font-medium">No records found for the selected period</div>
+        {activeKeys.length > 0 && (
+          <div className="text-xs text-muted-foreground/80 max-w-md text-center">
+            Active filters: {activeKeys.map(([k, v]) => `${k.replace(/_/g, " ")}=${v}`).join(", ")}
+          </div>
+        )}
       </div>
     )
   }
@@ -68,6 +74,11 @@ function SummaryTable({ data, loading, title }: { data: SummaryRecord[]; loading
     others: s.others + toOthers(r),
     total: s.total + r.total,
   }), { present: 0, absent: 0, leave: 0, others: 0, total: 0 })
+
+  const displayName = (name: string | undefined) => {
+    if (!name) return `Unassigned ${title || ""}`.trim()
+    return name
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -91,7 +102,7 @@ function SummaryTable({ data, loading, title }: { data: SummaryRecord[]; loading
             return (
               <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20">
                 <td className="py-2.5 px-4 text-muted-foreground text-xs">{i + 1}</td>
-                <td className="py-2.5 px-4 font-medium">{row.name || "-"}</td>
+                <td className="py-2.5 px-4 font-medium">{displayName(row.name)}</td>
                 <td className="py-2.5 px-4 text-center font-semibold text-green-700">{row.present}</td>
                 <td className="py-2.5 px-4 text-center font-semibold text-red-700">{row.absent}</td>
                 <td className="py-2.5 px-4 text-center font-semibold text-indigo-700">{leave || "-"}</td>
@@ -133,6 +144,7 @@ export default function DailySummaryPage() {
   const [shifts, setShifts] = React.useState<Shift[]>([])
   const [filters, setFilters] = React.useState<Record<string, string>>({ date: today })
   const [groupBy, setGroupBy] = React.useState("department")
+  const [activeFilters, setActiveFilters] = React.useState<Record<string, string>>({ date: today })
 
   const filterDefs: FilterDef[] = React.useMemo(() => [
     { key: "date", label: "Date", type: "datepicker" },
@@ -146,6 +158,7 @@ export default function DailySummaryPage() {
     { key: "status", label: "Status", type: "select", options: [
       { value: "present", label: "Present" }, { value: "late", label: "Late" },
       { value: "absent", label: "Absent" }, { value: "half_day", label: "Half Day" },
+      { value: "on_leave", label: "On Leave" }, { value: "weekend", label: "Weekend" },
     ] },
     { key: "employee_id", label: "Employee ID", type: "text", placeholder: "Enter employee code..." },
   ], [companies, departments, sections, designations, lines, groups, shifts])
@@ -153,8 +166,8 @@ export default function DailySummaryPage() {
   const loadSections = React.useCallback(async (departmentId: string) => {
     if (!departmentId) { setSections([]); return }
     try {
-      const { data: res } = await sectionApi.list(departmentId)
-      setSections(Array.isArray(res.data) ? res.data : [])
+      const res = await sectionApi.list(departmentId)
+      setSections(Array.isArray(res.data?.data) ? res.data.data : [])
     } catch { setSections([]) }
   }, [])
 
@@ -177,9 +190,10 @@ export default function DailySummaryPage() {
       const apiParams: Record<string, string> = { start_date: params.date || today, end_date: params.date || today }
 
       if (gb) apiParams.group_by = gb
-      ;["company_id", "department_id", "section_id", "designation_id", "line_id", "group_id", "shift_id", "status"].forEach((k) => { if (params[k]) apiParams[k] = params[k] })
+      ;["company_id", "department_id", "section_id", "designation_id", "line_id", "group_id", "shift_id", "status", "employee_id"].forEach((k) => { if (params[k]) apiParams[k] = params[k] })
       const { data: res } = await attendanceApi.summary(apiParams)
       setData((res?.summaries || []).map((r: any, i: number) => ({ ...r, id: r.entity_id || r.id || `row-${i}` })))
+      setActiveFilters(params)
     } catch {
       setError("Failed to load summary")
     } finally {
@@ -202,7 +216,12 @@ export default function DailySummaryPage() {
     fetchData({ date: today }, "department")
   }, [])
 
-  const handleTabChange = (value: string) => { setGroupBy(value) }
+  const handleTabChange = (value: string) => {
+    setGroupBy(value)
+    const active: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filters)) { if (v) active[k] = v }
+    fetchData(active, value)
+  }
   const handleChange = (key: string, value: string) => {
     setFilters((prev) => {
       const next = { ...prev, [key]: value }
@@ -240,6 +259,8 @@ export default function DailySummaryPage() {
     try {
       const active: Record<string, string> = {}
       for (const [k, v] of Object.entries(filters)) { if (v) active[k] = v }
+      active.start_date = filters.date || today
+      active.end_date = filters.date || today
       const res = await attendanceApi.exportSummaryExcel(active)
       const blob = new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
       const url = URL.createObjectURL(blob)
@@ -305,7 +326,7 @@ export default function DailySummaryPage() {
             </div>
             {groupTabs.map((tab) => (
               <TabsContent key={tab.value} value={tab.value} className="mt-0">
-                <SummaryTable data={data} loading={loading} title={tab.label} />
+                <SummaryTable data={data} loading={loading} title={tab.label} activeFilters={activeFilters} />
               </TabsContent>
             ))}
           </Tabs>

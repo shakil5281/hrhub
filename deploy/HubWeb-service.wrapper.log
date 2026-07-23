@@ -1,0 +1,25 @@
+2026-07-23 15:13:22,276 DEBUG - Starting WinSW in console mode
+2026-07-23 15:13:22,323 INFO  - Installing service 'Hub Web Frontend (HubWeb)'...
+2026-07-23 15:13:22,391 INFO  - Service 'Hub Web Frontend (HubWeb)' was installed successfully.
+2026-07-23 15:13:43,014 DEBUG - Starting WinSW in service mode
+2026-07-23 15:13:43,196 INFO  - Starting node F:\softwer\hrhub\web\.next\standalone\server.js
+2026-07-23 15:13:43,235 INFO  - Started process 12036
+2026-07-23 15:13:43,250 DEBUG - Forwarding logs of the process System.Diagnostics.Process (node) to WinSW.SizeBasedRollingLogAppender
+2026-07-23 15:47:46,453 INFO  - Stopping HubWeb
+2026-07-23 15:47:46,474 DEBUG - ProcessKill 12036
+2026-07-23 15:47:46,478 DEBUG - Stopping process 12036...
+2026-07-23 15:47:46,499 DEBUG - Process 12036 canceled with code 130.
+2026-07-23 15:47:46,565 INFO  - Finished HubWeb
+2026-07-23 15:49:41,615 DEBUG - Starting WinSW in service mode
+2026-07-23 15:49:41,838 INFO  - Starting node F:\softwer\hrhub\web\.next\standalone\server.js
+2026-07-23 15:49:41,878 INFO  - Started process 9900
+2026-07-23 15:49:41,893 DEBUG - Forwarding logs of the process System.Diagnostics.Process (node) to WinSW.SizeBasedRollingLogAppender
+2026-07-23 15:51:29,229 INFO  - Stopping HubWeb
+2026-07-23 15:51:29,230 DEBUG - ProcessKill 9900
+2026-07-23 15:51:29,233 DEBUG - Stopping process 9900...
+2026-07-23 15:51:29,252 DEBUG - Process 9900 canceled with code 130.
+2026-07-23 15:51:29,396 INFO  - Finished HubWeb
+2026-07-23 15:51:34,272 DEBUG - Starting WinSW in service mode
+2026-07-23 15:51:34,461 INFO  - Starting node F:\softwer\hrhub\web\.next\standalone\server.js
+2026-07-23 15:51:34,500 INFO  - Started process 2284
+2026-07-23 15:51:34,515 DEBUG - Forwarding logs of the process System.Diagnostics.Process (node) to WinSW.SizeBasedRollingLogAppender

@@ -428,7 +428,16 @@ func Setup(
 	{
 		nightBill.GET("", nightBillHandler.List)
 		nightBill.POST("", nightBillHandler.Create)
+		nightBill.POST("/bulk", nightBillHandler.BulkCreate)
+		nightBill.POST("/process", nightBillHandler.Process)
+		nightBill.GET("/processes", nightBillHandler.ListProcesses)
+		nightBill.GET("/eligible-employees", nightBillHandler.ListEligibleEmployees)
+		nightBill.GET("/employees-with-rates", nightBillHandler.ListEligibleWithRates)
+		nightBill.POST("/calculate-rate", nightBillHandler.CalculateRate)
+		nightBill.GET("/summary", nightBillHandler.Summary)
 		nightBill.PUT("/:id", nightBillHandler.Update)
+		nightBill.PUT("/:id/approve", nightBillHandler.Approve)
+		nightBill.PUT("/:id/reject", nightBillHandler.Reject)
 		nightBill.DELETE("/:id", nightBillHandler.Delete)
 	}
 
