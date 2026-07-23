@@ -15,7 +15,7 @@ import (
 )
 
 // @title           HRHub API
-// @version         1.0
+// @version         1.1
 // @description     Enterprise HR Management & Payroll System API.
 //
 // @contact.name   HRHub Team
