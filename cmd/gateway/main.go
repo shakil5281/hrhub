@@ -28,39 +28,28 @@ func main() {
 		p := r.URL.Path
 
 		switch {
-		// /hub/api/* → strip /hub, forward to API
-		case strings.HasPrefix(p, "/hub/api/"):
-			r.URL.Path = strings.TrimPrefix(p, "/hub")
+		case strings.HasPrefix(p, "/peoplehub/api/"):
+			r.URL.Path = strings.TrimPrefix(p, "/peoplehub")
 			apiProxy.ServeHTTP(w, r)
 
-		// /hub/swagger/* → strip /hub, forward to API
-		case strings.HasPrefix(p, "/hub/swagger/"):
-			r.URL.Path = strings.TrimPrefix(p, "/hub")
+		case strings.HasPrefix(p, "/peoplehub/swagger/"):
+			r.URL.Path = strings.TrimPrefix(p, "/peoplehub")
 			apiProxy.ServeHTTP(w, r)
 
-		// /hub/uploads/* → strip /hub, forward to API
-		case strings.HasPrefix(p, "/hub/uploads/"):
-			r.URL.Path = strings.TrimPrefix(p, "/hub")
+		case strings.HasPrefix(p, "/peoplehub/uploads/"):
+			r.URL.Path = strings.TrimPrefix(p, "/peoplehub")
 			apiProxy.ServeHTTP(w, r)
 
-		// /hub/health → strip /hub, forward to API
-		case p == "/hub/health":
+		case p == "/peoplehub/health":
 			r.URL.Path = "/health"
 			apiProxy.ServeHTTP(w, r)
 
-		// /hub/* → forward to Next.js (Next.js has basePath: /hub)
-		case strings.HasPrefix(p, "/hub"):
+		case strings.HasPrefix(p, "/peoplehub"):
 			webProxy.ServeHTTP(w, r)
 
-		// /hrhub/* → proxy to old ASP.NET app on IIS
-		case strings.HasPrefix(p, "/hrhub"):
-			iisProxy.ServeHTTP(w, r)
-
-		// /contact/* → proxy to IIS
 		case strings.HasPrefix(p, "/contact"):
 			iisProxy.ServeHTTP(w, r)
 
-		// Direct API routes (backward compat without /hub prefix)
 		case strings.HasPrefix(p, "/api/"),
 			strings.HasPrefix(p, "/swagger/"),
 			strings.HasPrefix(p, "/uploads/"):
@@ -69,20 +58,17 @@ func main() {
 		case p == "/health":
 			apiProxy.ServeHTTP(w, r)
 
-		// Root → redirect to /hub/
 		case p == "/":
-			http.Redirect(w, r, "/hub/", http.StatusFound)
+			http.Redirect(w, r, "/peoplehub", http.StatusFound)
 
-		// Everything else → frontend (keep /hub prefix)
 		default:
 			webProxy.ServeHTTP(w, r)
 		}
 	})
 
 	log.Printf("Gateway listening on :%s", port)
-	log.Printf("  /hub/*   → %s (Next.js, basePath: /hub)", webTarget)
-	log.Printf("  /hub/api/* → %s", apiTarget)
-	log.Printf("  /hrhub/* → %s (IIS old project)", iisTarget)
+	log.Printf("  /peoplehub/*   → %s (Next.js)", webTarget)
+	log.Printf("  /peoplehub/api/* → %s", apiTarget)
 	log.Printf("  /contact/* → %s (IIS)", iisTarget)
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {

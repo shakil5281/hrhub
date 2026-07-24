@@ -4,15 +4,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/shakil5281/hrhub-api/docs"
-	"github.com/shakil5281/hrhub-api/internal/auth"
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/handlers"
-	"github.com/shakil5281/hrhub-api/internal/middleware"
-	"github.com/shakil5281/hrhub-api/internal/repository"
-	"github.com/shakil5281/hrhub-api/internal/routes"
-	"github.com/shakil5281/hrhub-api/internal/service"
+	_ "github.com/shakil5281/peoplehub-api/docs"
+	"github.com/shakil5281/peoplehub-api/internal/auth"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/handlers"
+	"github.com/shakil5281/peoplehub-api/internal/middleware"
+	"github.com/shakil5281/peoplehub-api/internal/repository"
+	"github.com/shakil5281/peoplehub-api/internal/routes"
+	"github.com/shakil5281/peoplehub-api/internal/service"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -24,7 +24,7 @@ func New(cfg *config.Config) *gin.Engine {
 		Secret:          cfg.JWTSecret,
 		AccessTokenTTL:  15 * time.Minute,
 		RefreshTokenTTL: 7 * 24 * time.Hour,
-		Issuer:          "hrhub-api",
+		Issuer:          "peoplehub-api",
 	}
 
 	userRepo := repository.NewUserRepository(database.DB)

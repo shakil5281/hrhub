@@ -1,8 +1,8 @@
 <service>
-  <id>HubGateway</id>
-  <name>Hub Gateway (Reverse Proxy)</name>
-  <description>Reverse proxy routing /api/* to backend and /* to frontend</description>
-  <executable>%BASE%\hub-gateway.exe</executable>
+  <id>PeopleHubGateway</id>
+  <name>PeopleHub Gateway (Reverse Proxy)</name>
+  <description>Reverse proxy routing /peoplehub/* to backend and frontend</description>
+  <executable>%BASE%\peoplehub-gateway.exe</executable>
   <workingdirectory>%BASE%</workingdirectory>
   <log mode="roll-by-size">
     <sizeThreshold>10240</sizeThreshold>

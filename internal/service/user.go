@@ -7,9 +7,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/shakil5281/hrhub-api/internal/auth"
-	"github.com/shakil5281/hrhub-api/internal/models"
-	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/peoplehub-api/internal/auth"
+	"github.com/shakil5281/peoplehub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/repository"
 	"gorm.io/gorm"
 )
 

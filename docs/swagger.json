@@ -2,10 +2,10 @@
     "swagger": "2.0",
     "info": {
         "description": "Enterprise HR Management \u0026 Payroll System API.",
-        "title": "HRHub API",
+        "title": "PeopleHub API",
         "contact": {
-            "name": "HRHub Team",
-            "email": "support@hrhub.com"
+            "name": "PeopleHub Team",
+            "email": "support@peoplehub.com"
         },
         "license": {
             "name": "MIT",
@@ -2171,8 +2171,7 @@
                         "type": "string",
                         "description": "Company ID",
                         "name": "company_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -2677,6 +2676,68 @@
                             "items": {
                                 "type": "object",
                                 "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a specific backup SQL file from the backups directory",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Database"
+                ],
+                "summary": "Delete a backup file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Backup filename to delete",
+                        "name": "filename",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -4299,12 +4360,12 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Generate printable ID cards (front + back) for selected employees, 6 per A4 page",
+                "description": "Generate printable ID cards (front + back on same page, 6 per A4 portrait page). Uses SutonnyMJ or Nirmala for Bangla.",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
-                    "application/pdf"
+                    "application/json"
                 ],
                 "tags": [
                     "ID Cards"
@@ -4325,7 +4386,10 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "file"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "400": {
@@ -4989,13 +5053,14 @@
                         "BearerAuth": []
                     }
                 ],
+                "description": "Hard delete a leave regardless of status and revert related attendance",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Leaves"
                 ],
-                "summary": "Cancel leave application",
+                "summary": "Permanently delete leave application",
                 "parameters": [
                     {
                         "type": "string",
@@ -5017,6 +5082,15 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5069,6 +5143,58 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/leaves/{id}/export/pdf": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate a leave application form PDF for a specific leave",
+                "produces": [
+                    "application/pdf"
+                ],
+                "tags": [
+                    "Leaves"
+                ],
+                "summary": "Export single leave application as PDF form",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Leave ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5194,7 +5320,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all night bills for a company, optionally filtered by month/year",
+                "description": "Get paginated night bills with advanced filters",
                 "produces": [
                     "application/json"
                 ],
@@ -5207,8 +5333,67 @@
                         "type": "string",
                         "description": "Company ID",
                         "name": "company_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Department ID",
+                        "name": "department_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Designation ID",
+                        "name": "designation_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Line ID",
+                        "name": "line_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group ID",
+                        "name": "group_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Floor ID",
+                        "name": "floor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Employee ID",
+                        "name": "employee_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date from (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date to (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -5220,6 +5405,18 @@
                         "type": "integer",
                         "description": "Year",
                         "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "limit",
                         "in": "query"
                     }
                 ],
@@ -5285,6 +5482,419 @@
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/bulk": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple night bill entries at once",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Bulk create night bills",
+                "parameters": [
+                    {
+                        "description": "Bulk night bill items",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BulkCreateNightBillRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/calculate-rate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculate night hours, rate, and amount for an employee on a given date from attendance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Calculate night bill rate",
+                "parameters": [
+                    {
+                        "description": "Employee ID and Date",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CalculateRateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/eligible-employees": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get employees eligible for night bill based on filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "List eligible employees for night bill",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Department ID",
+                        "name": "department_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Designation ID",
+                        "name": "designation_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/employees-with-rates": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get employees with night hours, rate, and amount calculated from attendance for a given date",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "List eligible employees with pre-calculated night bill rates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Department ID",
+                        "name": "department_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Section ID",
+                        "name": "section_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Designation ID",
+                        "name": "designation_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/process": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Auto-generate night bills based on attendance data and conditions",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Process night bills automatically",
+                "parameters": [
+                    {
+                        "description": "Process conditions",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProcessNightBillRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/processes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get processing history for night bills",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "List night bill processes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Month (1-12)",
+                        "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get summary totals for night bills",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Get night bill summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Month (1-12)",
+                        "name": "month",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
@@ -5376,6 +5986,112 @@
                     "Payroll"
                 ],
                 "summary": "Delete night bill",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Night Bill ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/{id}/approve": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve a pending night bill",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Approve night bill",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Night Bill ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/night-bills/{id}/reject": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reject a pending night bill",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Reject night bill",
                 "parameters": [
                     {
                         "type": "string",
@@ -5515,8 +6231,7 @@
                         "type": "string",
                         "description": "Company ID",
                         "name": "company_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5936,10 +6651,9 @@
                     },
                     {
                         "type": "string",
-                        "description": "Company ID",
+                        "description": "Company ID (defaults to JWT company)",
                         "name": "company_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -7392,8 +8106,7 @@
                         "type": "string",
                         "description": "Company ID",
                         "name": "company_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -8255,6 +8968,74 @@
                 }
             }
         },
+        "handlers.BulkCreateNightBillItem": {
+            "type": "object",
+            "required": [
+                "date",
+                "employee_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "employee_id": {
+                    "type": "string"
+                },
+                "night_hours": {
+                    "type": "number"
+                },
+                "rate": {
+                    "type": "number"
+                },
+                "remarks": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.BulkCreateNightBillRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "items",
+                "month",
+                "year"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.BulkCreateNightBillItem"
+                    }
+                },
+                "month": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.CalculateRateRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "employee_id"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "employee_id": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.ClockInRequest": {
             "type": "object",
             "required": [
@@ -8630,23 +9411,40 @@
         },
         "handlers.CreateNightBillRequest": {
             "type": "object",
+            "required": [
+                "company_id",
+                "date",
+                "employee_id"
+            ],
             "properties": {
                 "amount": {
                     "type": "number"
                 },
-                "companyID": {
+                "company_id": {
                     "type": "string"
                 },
                 "date": {
                     "type": "string"
                 },
-                "employeeID": {
+                "department_id": {
                     "type": "string"
                 },
-                "month": {
-                    "type": "integer"
+                "designation_id": {
+                    "type": "string"
                 },
-                "nightHours": {
+                "employee_id": {
+                    "type": "string"
+                },
+                "floor_id": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "string"
+                },
+                "line_id": {
+                    "type": "string"
+                },
+                "night_hours": {
                     "type": "number"
                 },
                 "rate": {
@@ -8655,8 +9453,8 @@
                 "remarks": {
                     "type": "string"
                 },
-                "year": {
-                    "type": "integer"
+                "section_id": {
+                    "type": "string"
                 }
             }
         },
@@ -8801,6 +9599,57 @@
                 "start_date": {
                     "description": "YYYY-MM-DD, optional",
                     "type": "string"
+                }
+            }
+        },
+        "handlers.ProcessNightBillRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "date_from",
+                "date_to",
+                "month",
+                "year"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "date_from": {
+                    "type": "string"
+                },
+                "date_to": {
+                    "type": "string"
+                },
+                "department_id": {
+                    "type": "string"
+                },
+                "designation_id": {
+                    "type": "string"
+                },
+                "floor_id": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "string"
+                },
+                "line_id": {
+                    "type": "string"
+                },
+                "min_hours": {
+                    "type": "number"
+                },
+                "month": {
+                    "type": "integer"
+                },
+                "night_rate": {
+                    "type": "number"
+                },
+                "section_id": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },

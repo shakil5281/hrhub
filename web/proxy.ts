@@ -5,17 +5,18 @@ const publicPaths = ["/login", "/register"]
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const basePath = request.nextUrl.basePath || ""
   const token = request.cookies.get("auth_token")?.value
 
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     if (token) {
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL(`${basePath}/`, request.url))
     }
     return NextResponse.next()
   }
 
   if (!token) {
-    const loginUrl = new URL("/login", request.url)
+    const loginUrl = new URL(`${basePath}/login`, request.url)
     loginUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(loginUrl)
   }

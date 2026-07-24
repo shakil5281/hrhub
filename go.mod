@@ -1,4 +1,4 @@
-module github.com/shakil5281/hrhub-api
+module github.com/shakil5281/peoplehub-api
 
 go 1.26.2
 

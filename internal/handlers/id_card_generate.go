@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 )
 
 type GenerateIdCardRequest struct {

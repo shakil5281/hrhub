@@ -6,7 +6,8 @@
 *.dylib
 
 # Go build output
-/hrhub
+/peoplehub
+/peoplehub-gateway
 /server
 
 # Test binary
@@ -22,6 +23,7 @@ web/node_modules/
 # Build directories
 web/dist/
 web/build/
+web/.next/
 
 # Environment and config
 .env
@@ -47,5 +49,4 @@ desktop.ini
 *.tmp
 *.bak
 
-# Docker
-.docker/
+

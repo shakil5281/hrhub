@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 	"gorm.io/gorm"
 )
 

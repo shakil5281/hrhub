@@ -1,0 +1,166 @@
+2026/07/24 11:48:19 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:48:30 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:48:41 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:48:52 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:02 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:13 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:24 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:35 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:46 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:49:57 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:08 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:18 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:29 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:35 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:40 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:46 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:51 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:50:57 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:02 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:08 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:13 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:19 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:23 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:29 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:34 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:40 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:45 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:51 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:51:56 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:02 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:07 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:13 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:18 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:24 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:28 Failed to connect to database:failed to connect to `user=shakil database=peoplehub`: [::1]:5432 (localhost): server error: FATAL: database "peoplehub" does not exist (SQLSTATE 3D000)
+2026/07/24 11:52:36 Server starting on :5000
+2026/07/24 11:52:53 Shutting down server...
+2026/07/24 11:52:53 Database connection closed
+2026/07/24 11:52:53 Server exited gracefully
+2026/07/24 11:52:55 Server starting on :5000
+2026/07/24 11:55:35 [::1] POST /api/v1/auth/login | 200 | 1.8657122s
+2026/07/24 12:16:56 [::1] GET /api/v1/auth/me | 401 | 196.4651ms
+2026/07/24 12:16:56 [::1] POST /api/v1/auth/refresh | 200 | 122.6616ms
+2026/07/24 12:16:56 [::1] GET /api/v1/auth/me | 200 | 260.8759ms
+2026/07/24 12:16:58 [::1] POST /api/v1/auth/logout | 400 | 0s
+2026/07/24 12:17:00 [::1] POST /api/v1/auth/login | 200 | 292.9421ms
+2026/07/24 12:17:01 [::1] GET /api/v1/auth/me | 200 | 1.2453ms
+2026/07/24 12:17:03 [::1] GET /api/v1/companies | 200 | 166.6459ms
+2026/07/24 12:17:03 [::1] GET /api/v1/companies | 200 | 990.4µs
+2026/07/24 12:17:03 [::1] GET /api/v1/companies | 200 | 999.8µs
+2026/07/24 12:17:03 [::1] GET /uploads/1a55adad8432f580_1784437436973812700.png | 304 | 39.2603ms
+2026/07/24 12:17:03 [::1] GET /api/v1/shifts | 200 | 20.2439ms
+2026/07/24 12:17:04 [::1] GET /api/v1/companies | 200 | 849.1µs
+2026/07/24 12:17:04 [::1] GET /api/v1/temporary-shifts | 200 | 55.7119ms
+2026/07/24 12:17:04 [::1] GET /api/v1/divisions | 200 | 10.4173ms
+2026/07/24 12:17:04 [::1] GET /api/v1/divisions | 200 | 939.5µs
+2026/07/24 12:17:05 [::1] GET /api/v1/groups | 200 | 19.2377ms
+2026/07/24 12:17:06 [::1] GET /api/v1/floors | 200 | 1.6365ms
+2026/07/24 12:27:17 [::1] GET /api/v1/auth/me | 200 | 1.1348ms
+2026/07/24 12:27:19 [::1] POST /api/v1/auth/logout | 400 | 0s
+2026/07/24 12:27:21 [::1] POST /api/v1/auth/login | 200 | 297.1322ms
+2026/07/24 12:27:21 [::1] GET /api/v1/auth/me | 200 | 640.9µs
+2026/07/24 12:27:23 [::1] GET /api/v1/companies | 200 | 1.1233ms
+2026/07/24 12:27:23 [::1] GET /api/v1/companies | 200 | 511.5µs
+2026/07/24 12:27:23 [::1] GET /api/v1/companies | 200 | 847.4µs
+2026/07/24 12:27:25 [::1] GET /api/v1/companies | 200 | 1.8133ms
+2026/07/24 12:27:25 [::1] GET /api/v1/groups | 200 | 1.124ms
+2026/07/24 12:27:25 [::1] GET /api/v1/sections | 200 | 24.8731ms
+2026/07/24 12:27:25 [::1] GET /api/v1/shifts | 200 | 141.4744ms
+2026/07/24 12:27:25 [::1] GET /api/v1/lines | 200 | 158.0507ms
+2026/07/24 12:27:25 [::1] GET /api/v1/departments | 200 | 312.1564ms
+2026/07/24 12:27:25 [::1] GET /api/v1/designations | 200 | 328.3777ms
+2026/07/24 12:27:25 [::1] GET /api/v1/attendance | 200 | 443.9106ms
+2026/07/24 12:27:25 [::1] GET /api/v1/attendance | 200 | 8.8907ms
+2026/07/24 12:27:30 [::1] GET /api/v1/attendance | 200 | 4.5373ms
+2026/07/24 12:47:26 [::1] GET /api/v1/auth/me | 401 | 0s
+2026/07/24 12:49:52 [::1] GET /api/v1/auth/me | 401 | 0s
+2026/07/24 12:49:56 [::1] POST /api/v1/auth/login | 401 | 6.8364ms
+2026/07/24 12:50:44 [::1] GET /api/v1/auth/me | 401 | 0s
+2026/07/24 12:50:44 [::1] POST /api/v1/auth/refresh | 200 | 37.6494ms
+2026/07/24 12:50:44 [::1] GET /api/v1/auth/me | 200 | 13.3197ms
+2026/07/24 12:50:46 [::1] GET /api/v1/companies | 200 | 8.9448ms
+2026/07/24 12:50:46 [::1] GET /api/v1/companies | 200 | 1.4018ms
+2026/07/24 12:50:46 [::1] GET /api/v1/companies | 200 | 518.8µs
+2026/07/24 12:53:34 [::1] GET /api/v1/data-logs/stats | 200 | 142.629ms
+2026/07/24 12:53:40 [::1] POST /api/v1/data-logs/import | 200 | 1.5083965s
+2026/07/24 12:53:40 [::1] GET /api/v1/data-logs/stats | 200 | 4.2129ms
+2026/07/24 12:54:05 [::1] GET /api/v1/attendance/stats | 200 | 4.0038ms
+2026/07/24 12:54:05 [::1] GET /api/v1/companies | 200 | 4.2966ms
+2026/07/24 12:54:11 [::1] POST /api/v1/data-logs/process | 200 | 669.1544ms
+2026/07/24 12:54:11 [::1] GET /api/v1/attendance/stats | 200 | 779.4µs
+2026/07/24 12:55:08 [::1] GET /api/v1/departments | 200 | 5.5245ms
+2026/07/24 12:55:08 [::1] GET /api/v1/lines | 200 | 997.8µs
+2026/07/24 12:55:08 [::1] GET /api/v1/designations | 200 | 7.6211ms
+2026/07/24 12:55:08 [::1] GET /api/v1/groups | 200 | 17.5207ms
+2026/07/24 12:55:08 [::1] GET /api/v1/shifts | 200 | 27.9396ms
+2026/07/24 12:55:08 [::1] GET /api/v1/attendance | 200 | 20.2084ms
+2026/07/24 12:55:08 [::1] GET /api/v1/attendance | 200 | 6.3643ms
+2026/07/24 12:55:08 [::1] GET /api/v1/sections | 200 | 93.4039ms
+2026/07/24 12:55:08 [::1] GET /api/v1/companies | 200 | 117.9193ms
+2026/07/24 12:55:16 [::1] GET /api/v1/attendance | 200 | 4.36ms
+2026/07/24 12:55:24 [::1] GET /api/v1/data-logs/stats | 200 | 10.2222ms
+2026/07/24 12:55:31 [::1] GET /api/v1/sections | 200 | 4.5174ms
+2026/07/24 12:55:31 [::1] GET /api/v1/companies | 200 | 4.5174ms
+2026/07/24 12:55:31 [::1] GET /api/v1/groups | 200 | 3.5351ms
+2026/07/24 12:55:31 [::1] GET /api/v1/shifts | 200 | 3.5351ms
+2026/07/24 12:55:31 [::1] GET /api/v1/designations | 200 | 109.2916ms
+2026/07/24 12:55:31 [::1] GET /api/v1/attendance | 200 | 107.7581ms
+2026/07/24 12:55:31 [::1] GET /api/v1/departments | 200 | 128.6288ms
+2026/07/24 12:55:31 [::1] GET /api/v1/lines | 200 | 121.3285ms
+2026/07/24 12:55:31 [::1] GET /api/v1/attendance | 200 | 28.3146ms
+2026/07/24 12:55:32 [::1] GET /api/v1/companies | 200 | 510.7µs
+2026/07/24 12:55:32 [::1] GET /api/v1/shifts | 200 | 3.0115ms
+2026/07/24 12:55:32 [::1] GET /api/v1/departments | 200 | 4.5237ms
+2026/07/24 12:55:32 [::1] GET /api/v1/groups | 200 | 44.2996ms
+2026/07/24 12:55:32 [::1] GET /api/v1/attendance/summary | 200 | 76.7884ms
+2026/07/24 12:55:35 [::1] GET /api/v1/departments | 200 | 1.0031ms
+2026/07/24 12:55:35 [::1] GET /api/v1/companies | 200 | 1.0031ms
+2026/07/24 12:55:35 [::1] GET /api/v1/sections | 200 | 1.1551ms
+2026/07/24 12:55:35 [::1] GET /api/v1/groups | 200 | 509.5µs
+2026/07/24 12:55:35 [::1] GET /api/v1/designations | 200 | 2.9721ms
+2026/07/24 12:55:35 [::1] GET /api/v1/shifts | 200 | 4.0656ms
+2026/07/24 12:55:35 [::1] GET /api/v1/attendance | 200 | 6.2271ms
+2026/07/24 12:55:35 [::1] GET /api/v1/attendance | 200 | 7.9988ms
+2026/07/24 12:55:35 [::1] GET /api/v1/lines | 200 | 49.5927ms
+2026/07/24 12:55:40 [::1] GET /api/v1/departments | 200 | 1.5189ms
+2026/07/24 12:55:40 [::1] GET /api/v1/shifts | 200 | 699.5µs
+2026/07/24 12:55:40 [::1] GET /api/v1/attendance/summary | 200 | 2.9746ms
+2026/07/24 12:55:40 [::1] GET /api/v1/groups | 200 | 57.0255ms
+2026/07/24 12:55:40 [::1] GET /api/v1/companies | 200 | 152.533ms
+2026/07/24 12:55:42 [::1] GET /api/v1/shifts | 200 | 16.5209ms
+2026/07/24 12:55:42 [::1] GET /api/v1/companies | 200 | 17.4675ms
+2026/07/24 12:55:42 [::1] GET /api/v1/lines | 200 | 1.001ms
+2026/07/24 12:55:42 [::1] GET /api/v1/designations | 200 | 1.001ms
+2026/07/24 12:55:42 [::1] GET /api/v1/sections | 200 | 76.0698ms
+2026/07/24 12:55:42 [::1] GET /api/v1/departments | 200 | 83.0694ms
+2026/07/24 12:55:42 [::1] GET /api/v1/groups | 200 | 100.124ms
+2026/07/24 12:55:42 [::1] GET /api/v1/attendance | 200 | 90.1217ms
+2026/07/24 12:55:42 [::1] GET /api/v1/attendance | 200 | 37.2177ms
+2026/07/24 12:55:48 [::1] GET /api/v1/dashboard/stats | 200 | 97.0581ms
+2026/07/24 12:56:04 [::1] GET /api/v1/dashboard/stats | 200 | 23.3266ms
+2026/07/24 12:56:04 [::1] GET /api/v1/employees | 200 | 28.1904ms
+2026/07/24 12:56:04 [::1] GET /api/v1/separations | 200 | 55.237ms
+2026/07/24 12:56:09 [::1] GET /api/v1/dashboard/stats | 200 | 29.1421ms
+2026/07/24 12:56:43 [::1] POST /api/v1/auth/logout | 400 | 0s
+2026/07/24 12:56:46 [::1] POST /api/v1/auth/login | 200 | 282.5385ms
+2026/07/24 12:56:46 [::1] GET /api/v1/auth/me | 200 | 1.3425ms
+2026/07/24 12:57:24 [::1] GET /api/v1/shifts | 200 | 3.4038ms
+2026/07/24 12:57:24 [::1] GET /api/v1/groups | 200 | 2.8281ms
+2026/07/24 12:57:24 [::1] GET /api/v1/floors | 200 | 4.5404ms
+2026/07/24 12:57:24 [::1] GET /api/v1/employees | 200 | 31.9397ms
+2026/07/24 12:57:24 [::1] GET /api/v1/companies | 200 | 80.8507ms
+2026/07/24 12:57:24 [::1] GET /api/v1/departments | 200 | 83.8918ms
+2026/07/24 12:57:24 [::1] GET /api/v1/employees | 200 | 6.1354ms
+2026/07/24 12:57:29 [::1] GET /api/v1/requirements/section-summary | 200 | 53.9519ms
+2026/07/24 12:57:30 [::1] GET /api/v1/lines | 200 | 1.5258ms
+2026/07/24 12:57:30 [::1] GET /api/v1/sections | 200 | 1.0007ms
+2026/07/24 12:57:30 [::1] GET /api/v1/designations | 200 | 1.9387ms
+2026/07/24 12:57:30 [::1] GET /api/v1/groups | 200 | 1.604ms
+2026/07/24 12:57:30 [::1] GET /api/v1/companies | 200 | 5.8645ms
+2026/07/24 12:57:30 [::1] GET /api/v1/separations | 200 | 3.6074ms
+2026/07/24 12:57:30 [::1] GET /api/v1/separations | 200 | 2.6729ms
+2026/07/24 12:57:30 [::1] GET /api/v1/departments | 200 | 66.7985ms
+2026/07/24 12:57:35 [::1] GET /api/v1/companies | 200 | 1.4775ms
+2026/07/24 12:57:35 [::1] GET /api/v1/companies | 200 | 910.1µs
+2026/07/24 12:57:35 [::1] GET /api/v1/companies | 200 | 2.2997ms

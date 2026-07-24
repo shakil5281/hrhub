@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/repository"
-	"github.com/shakil5281/hrhub-api/internal/service"
-	"github.com/shakil5281/hrhub-api/internal/utils"
+	"github.com/shakil5281/peoplehub-api/internal/repository"
+	"github.com/shakil5281/peoplehub-api/internal/service"
+	"github.com/shakil5281/peoplehub-api/internal/utils"
 )
 
 type SeparationHandler struct {

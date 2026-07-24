@@ -1,0 +1,156 @@
+2026-07-24 11:48:09,774 DEBUG - Starting WinSW in console mode
+2026-07-24 11:48:09,817 INFO  - Installing service 'PeopleHub API Server (PeopleHubAPI)'...
+2026-07-24 11:48:09,884 INFO  - Service 'PeopleHub API Server (PeopleHubAPI)' was installed successfully.
+2026-07-24 11:48:17,994 DEBUG - Starting WinSW in service mode
+2026-07-24 11:48:18,178 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:48:19,545 INFO  - Started process 15712
+2026-07-24 11:48:19,560 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:48:30,144 DEBUG - Starting WinSW in service mode
+2026-07-24 11:48:30,329 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:48:30,367 INFO  - Started process 1496
+2026-07-24 11:48:30,382 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:48:40,956 DEBUG - Starting WinSW in service mode
+2026-07-24 11:48:41,147 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:48:41,187 INFO  - Started process 3524
+2026-07-24 11:48:41,202 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:48:51,823 DEBUG - Starting WinSW in service mode
+2026-07-24 11:48:52,009 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:48:52,046 INFO  - Started process 11224
+2026-07-24 11:48:52,062 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:02,619 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:02,806 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:02,843 INFO  - Started process 1192
+2026-07-24 11:49:02,858 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:13,469 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:13,663 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:13,701 INFO  - Started process 848
+2026-07-24 11:49:13,717 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:24,353 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:24,554 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:24,595 INFO  - Started process 9524
+2026-07-24 11:49:24,610 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:35,201 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:35,406 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:35,449 INFO  - Started process 3328
+2026-07-24 11:49:35,464 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:46,078 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:46,274 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:46,313 INFO  - Started process 5536
+2026-07-24 11:49:46,328 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:49:56,896 DEBUG - Starting WinSW in service mode
+2026-07-24 11:49:57,084 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:49:57,123 INFO  - Started process 10884
+2026-07-24 11:49:57,138 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:07,709 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:07,894 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:07,932 INFO  - Started process 9624
+2026-07-24 11:50:07,947 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:18,523 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:18,708 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:18,746 INFO  - Started process 14596
+2026-07-24 11:50:18,761 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:29,340 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:29,528 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:29,565 INFO  - Started process 7880
+2026-07-24 11:50:29,580 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:35,407 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:35,595 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:35,634 INFO  - Started process 764
+2026-07-24 11:50:35,648 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:40,198 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:40,394 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:40,433 INFO  - Started process 15728
+2026-07-24 11:50:40,447 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:46,246 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:46,464 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:46,502 INFO  - Started process 10188
+2026-07-24 11:50:46,517 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:51,174 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:51,372 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:51,410 INFO  - Started process 15160
+2026-07-24 11:50:51,425 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:50:57,123 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:57,309 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:50:57,345 INFO  - Started process 10444
+2026-07-24 11:50:57,361 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:02,024 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:02,208 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:02,245 INFO  - Started process 7504
+2026-07-24 11:51:02,260 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:07,933 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:08,123 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:08,161 INFO  - Started process 2200
+2026-07-24 11:51:08,177 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:12,837 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:13,021 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:13,058 INFO  - Started process 12728
+2026-07-24 11:51:13,073 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:18,752 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:18,942 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:18,981 INFO  - Started process 9252
+2026-07-24 11:51:18,997 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:23,651 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:23,839 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:23,876 INFO  - Started process 2596
+2026-07-24 11:51:23,890 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:29,577 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:29,761 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:29,798 INFO  - Started process 3392
+2026-07-24 11:51:29,813 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:34,483 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:34,671 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:34,708 INFO  - Started process 1628
+2026-07-24 11:51:34,723 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:40,376 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:40,558 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:40,594 INFO  - Started process 6988
+2026-07-24 11:51:40,609 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:45,308 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:45,494 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:45,531 INFO  - Started process 7432
+2026-07-24 11:51:45,546 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:51,200 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:51,395 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:51,432 INFO  - Started process 13388
+2026-07-24 11:51:51,447 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:51:56,121 DEBUG - Starting WinSW in service mode
+2026-07-24 11:51:56,309 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:51:56,346 INFO  - Started process 3768
+2026-07-24 11:51:56,361 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:02,042 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:02,229 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:02,266 INFO  - Started process 12596
+2026-07-24 11:52:02,281 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:07,037 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:07,222 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:07,260 INFO  - Started process 6492
+2026-07-24 11:52:07,275 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:12,876 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:13,069 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:13,107 INFO  - Started process 2616
+2026-07-24 11:52:13,122 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:17,846 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:18,032 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:18,069 INFO  - Started process 2328
+2026-07-24 11:52:18,085 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:23,707 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:23,893 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:23,932 INFO  - Started process 16012
+2026-07-24 11:52:23,947 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:28,649 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:28,848 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:28,888 INFO  - Started process 11860
+2026-07-24 11:52:28,903 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:34,625 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:34,847 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:34,895 INFO  - Started process 3968
+2026-07-24 11:52:34,910 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:52:53,817 INFO  - Stopping PeopleHubAPI
+2026-07-24 11:52:53,817 DEBUG - ProcessKill 3968
+2026-07-24 11:52:53,821 DEBUG - Stopping process 3968...
+2026-07-24 11:52:53,835 DEBUG - Process 3968 canceled with code 0.
+2026-07-24 11:52:53,839 INFO  - Finished PeopleHubAPI
+2026-07-24 11:52:54,531 DEBUG - Starting WinSW in service mode
+2026-07-24 11:52:54,712 INFO  - Starting F:\\softwer\\hrhub\peoplehub.exe 
+2026-07-24 11:52:54,749 INFO  - Started process 6676
+2026-07-24 11:52:54,763 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub) to WinSW.SizeBasedRollingLogAppender

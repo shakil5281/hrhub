@@ -1,0 +1,25 @@
+2026-07-24 11:48:16,405 DEBUG - Starting WinSW in console mode
+2026-07-24 11:48:16,449 INFO  - Installing service 'PeopleHub Gateway (Reverse Proxy) (PeopleHubGateway)'...
+2026-07-24 11:48:16,517 INFO  - Service 'PeopleHub Gateway (Reverse Proxy) (PeopleHubGateway)' was installed successfully.
+2026-07-24 11:50:37,018 DEBUG - Starting WinSW in service mode
+2026-07-24 11:50:37,207 INFO  - Starting F:\\softwer\\hrhub\peoplehub-gateway.exe 
+2026-07-24 11:50:38,360 INFO  - Started process 4888
+2026-07-24 11:50:38,374 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub-gateway) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:53:03,720 INFO  - Stopping PeopleHubGateway
+2026-07-24 11:53:03,720 DEBUG - ProcessKill 4888
+2026-07-24 11:53:03,723 DEBUG - Stopping process 4888...
+2026-07-24 11:53:03,731 DEBUG - Process 4888 canceled with code -1073741510.
+2026-07-24 11:53:03,735 INFO  - Finished PeopleHubGateway
+2026-07-24 11:53:04,429 DEBUG - Starting WinSW in service mode
+2026-07-24 11:53:04,607 INFO  - Starting F:\\softwer\\hrhub\peoplehub-gateway.exe 
+2026-07-24 11:53:04,643 INFO  - Started process 400
+2026-07-24 11:53:04,659 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub-gateway) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 12:08:44,702 INFO  - Stopping PeopleHubGateway
+2026-07-24 12:08:44,727 DEBUG - ProcessKill 400
+2026-07-24 12:08:44,734 DEBUG - Stopping process 400...
+2026-07-24 12:08:44,760 DEBUG - Process 400 canceled with code -1073741510.
+2026-07-24 12:08:44,892 INFO  - Finished PeopleHubGateway
+2026-07-24 12:09:00,476 DEBUG - Starting WinSW in service mode
+2026-07-24 12:09:00,656 INFO  - Starting F:\\softwer\\hrhub\peoplehub-gateway.exe 
+2026-07-24 12:09:01,247 INFO  - Started process 14888
+2026-07-24 12:09:01,263 DEBUG - Forwarding logs of the process System.Diagnostics.Process (peoplehub-gateway) to WinSW.SizeBasedRollingLogAppender

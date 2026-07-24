@@ -6,3 +6,5 @@
 2026/07/23 15:49:40   /hub/api/* → http://localhost:5000
 2026/07/23 15:49:40   /hrhub/* → http://localhost:8082 (IIS old project)
 2026/07/23 15:49:40   /contact/* → http://localhost:8082 (IIS)
+2026/07/23 16:24:46 http: proxy error: context canceled
+2026/07/24 08:51:25 http: proxy error: context canceled

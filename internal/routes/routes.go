@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/handlers"
-	"github.com/shakil5281/hrhub-api/internal/middleware"
+	"github.com/shakil5281/peoplehub-api/internal/handlers"
+	"github.com/shakil5281/peoplehub-api/internal/middleware"
 )
 
 func Setup(

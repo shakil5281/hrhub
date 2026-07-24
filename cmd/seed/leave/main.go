@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 	"gorm.io/gorm"
 )
 

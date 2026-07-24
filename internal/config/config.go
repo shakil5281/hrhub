@@ -20,9 +20,9 @@ func Load() *Config {
 		DBPort:    getEnv("DB_PORT", "5432"),
 		DBUser:    getEnv("DB_USER", "shakil"),
 		DBPass:    getEnv("DB_PASS", "123456"),
-		DBName:    getEnv("DB_NAME", "hrhub"),
+		DBName:    getEnv("DB_NAME", "peoplehub"),
 		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
-		JWTSecret: getEnv("JWT_SECRET", "hrhub-secret-key-change-in-production-2024"),
+		JWTSecret: getEnv("JWT_SECRET", "peoplehub-secret-key-change-in-production-2025"),
 	}
 }
 

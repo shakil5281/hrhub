@@ -1,0 +1,28 @@
+Error: ENOTDIR: not a directory, scandir 'F:\softwer\hrhub\web\build\standalone\public'
+    at ignore-listed frames {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'scandir',
+  path: 'F:\\softwer\\hrhub\\web\\build\\standalone\\public'
+}
+Error: ENOTDIR: not a directory, scandir 'F:\softwer\hrhub\web\build\standalone\public'
+    at ignore-listed frames {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'scandir',
+  path: 'F:\\softwer\\hrhub\\web\\build\\standalone\\public'
+}
+Error: ENOTDIR: not a directory, scandir 'F:\softwer\hrhub\web\build\standalone\public'
+    at ignore-listed frames {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'scandir',
+  path: 'F:\\softwer\\hrhub\\web\\build\\standalone\\public'
+}
+Error: ENOTDIR: not a directory, scandir 'F:\softwer\hrhub\web\build\standalone\public'
+    at ignore-listed frames {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'scandir',
+  path: 'F:\\softwer\\hrhub\\web\\build\\standalone\\public'
+}

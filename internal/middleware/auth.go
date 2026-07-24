@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/auth"
+	"github.com/shakil5281/peoplehub-api/internal/auth"
 )
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Build and deploy HRHub project as "Hub" on IIS + Windows Services
+  Build and deploy PeopleHub project on IIS + Windows Services
 .DESCRIPTION
   This script builds the Go backend, Next.js frontend, and a Go reverse proxy gateway,
   then configures IIS, installs WinSW services, and starts everything.
@@ -19,15 +19,15 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$ROOT = Resolve-Path "$PSScriptRoot\.."
-$BINARY = "$ROOT\hub.exe"
-$GATEWAY = "$ROOT\hub-gateway.exe"
+$ROOT = (Resolve-Path "$PSScriptRoot\..").Path
+$BINARY = "$ROOT\peoplehub.exe"
+$GATEWAY = "$ROOT\peoplehub-gateway.exe"
 $DEPLOY = "$ROOT\deploy"
 $WWWROOT = "$ROOT\wwwroot"
 $WINSW_URL = "https://github.com/winsw/winsw/releases/download/v3.1.0/WinSW-x64.exe"
 $WINSW_EXE = "$DEPLOY\WinSW-x64.exe"
 
-# ─── 1. Prerequisites ────────────────────────────────────────────────────────
+# --- 1. Prerequisites --------------------------------------------------------
 Write-Host "=== Checking Prerequisites ===" -ForegroundColor Cyan
 
 # Admin check
@@ -75,9 +75,11 @@ if ($rewriteModule) {
   }
 }
 
-# ─── 1.5 Clean Old Binaries (hrhub rename → hub) ──────────────────────────
+# --- 1.5 Clean Old Binaries --------------------------------------------------
 $oldBinaries = @(
     "$ROOT\hrhub.exe",
+    "$ROOT\hub.exe",
+    "$ROOT\hub-gateway.exe",
     "$ROOT\server.exe",
     "$ROOT\employee.exe",
     "$ROOT\reset.exe"
@@ -86,34 +88,45 @@ foreach ($f in $oldBinaries) {
     if (Test-Path $f) { Remove-Item $f -Force; Write-Host "  Removed old: $(Split-Path $f -Leaf)" }
 }
 
-# Remove old IIS sites
-@("ERPHub") | ForEach-Object {
+# Remove old IIS sites and services
+@("ERPHub", "HubSite") | ForEach-Object {
     $site = Get-Website -Name $_ -ErrorAction SilentlyContinue
     if ($site) { Remove-Website -Name $_; Write-Host "  Removed old IIS site: $_" }
 }
 
-# ─── 2. Build ────────────────────────────────────────────────────────────────
+# Stop and remove old services
+@("HubAPI", "HubWeb", "HubGateway") | ForEach-Object {
+    $svc = Get-Service $_ -ErrorAction SilentlyContinue
+    if ($svc) {
+        Stop-Service $_ -Force -ErrorAction SilentlyContinue
+        sc.exe delete $_ 2>$null
+        Write-Host "  Removed old service: $_"
+    }
+}
+
+# --- 2. Build ----------------------------------------------------------------
 if (-not $SkipBuild) {
-  Write-Host "`n=== Building Backend (hub.exe) ===" -ForegroundColor Cyan
+  Write-Host "`n=== Building Backend (peoplehub.exe) ===" -ForegroundColor Cyan
   Set-Location $ROOT
   go build -o $BINARY -ldflags="-s -w" ./cmd/server
   if ($LASTEXITCODE -ne 0) { Write-Error "Backend build failed"; return }
-  Write-Host "  → $BINARY"
+  Write-Host "  -> $BINARY"
 
-  Write-Host "`n=== Building Gateway (hub-gateway.exe) ===" -ForegroundColor Cyan
+  Write-Host "`n=== Building Gateway (peoplehub-gateway.exe) ===" -ForegroundColor Cyan
   go build -o $GATEWAY -ldflags="-s -w" ./cmd/gateway
   if ($LASTEXITCODE -ne 0) { Write-Error "Gateway build failed"; return }
-  Write-Host "  → $GATEWAY"
+  Write-Host "  -> $GATEWAY"
 
   Write-Host "`n=== Building Frontend (Next.js) ===" -ForegroundColor Cyan
   Set-Location "$ROOT\web"
+  $env:NEXT_PUBLIC_BASE_PATH = "/peoplehub"
   npm install --silent 2>$null
   npm run build
   if ($LASTEXITCODE -ne 0) { Write-Error "Frontend build failed"; return }
-  Write-Host "  → web\.next\standalone"
+  Write-Host "  -> web\build\standalone"
 
   # Copy standalone files correctly
-  $standalone = "$ROOT\web\.next\standalone"
+  $standalone = "$ROOT\web\build\standalone"
   if (Test-Path "$standalone\web") {
     Write-Host "  Restructuring standalone output..."
     Copy-Item "$standalone\web\*" "$standalone\" -Recurse -Force
@@ -121,11 +134,14 @@ if (-not $SkipBuild) {
   }
   # Copy public and static assets
   if (Test-Path "$ROOT\web\public") {
-    Copy-Item "$ROOT\web\public\*" "$standalone\public\" -Recurse -Force -ErrorAction SilentlyContinue
+    $publicDir = "$standalone\public"
+    New-Item -ItemType Directory -Force -Path $publicDir | Out-Null
+    Copy-Item "$ROOT\web\public\*" "$publicDir\" -Recurse -Force -ErrorAction SilentlyContinue
   }
-  if (Test-Path "$ROOT\web\.next\static") {
-    New-Item -ItemType Directory -Force -Path "$standalone\.next\static" | Out-Null
-    Copy-Item "$ROOT\web\.next\static\*" "$standalone\.next\static\" -Recurse -Force
+  if (Test-Path "$ROOT\web\build\static") {
+    $staticDir = "$standalone\build\static"
+    New-Item -ItemType Directory -Force -Path $staticDir | Out-Null
+    Copy-Item "$ROOT\web\build\static\*" "$staticDir\" -Recurse -Force
   }
 
   Write-Host "`n=== Build Complete ===" -ForegroundColor Green
@@ -133,7 +149,7 @@ if (-not $SkipBuild) {
   Write-Host "`n=== Skipping Build ===" -ForegroundColor Yellow
 }
 
-# ─── 3. WinSW Setup ─────────────────────────────────────────────────────────
+# --- 3. WinSW Setup ---------------------------------------------------------
 if (-not $NoServices) {
   Write-Host "`n=== Setting up Windows Services ===" -ForegroundColor Cyan
 
@@ -144,7 +160,7 @@ if (-not $NoServices) {
   }
 
   # Stop existing services if any
-  @("HubAPI", "HubWeb", "HubGateway") | ForEach-Object {
+  @("PeopleHubAPI", "PeopleHubWeb", "PeopleHubGateway") | ForEach-Object {
     $svc = Get-Service $_ -ErrorAction SilentlyContinue
     if ($svc -and $svc.Status -eq "Running") {
       Stop-Service $_ -Force
@@ -154,9 +170,9 @@ if (-not $NoServices) {
 
   # Install services
   $services = @(
-    @{ Name="HubAPI"; Xml="hub-service-backend.xml" },
-    @{ Name="HubWeb"; Xml="hub-service-frontend.xml" },
-    @{ Name="HubGateway"; Xml="hub-service-gateway.xml" }
+    @{ Name="PeopleHubAPI"; Xml="hub-service-backend.xml" },
+    @{ Name="PeopleHubWeb"; Xml="hub-service-frontend.xml" },
+    @{ Name="PeopleHubGateway"; Xml="hub-service-gateway.xml" }
   )
 
   foreach ($svc in $services) {
@@ -187,18 +203,18 @@ if (-not $NoServices) {
   }
 
   Write-Host "  Starting services..."
-  Start-Service HubAPI
+  Start-Service PeopleHubAPI
   Start-Sleep 3
-  Start-Service HubWeb
+  Start-Service PeopleHubWeb
   Start-Sleep 2
-  Start-Service HubGateway
+  Start-Service PeopleHubGateway
 
   Write-Host "  Services installed and started." -ForegroundColor Green
 } else {
   Write-Host "`n=== Skipping Service Installation ===" -ForegroundColor Yellow
 }
 
-# ─── 4. IIS Configuration ──────────────────────────────────────────────────
+# --- 4. IIS Configuration ---------------------------------------------------
 if (-not $NoIIS) {
   Write-Host "`n=== Configuring IIS ===" -ForegroundColor Cyan
 
@@ -209,14 +225,14 @@ if (-not $NoIIS) {
   if ($defaultSite) {
     $defaultBindings = $defaultSite.bindings.Collection
     $hasPort80 = $defaultBindings | Where-Object { $_.bindingInformation -match ":80:" }
-    if ($hasPort80 -and (Get-Service -Name HubGateway -ErrorAction SilentlyContinue).Status -eq "Running") {
+    if ($hasPort80 -and (Get-Service -Name PeopleHubGateway -ErrorAction SilentlyContinue).Status -eq "Running") {
       Write-Host "  Stopping Default Web Site (port 80 used by gateway)..."
       Stop-Website -Name "Default Web Site"
     }
   }
 
-  # Create Hub App Pool
-  $appPoolName = "HubAppPool"
+  # Create PeopleHub App Pool
+  $appPoolName = "PeopleHubAppPool"
   $existingPool = Get-ChildItem "IIS:\AppPools\$appPoolName" -ErrorAction SilentlyContinue
   if (-not $existingPool) {
     New-Item "IIS:\AppPools\$appPoolName" -Force | Out-Null
@@ -227,8 +243,8 @@ if (-not $NoIIS) {
     Write-Host "  App Pool '$appPoolName' already exists."
   }
 
-  # Create/Update Hub Site on port 8081 (for admin/status)
-  $siteName = "HubSite"
+  # Create/Update PeopleHub Site on port 8081
+  $siteName = "PeopleHubSite"
   $existingSite = Get-Website -Name $siteName -ErrorAction SilentlyContinue
   if (-not $existingSite) {
     New-Website -Name $siteName -PhysicalPath $WWWROOT -Port 8081 -ApplicationPool $appPoolName -Force
@@ -247,9 +263,9 @@ if (-not $NoIIS) {
   Write-Host "`n=== Skipping IIS Configuration ===" -ForegroundColor Yellow
 }
 
-# ─── 5. Firewall Rules ──────────────────────────────────────────────────────
+# --- 5. Firewall Rules ------------------------------------------------------
 Write-Host "`n=== Configuring Firewall ===" -ForegroundColor Cyan
-$fwRuleName = "Hub-Gateway-80"
+$fwRuleName = "PeopleHub-Gateway-80"
 $existingRule = netsh advfirewall firewall show rule name="$fwRuleName" 2>$null
 if (-not $existingRule) {
   netsh advfirewall firewall add rule name="$fwRuleName" dir=in action=allow protocol=TCP localport=80 profile=any
@@ -258,20 +274,20 @@ if (-not $existingRule) {
   Write-Host "  Firewall rule '$fwRuleName' already exists."
 }
 
-# ─── 6. Summary ─────────────────────────────────────────────────────────────
+# --- 6. Summary ---------------------------------------------------------------
 Write-Host "`n============================================" -ForegroundColor Green
-Write-Host "  Deployment Complete!" -ForegroundColor Green
+Write-Host "  PeopleHub Deployment Complete!" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Frontend:  http://localhost:80 (via gateway → :3000)"
-Write-Host "  API:       http://localhost:80/api/v1 (→ :5000)"
-Write-Host "  Swagger:   http://localhost:80/swagger/index.html"
+Write-Host "  Frontend:  http://localhost:80/peoplehub/ (via gateway)"
+Write-Host "  API:       http://localhost:80/peoplehub/api/v1 (-> :5000)"
+Write-Host "  Swagger:   http://localhost:80/peoplehub/swagger/index.html"
 Write-Host "  IIS Admin: http://localhost:8081"
 Write-Host ""
 Write-Host "  Services:"
-Write-Host "    HubAPI     → $ROOT\hub.exe"
-Write-Host "    HubWeb     → Next.js on port 3000"
-Write-Host "    HubGateway → $ROOT\hub-gateway.exe on port 80"
+Write-Host "    PeopleHubAPI     -> $ROOT\peoplehub.exe"
+Write-Host "    PeopleHubWeb     -> Next.js on port 3000"
+Write-Host "    PeopleHubGateway -> $ROOT\peoplehub-gateway.exe on port 80"
 Write-Host ""
 Write-Host "  Logs: $DEPLOY\*.log"
 Write-Host "============================================" -ForegroundColor Green

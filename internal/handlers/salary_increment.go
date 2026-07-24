@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/models"
-	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/peoplehub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/repository"
 )
 
 type SalaryIncrementHandler struct {

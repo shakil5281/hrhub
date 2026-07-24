@@ -1,12 +1,12 @@
-# HRHub — Project Knowledge Base (Single Source of Truth)
+# PeopleHub — Project Knowledge Base (Single Source of Truth)
 
-> **Purpose:** This document is the complete reference for the HRHub application. Any agent or developer should be able to understand the entire system — architecture, APIs, database, frontend, data flows, and business rules — from this file alone.
+> **Purpose:** This document is the complete reference for the PeopleHub application. Any agent or developer should be able to understand the entire system — architecture, APIs, database, frontend, data flows, and business rules — from this file alone.
 
 ---
 
 ## 1. Project Overview
 
-**HRHub** is an enterprise Human Resource Management & Payroll System targeting Bangladeshi garment/factory industries. It manages the full employee lifecycle, integrates biometric attendance (ZKTeco), tracks leave balances, and automates monthly payroll processing.
+**PeopleHub** is an enterprise Human Resource Management & Payroll System targeting Bangladeshi garment/factory industries. It manages the full employee lifecycle, integrates biometric attendance (ZKTeco), tracks leave balances, and automates monthly payroll processing.
 
 **Deployment:** Monolithic. Docker Compose (PostgreSQL + Go backend + Next.js frontend).
 
@@ -37,7 +37,7 @@
 ## 3. Directory Structure
 
 ```
-hrhub/
+PeopleHub/
 ├── .env                     # Environment variables (DB, JWT, ports)
 ├── .env.example             # Template for env vars
 ├── docker-compose.yml       # 3-service orchestration
@@ -701,8 +701,8 @@ PUT /leaves/:id/reject
 
 **Backend:**
 ```bash
-go build -o hrhub.exe ./cmd/server
-.\hrhub.exe          # runs on :5000 (from .env or default)
+go build -o PeopleHub.exe ./cmd/server
+.\PeopleHub.exe          # runs on :5000 (from .env or default)
 ```
 
 **Frontend:**
@@ -735,12 +735,12 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=shakil
 DB_PASS=123456
-DB_NAME=hrhub
+DB_NAME=PeopleHub
 DB_SSLMODE=disable
 
 # API Server
 PORT=5000
-JWT_SECRET=hrhub-secret-key-change-in-production-2024
+JWT_SECRET=PeopleHub-secret-key-change-in-production-2024
 
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
@@ -752,7 +752,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 |---------|---------|
 | `go run cmd/seed/main.go` | Geo data: divisions, districts, upazilas, unions (fetches remote JSON, idempotent) |
 | `go run cmd/superadmin/main.go` | Creates superadmin role + all permissions + superadmin user. Env: `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `SUPERADMIN_NAME` |
-| `go run cmd/seed/organization/main.go` | Company (HRHub Technologies Ltd.), 4 branches, 12 departments, 20 sections, 27 designations, production lines, groups A-D, floors 1-10, 5 shifts |
+| `go run cmd/seed/organization/main.go` | Company (PeopleHub Technologies Ltd.), 4 branches, 12 departments, 20 sections, 27 designations, production lines, groups A-D, floors 1-10, 5 shifts |
 | `go run cmd/seed/leave/main.go` | 8 default leave types: AL, SL, CL, ML, PL, EL, STL, HL |
 | `go run cmd/seed/employee/main.go` | Sample employees |
 

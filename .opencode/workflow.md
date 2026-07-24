@@ -1,6 +1,6 @@
-# OpenCode Workflow & Agent Rules — HRHub
+# OpenCode Workflow & Agent Rules — PeopleHub
 
-> **Purpose:** This file governs how OpenCode interacts with the HRHub project. Every change must pass the rules below. Read this file before every task.
+> **Purpose:** This file governs how OpenCode interacts with the PeopleHub project. Every change must pass the rules below. Read this file before every task.
 
 ---
 
@@ -50,7 +50,7 @@ Before creating **any** new file, you **MUST**:
 
 ---
 
-## 2. HRHub-Specific Conventions
+## 2. PeopleHub-Specific Conventions
 
 ### 2.1 Go Backend Conventions
 
@@ -269,7 +269,7 @@ Before completing any task, verify:
 - **Never** modify `go.mod` or `package.json` unless adding a required dependency.
 - **Never** change the database schema (ALTER, DROP, TRUNCATE) in production-like environments without backup confirmation.
 - **Never** expose secrets (JWT_SECRET, DB_PASS) in code comments or API responses.
-- **Never** create a file outside the project root (`F:\softwer\hrhub`).
+- **Never** create a file outside the project root (`F:\softwer\PeopleHub`).
 
 ---
 
@@ -290,4 +290,4 @@ If the answer to question 1 or 3 is "yes", **stop and refactor**.
 
 *Version: 1.0*  
 *Effective: 2026-07-19*  
-*Applies to: All OpenCode sessions on HRHub*
+*Applies to: All OpenCode sessions on PeopleHub*

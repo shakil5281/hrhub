@@ -1,4 +1,4 @@
-# HRHub — Enterprise HR Management & Payroll System
+# PeopleHub — Enterprise HR Management & Payroll System
 
 > **Target Industry:** Bangladeshi Garment & Factory Industries  
 > **Architecture:** Monolithic (Go Backend + Next.js Frontend + PostgreSQL)  
@@ -86,7 +86,7 @@
 
 ```bash
 git clone <repository-url>
-cd hrhub
+cd PeopleHub
 ```
 
 ### 2. Configure Environment Variables
@@ -105,12 +105,12 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=shakil
 DB_PASS=123456
-DB_NAME=hrhub
+DB_NAME=PeopleHub
 DB_SSLMODE=disable
 
 # API Server
 PORT=5000
-JWT_SECRET=hrhub-secret-key-change-in-production-2024
+JWT_SECRET=PeopleHub-secret-key-change-in-production-2024
 
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
@@ -122,7 +122,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 
 ## Database & Migration
 
-HRHub uses **GORM AutoMigrate** for schema management. Migrations run automatically when the backend starts.
+PeopleHub uses **GORM AutoMigrate** for schema management. Migrations run automatically when the backend starts.
 
 ### How Migration Works
 
@@ -163,10 +163,10 @@ curl -X POST http://localhost:5000/api/v1/database/import \
 ### Option A: Local Development (without Docker)
 
 #### Step 1: Start PostgreSQL
-Ensure PostgreSQL is running and the database `hrhub` exists:
+Ensure PostgreSQL is running and the database `PeopleHub` exists:
 
 ```bash
-createdb -U shakil hrhub   # or use pgAdmin / psql
+createdb -U shakil PeopleHub   # or use pgAdmin / psql
 ```
 
 #### Step 2: Run the Backend
@@ -176,10 +176,10 @@ createdb -U shakil hrhub   # or use pgAdmin / psql
 go mod download
 
 # Build the server
-go build -o hrhub.exe ./cmd/server
+go build -o PeopleHub.exe ./cmd/server
 
 # Run the server
-.\hrhub.exe
+.\PeopleHub.exe
 ```
 
 The API will be available at: **http://localhost:5000**
@@ -241,7 +241,7 @@ docker-compose down -v
 
 ## API Documentation
 
-HRHub uses **Swagger/OpenAPI 2.0** for API documentation.
+PeopleHub uses **Swagger/OpenAPI 2.0** for API documentation.
 
 - **Swagger UI:** `http://localhost:5000/swagger/index.html`
 - **OpenAPI JSON:** `http://localhost:5000/swagger/doc.json`
@@ -283,10 +283,10 @@ Response:
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_USER` | `shakil` | PostgreSQL username |
 | `DB_PASS` | `123456` | PostgreSQL password |
-| `DB_NAME` | `hrhub` | PostgreSQL database name |
+| `DB_NAME` | `PeopleHub` | PostgreSQL database name |
 | `DB_SSLMODE` | `disable` | SSL mode (disable/require/verify-full) |
 | `PORT` | `5000` | Backend API port |
-| `JWT_SECRET` | `hrhub-secret-key...` | JWT signing secret |
+| `JWT_SECRET` | `PeopleHub-secret-key...` | JWT signing secret |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:5000/api/v1` | Frontend API base URL |
 
 ---
@@ -308,7 +308,7 @@ go run cmd/superadmin/main.go
 Creates the superadmin role, all permissions, and a superadmin user.
 
 **Default credentials:**
-- Email: `superadmin@hrhub.com`
+- Email: `superadmin@PeopleHub.com`
 - Password: `superadmin1234`
 
 Or configure via environment:
@@ -323,7 +323,7 @@ SUPERADMIN_NAME=System Admin
 go run cmd/seed/organization/main.go
 ```
 Creates:
-- Company: HRHub Technologies Ltd.
+- Company: PeopleHub Technologies Ltd.
 - 4 Branches
 - 12 Departments
 - 20 Sections
@@ -487,7 +487,7 @@ Creates sample employee records for testing.
 ## Project Structure
 
 ```
-hrhub/
+PeopleHub/
 ├── .env                          # Environment configuration
 ├── .env.example                  # Environment template
 ├── docker-compose.yml            # 3-service orchestration
@@ -648,7 +648,7 @@ MIT
 
 ## Support
 
-For issues or questions, contact: **support@hrhub.com**
+For issues or questions, contact: **support@PeopleHub.com**
 
 ---
 

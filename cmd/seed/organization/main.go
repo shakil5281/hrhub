@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -27,7 +27,7 @@ func main() {
 }
 
 func seedCompany(db *gorm.DB) *models.Company {
-	slug := "hrhub-technologies"
+	slug := "peoplehub-technologies"
 	var existing models.Company
 	err := db.Where("slug = ?", slug).First(&existing).Error
 	if err == nil {
@@ -43,8 +43,8 @@ func seedCompany(db *gorm.DB) *models.Company {
 	})
 
 	company := models.Company{
-		CompanyNameBn: "এইচআরহাব টেকনোলজিস লিমিটেড",
-		CompanyNameEn: "HRHub Technologies Ltd.",
+		CompanyNameBn: "পিপলহাব টেকনোলজিস লিমিটেড",
+		CompanyNameEn: "PeopleHub Technologies Ltd.",
 		Slug:          slug,
 		AddressEn:     "House 12, Road 5, Sector 3, Uttara, Dhaka 1230",
 		Phone:         "+880-2-9876543",

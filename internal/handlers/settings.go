@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/repository"
+	"github.com/shakil5281/peoplehub-api/internal/repository"
 )
 
 type SettingsHandler struct {

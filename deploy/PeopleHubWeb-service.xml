@@ -1,0 +1,19 @@
+<service>
+  <id>PeopleHubWeb</id>
+  <name>PeopleHub Web Frontend</name>
+  <description>PeopleHub Next.js Frontend Server</description>
+  <executable>node</executable>
+  <arguments>F:\\softwer\\hrhub\web\build\standalone\server.js</arguments>
+  <workingdirectory>F:\\softwer\\hrhub\web</workingdirectory>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="10 sec"/>
+  <delayedAutoStart>true</delayedAutoStart>
+  <startmode>Automatic</startmode>
+  <env name="PORT" value="3000"/>
+  <env name="NODE_ENV" value="production"/>
+  <env name="NEXT_PUBLIC_API_URL" value="http://localhost:5000/api/v1"/>
+  <env name="NEXT_PUBLIC_BASE_PATH" value="/peoplehub"/>
+</service>

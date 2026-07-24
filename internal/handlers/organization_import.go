@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -119,11 +119,11 @@ func (h *OrganizationImportHandler) DownloadTemplate(c *gin.Context) {
 	setupSheet(demo, 6)
 
 	demoData := [][]interface{}{
-		{"HRHub Technologies Ltd.", "এইচআরহাব টেকনোলজিস লি.", "Human Resources", "মানব সম্পদ", "Recruitment", "নিয়োগ", "HR Executive", "এইচআর এক্সিকিউটিভ", "Sewing Line 1", "সেলাই লাইন ১"},
-		{"HRHub Technologies Ltd.", "এইচআরহাব টেকনোলজিস লি.", "Human Resources", "মানব সম্পদ", "Training", "প্রশিক্ষণ", "Training Officer", "প্রশিক্ষণ কর্মকর্তা", "", ""},
-		{"HRHub Technologies Ltd.", "এইচআরহাব টেকনোলজিস লি.", "Finance", "অর্থ", "Accounts", "হিসাব", "Accountant", "হিসাবরক্ষক", "", ""},
-		{"HRHub Technologies Ltd.", "এইচআরহাব টেকনোলজিস লি.", "Production", "উত্পাদন", "Cutting", "কাটিং", "Cutting Master", "কাটিং মাস্টার", "Cutting Line 1", "কাটিং লাইন ১"},
-		{"HRHub Technologies Ltd.", "এইচআরহাব টেকনোলজিস লি.", "Production", "উত্পাদন", "Sewing", "সেলাই", "Sewing Operator", "সেলাই অপারেটর", "Sewing Line 2", "সেলাই লাইন ২"},
+		{"PeopleHub Technologies Ltd.", "পিপলহাব টেকনোলজিস লি.", "Human Resources", "মানব সম্পদ", "Recruitment", "নিয়োগ", "HR Executive", "এইচআর এক্সিকিউটিভ", "Sewing Line 1", "সেলাই লাইন ১"},
+		{"PeopleHub Technologies Ltd.", "পিপলহাব টেকনোলজিস লি.", "Human Resources", "মানব সম্পদ", "Training", "প্রশিক্ষণ", "Training Officer", "প্রশিক্ষণ কর্মকর্তা", "", ""},
+		{"PeopleHub Technologies Ltd.", "পিপলহাব টেকনোলজিস লি.", "Finance", "অর্থ", "Accounts", "হিসাব", "Accountant", "হিসাবরক্ষক", "", ""},
+		{"PeopleHub Technologies Ltd.", "পিপলহাব টেকনোলজিস লি.", "Production", "উত্পাদন", "Cutting", "কাটিং", "Cutting Master", "কাটিং মাস্টার", "Cutting Line 1", "কাটিং লাইন ১"},
+		{"PeopleHub Technologies Ltd.", "পিপলহাব টেকনোলজিস লি.", "Production", "উত্পাদন", "Sewing", "সেলাই", "Sewing Operator", "সেলাই অপারেটর", "Sewing Line 2", "সেলাই লাইন ২"},
 	}
 
 	for rowIdx, rowData := range demoData {

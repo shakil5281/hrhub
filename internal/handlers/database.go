@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 )
 
 type DatabaseHandler struct {
@@ -69,7 +69,7 @@ func (h *DatabaseHandler) Backup(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("hrhub_backup_%s.sql", time.Now().Format("20060102_150405"))
+	filename := fmt.Sprintf("peoplehub_backup_%s.sql", time.Now().Format("20060102_150405"))
 	filepath := filepath.Join(backupDir, filename)
 
 	cmd := exec.Command("pg_dump", h.pgDumpArgs()...)

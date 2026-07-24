@@ -9,17 +9,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/server"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/server"
 )
 
-// @title           HRHub API
+// @title           PeopleHub API
 // @version         1.1
 // @description     Enterprise HR Management & Payroll System API.
 //
-// @contact.name   HRHub Team
-// @contact.email  support@hrhub.com
+// @contact.name   PeopleHub Team
+// @contact.email  support@peoplehub.com
 //
 // @license.name  MIT
 // @license.url   https://opensource.org/licenses/MIT

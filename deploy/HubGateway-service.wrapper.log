@@ -1,16 +1,5 @@
-2026-07-23 15:13:26,109 DEBUG - Starting WinSW in console mode
-2026-07-23 15:13:26,154 INFO  - Installing service 'Hub Gateway (Reverse Proxy) (HubGateway)'...
-2026-07-23 15:13:26,220 INFO  - Service 'Hub Gateway (Reverse Proxy) (HubGateway)' was installed successfully.
-2026-07-23 15:13:48,833 DEBUG - Starting WinSW in service mode
-2026-07-23 15:13:49,032 INFO  - Starting F:\softwer\hrhub\hub-gateway.exe 
-2026-07-23 15:13:49,650 INFO  - Started process 11864
-2026-07-23 15:13:49,665 DEBUG - Forwarding logs of the process System.Diagnostics.Process (hub-gateway) to WinSW.SizeBasedRollingLogAppender
-2026-07-23 15:49:33,771 INFO  - Stopping HubGateway
-2026-07-23 15:49:33,804 DEBUG - ProcessKill 11864
-2026-07-23 15:49:33,808 DEBUG - Stopping process 11864...
-2026-07-23 15:49:33,820 DEBUG - Process 11864 canceled with code -1073741510.
-2026-07-23 15:49:33,888 INFO  - Finished HubGateway
-2026-07-23 15:49:38,871 DEBUG - Starting WinSW in service mode
-2026-07-23 15:49:39,058 INFO  - Starting F:\softwer\hrhub\hub-gateway.exe 
-2026-07-23 15:49:40,428 INFO  - Started process 7596
-2026-07-23 15:49:40,443 DEBUG - Forwarding logs of the process System.Diagnostics.Process (hub-gateway) to WinSW.SizeBasedRollingLogAppender
+2026-07-24 11:40:44,761 INFO  - Stopping HubGateway
+2026-07-24 11:40:44,763 DEBUG - ProcessKill 7596
+2026-07-24 11:40:44,787 DEBUG - Stopping process 7596...
+2026-07-24 11:40:44,801 DEBUG - Process 7596 canceled with code -1073741510.
+2026-07-24 11:40:44,828 INFO  - Finished HubGateway

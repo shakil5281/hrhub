@@ -60,7 +60,7 @@
 
 ┌── PostgreSQL (port 5432) ──────────────────────────┐
 │  40 tables, UUID PKs, GORM-managed migrations      │
-│  Database: hrhub                                    │
+│  Database: PeopleHub                                    │
 │  User: shakil                                       │
 └─────────────────────────────────────────────────────┘
 ```
@@ -197,7 +197,7 @@ cd F:\softwer\hub
 
 The script will:
 
-1. ✅ Clean old `hrhub.exe` / `server.exe` binaries (rename safety)
+1. ✅ Clean old `PeopleHub.exe` / `server.exe` binaries (rename safety)
 2. ✅ Check prerequisites (Go, Node.js, IIS)
 3. ✅ Build `hub.exe` (Go backend)
 4. ✅ Build `hub-gateway.exe` (Go reverse proxy)
@@ -422,8 +422,8 @@ Each component runs as a Windows service managed by **WinSW** (Windows Service W
   <env name="DB_PORT" value="5432"/>
   <env name="DB_USER" value="shakil"/>
   <env name="DB_PASS" value="123456"/>
-  <env name="DB_NAME" value="hrhub"/>
-  <env name="JWT_SECRET" value="hrhub-secret-key-change-in-production-2024"/>
+  <env name="DB_NAME" value="PeopleHub"/>
+  <env name="JWT_SECRET" value="PeopleHub-secret-key-change-in-production-2024"/>
   <onfailure action="restart" delay="10 sec"/>
   <startmode>Automatic</startmode>
 </service>
@@ -587,12 +587,12 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=shakil
 DB_PASS=123456
-DB_NAME=hrhub
+DB_NAME=PeopleHub
 DB_SSLMODE=disable
 
 # API Server
 PORT=5000
-JWT_SECRET=hrhub-secret-key-change-in-production-2024
+JWT_SECRET=PeopleHub-secret-key-change-in-production-2024
 
 # Frontend
 FRONTEND_PORT=3000
@@ -601,17 +601,17 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 
 **⚠️ Security Note:** Change the `JWT_SECRET` to a strong, random value before production use. Keep `.env` out of version control (it's in `.gitignore`).
 
-### Project Rename: hrhub → hub
+### Project Rename: PeopleHub → hub
 
-The project was renamed from `hrhub` → `hub` to avoid conflicts. During deployment:
+The project was renamed from `PeopleHub` → `hub` to avoid conflicts. During deployment:
 
-- Old binaries (`hrhub.exe`, `server.exe`, `employee.exe`, `reset.exe`) are **automatically deleted**
-- Old services (`HRHub*`) are stopped and removed
+- Old binaries (`PeopleHub.exe`, `server.exe`, `employee.exe`, `reset.exe`) are **automatically deleted**
+- Old services (`PeopleHub*`) are stopped and removed
 - Old IIS sites (`ERPHub`) are removed
 - Only `hub.exe` (backend) and `hub-gateway.exe` (proxy) remain
 - All new services use the **Hub** prefix (`HubAPI`, `HubWeb`, `HubGateway`)
 
-If any old `hrhub` process or service is still running, the build script cleans it up automatically. The gateway on port 80 routes all traffic to the new Hub services only.
+If any old `PeopleHub` process or service is still running, the build script cleans it up automatically. The gateway on port 80 routes all traffic to the new Hub services only.
 
 ---
 
@@ -644,7 +644,7 @@ $env:GATEWAY_PORT = "8080"
 
 ```powershell
 # Test PostgreSQL
-psql -U shakil -d hrhub -c "SELECT 1"
+psql -U shakil -d PeopleHub -c "SELECT 1"
 
 # Check if PostgreSQL service is running
 Get-Service postgresql*
@@ -800,4 +800,4 @@ go run cmd/seed/employee/main.go
 
 *Document Version: 1.0*  
 *Last Updated: 2026-07-23*  
-*Project: Hub HR System (formerly HRHub)*
+*Project: Hub HR System (formerly PeopleHub)*

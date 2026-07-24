@@ -1,8 +1,8 @@
 <service>
-  <id>HubAPI</id>
-  <name>Hub API Server</name>
-  <description>HRHub Go Backend API Server</description>
-  <executable>%BASE%\hub.exe</executable>
+  <id>PeopleHubAPI</id>
+  <name>PeopleHub API Server</name>
+  <description>PeopleHub Go Backend API Server</description>
+  <executable>%BASE%\peoplehub.exe</executable>
   <workingdirectory>%BASE%</workingdirectory>
   <log mode="roll-by-size">
     <sizeThreshold>10240</sizeThreshold>
@@ -18,6 +18,6 @@
   <env name="DB_PASS" value="123456"/>
   <env name="DB_NAME" value="hrhub"/>
   <env name="DB_SSLMODE" value="disable"/>
-  <env name="JWT_SECRET" value="hrhub-secret-key-change-in-production-2024"/>
+  <env name="JWT_SECRET" value="peoplehub-secret-key-change-in-production-2025"/>
   <prestart-command>powershell -Command "if (-not (Test-Path '%BASE%\uploads')) { New-Item -ItemType Directory -Path '%BASE%\uploads' -Force }"</prestart-command>
 </service>

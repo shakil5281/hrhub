@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/shakil5281/hrhub-api/internal/config"
-	"github.com/shakil5281/hrhub-api/internal/database"
-	"github.com/shakil5281/hrhub-api/internal/models"
+	"github.com/shakil5281/peoplehub-api/internal/config"
+	"github.com/shakil5281/peoplehub-api/internal/database"
+	"github.com/shakil5281/peoplehub-api/internal/models"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	database.DB.Exec("ALTER TABLE employees ALTER COLUMN employee_id TYPE varchar(50) USING employee_id::varchar(50)")
 
 	companyID := ""
-	if err := database.DB.Model(&models.Company{}).Where("slug = 'hrhub-technologies'").Select("id").First(&companyID).Error; err != nil {
+	if err := database.DB.Model(&models.Company{}).Where("slug = 'peoplehub-technologies'").Select("id").First(&companyID).Error; err != nil {
 		log.Fatal("Company not found:", err)
 	}
 
